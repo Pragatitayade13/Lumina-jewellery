@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Poppins', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+
+  --color-gold-500: #d4af37;
+  --color-gold-600: #aa851c;
+  --color-gold-400: #f3d078;
+  
+  --color-luxury-black: #0a0a0c;
+  --color-luxury-dark: #191922;
+}
+
+@layer base {
+  body {
+    @apply bg-luxury-black text-white font-sans antialiased;
+    transition: background-color 0.35s ease, color 0.35s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+/* Light mode body */
+[data-theme="light"] body {
+  background-color: #f5f0e8;
+  color: #1a1408;
+}
+
+/* Smooth theme transition on all elements */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism utilities */
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+  }
+  
+  .glass-input {
+    @apply bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500 transition-colors;
+  }
+}
+
+/* Light mode glass overrides (login/register) */
+[data-theme="light"] .glass-panel {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(197,160,89,0.2);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .glass-input {
+  background: rgba(255,255,255,0.6);
+  border-color: rgba(197,160,89,0.2);
+  color: #1a1408;
+}
+
+[data-theme="light"] .glass-input::placeholder {
+  color: rgba(50,40,20,0.35);
+}
+
+[data-theme="light"] .glass-input:focus {
+  border-color: #c5a059;
+  box-shadow: 0 0 0 3px rgba(197,160,89,0.12);
+}
