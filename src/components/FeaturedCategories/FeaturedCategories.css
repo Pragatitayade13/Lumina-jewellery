@@ -1,0 +1,157 @@
+/* src/components/FeaturedCategories/FeaturedCategories.css */
+
+.categories-section {
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  padding: 6rem 0;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.category-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  transition: var(--transition);
+  background: var(--bg-card);
+}
+
+.category-card:hover {
+  border-color: var(--border-bright);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), var(--shadow-gold);
+}
+
+.category-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+  filter: brightness(0.75);
+}
+
+.category-card:hover .category-img {
+  transform: scale(1.1);
+  filter: brightness(0.6);
+}
+
+.category-gradient-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.7;
+  transition: opacity 0.4s ease;
+}
+
+.category-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(13, 8, 0, 0.95) 0%,
+    rgba(13, 8, 0, 0.3) 60%,
+    transparent 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 1.5rem;
+  transition: var(--transition);
+}
+
+.category-card:hover .category-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(13, 8, 0, 0.98) 0%,
+    rgba(13, 8, 0, 0.5) 60%,
+    rgba(13, 8, 0, 0.2) 100%
+  );
+}
+
+.category-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 36px;
+  height: 36px;
+  background: rgba(201, 168, 76, 0.2);
+  border: 1px solid var(--border-bright);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--gold);
+  backdrop-filter: blur(8px);
+  transition: var(--transition);
+}
+
+.category-card:hover .category-icon {
+  background: var(--gold);
+  color: var(--text-dark);
+}
+
+.category-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  transition: var(--transition);
+}
+
+.category-card:hover .category-name { color: var(--gold-light); }
+
+.category-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.category-explore {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: var(--transition);
+}
+
+.category-card:hover .category-explore {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Gradient fallback backgrounds */
+.cat-gold { background: linear-gradient(135deg, #2a1f00, #1a1000); }
+.cat-silver { background: linear-gradient(135deg, #1a1a1a, #0d0d0d); }
+.cat-diamond { background: linear-gradient(135deg, #001a2a, #000d15); }
+.cat-rings { background: linear-gradient(135deg, #2a1f00, #150f00); }
+.cat-necklaces { background: linear-gradient(135deg, #2a0a10, #1a0000); }
+.cat-earrings { background: linear-gradient(135deg, #1a1600, #0d0800); }
+.cat-bangles { background: linear-gradient(135deg, #1a2a10, #0d1500); }
+.cat-bridal { background: linear-gradient(135deg, #2a0a10, #1a0500); }
+
+@media (max-width: 1024px) {
+  .categories-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .categories-grid { gap: 0.75rem; }
+  .category-name { font-size: 1rem; }
+}

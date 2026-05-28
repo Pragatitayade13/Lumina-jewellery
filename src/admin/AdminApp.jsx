@@ -1,0 +1,80 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
+import AdminLayout from './AdminLayout';
+import Dashboard from './pages/Dashboard';
+import UserManagement from './pages/UserManagement';
+import ProductManagement from './pages/ProductManagement';
+import OrderManagement from './pages/OrderManagement';
+import CustomerManagement from './pages/CustomerManagement';
+import InventoryManagement from './pages/InventoryManagement';
+import PaymentManagement from './pages/PaymentManagement';
+import Analytics from './pages/Analytics';
+import ContentManagement from './pages/ContentManagement';
+import SecuritySettings from './pages/SecuritySettings';
+import SystemSettings from './pages/SystemSettings';
+import CommunicationManagement from './pages/CommunicationManagement';
+import StoreAppointments from './pages/StoreAppointments';
+import SchemesAndBuybacks from './pages/SchemesAndBuybacks';
+import SupportManagement from './pages/SupportManagement';
+import TaxManagement from './pages/TaxManagement';
+import GoldRateDashboard from './pages/GoldRateDashboard';
+import DeliveryOperations from './pages/DeliveryOperations';
+import './admin.css';
+
+// A simple protective wrapper for roles
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user } = useApp();
+  // Allow superadmin fallback for dev purposes if no user is set
+  const role = user?.role || 'superadmin';
+  
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    return <Navigate to="/admin" replace />;
+  }
+  return children;
+};
+
+export default function AdminApp() {
+  const { user } = useApp();
+  const role = user?.role || 'superadmin';
+
+  return (
+    <div className="admin-root">
+      <AdminLayout>
+        <Routes>
+          <Route index element={role === 'delivery' ? <Navigate to="/admin/delivery" replace /> : <Dashboard />} />
+          
+          {/* Superadmin & Manager only routes */}
+          <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager']}><UserManagement /></ProtectedRoute>} />
+          
+          {/* Logistics routes */}
+          <Route path="delivery" element={<ProtectedRoute allowedRoles={['superadmin', 'delivery']}><DeliveryOperations /></ProtectedRoute>} />
+
+          {/* Superadmin only routes */}
+          <Route path="settings" element={<ProtectedRoute allowedRoles={['superadmin']}><SystemSettings /></ProtectedRoute>} />
+          
+          {/* Shared routes (including staff and manager where applicable) */}
+          <Route path="products" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><ProductManagement /></ProtectedRoute>} />
+          <Route path="orders" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><OrderManagement /></ProtectedRoute>} />
+          <Route path="inventory" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><InventoryManagement /></ProtectedRoute>} />
+          <Route path="support" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><SupportManagement /></ProtectedRoute>} />
+          
+          {/* Admin & Manager only routes */}
+          <Route path="customers" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><CustomerManagement /></ProtectedRoute>} />
+          <Route path="communications" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><CommunicationManagement /></ProtectedRoute>} />
+          <Route path="appointments" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><StoreAppointments /></ProtectedRoute>} />
+          <Route path="schemes" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager', 'finance']}><SchemesAndBuybacks /></ProtectedRoute>} />
+          <Route path="content" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><ContentManagement /></ProtectedRoute>} />
+          <Route path="security" element={<ProtectedRoute allowedRoles={['superadmin', 'admin']}><SecuritySettings /></ProtectedRoute>} />
+          
+          {/* Finance & Manager routes */}
+          <Route path="payments" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><PaymentManagement /></ProtectedRoute>} />
+          <Route path="tax" element={<ProtectedRoute allowedRoles={['superadmin', 'finance']}><TaxManagement /></ProtectedRoute>} />
+          <Route path="gold-rates" element={<ProtectedRoute allowedRoles={['superadmin', 'finance', 'manager']}><GoldRateDashboard /></ProtectedRoute>} />
+          <Route path="analytics" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><Analytics /></ProtectedRoute>} />
+          
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </AdminLayout>
+    </div>
+  );
+}
