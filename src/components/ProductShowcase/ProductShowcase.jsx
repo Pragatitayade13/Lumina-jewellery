@@ -5,6 +5,11 @@ import { products as staticProducts } from '../../data/products';
 import ProductCard from '../ProductCard/ProductCard';
 import { useApp } from '../../context/AppContext';
 import { X, ShoppingBag, Heart, Star } from 'lucide-react';
+import slide1 from '../../assets/showcase_slide_1.jpg';
+import slide2 from '../../assets/showcase_slide_2.jpg';
+import slide3 from '../../assets/showcase_slide_3.png';
+import slide4 from '../../assets/showcase_slide_4.jpg';
+import slide5 from '../../assets/showcase_slide_5.jpg';
 import './ProductShowcase.css';
 
 export default function ProductShowcase() {
@@ -27,6 +32,17 @@ export default function ProductShowcase() {
           <h2 className="section-title">Product Showcase</h2>
           <div className="gold-divider" />
           <p className="section-subtitle">Explore our finest handcrafted jewellery with exquisite detail.</p>
+        </div>
+
+        {/* Sliding Image Gallery */}
+        <div className="showcase-slider-container reveal">
+          <div className="showcase-slider-track">
+            {[slide1, slide2, slide3, slide4, slide5, slide1, slide2, slide3, slide4, slide5].map((img, i) => (
+              <div key={i} className="showcase-slide-item">
+                <img src={img} alt={`Showcase Gallery ${i}`} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Filter Tabs */}
