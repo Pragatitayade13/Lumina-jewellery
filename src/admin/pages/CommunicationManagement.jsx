@@ -1,20 +1,95 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { communications } from '../data/mockData';
-import { Mail, MessageSquare, Send, Bell, Filter, Search, X } from 'lucide-react';
+import {
+  Mail, MessageSquare, Send, Bell, Search, X, Plus, Eye, Upload,
+  RefreshCw, Calendar, Shield, FileText, CheckCircle, Clock,
+  Package, Star, ChevronDown, Download, Trash2
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+const mockCertificates = [
+  { id: 'CERT-001', customer: 'Priya Sharma', product: 'Diamond Solitaire Ring', certNo: 'GIA-20240512', issueDate: '12 May 2024', status: 'verified', file: 'gia_ring.pdf' },
+  { id: 'CERT-002', customer: 'Anil Mehta', product: 'Gold Antique Bangle', certNo: 'BIS-20240610', issueDate: '10 Jun 2024', status: 'pending', file: null },
+  { id: 'CERT-003', customer: 'Sneha Rao', product: 'Polki Kundan Set', certNo: 'IGI-20240701', issueDate: '01 Jul 2024', status: 'verified', file: 'igi_polki.pdf' },
+];
+
+const mockExchanges = [
+  { id: 'EXC-001', customer: 'Rahul Gupta', product: 'Old Gold Chain (22K)', weight: '15g', estimatedValue: '₹89,400', status: 'pending', requested: '28 May 2026' },
+  { id: 'EXC-002', customer: 'Meena Iyer', product: 'Silver Bracelet', weight: '30g', estimatedValue: '₹3,200', status: 'approved', requested: '25 May 2026' },
+  { id: 'EXC-003', customer: 'Vikram Nair', product: 'Old Diamond Stud', weight: '2g', estimatedValue: '₹28,000', status: 'completed', requested: '20 May 2026' },
+];
+
+const mockAppointments = [
+  { id: 'APT-001', customer: 'Priya Sharma', type: 'Bridal Consultation', date: '2026-06-01', time: '11:00', location: 'Mumbai HQ', status: 'confirmed' },
+  { id: 'APT-002', customer: 'Ramesh Kumar', type: 'Jewellery Trial', date: '2026-06-03', time: '14:00', location: 'Delhi Store', status: 'pending' },
+  { id: 'APT-003', customer: 'Anita Patel', type: 'Gold Exchange Consultation', date: '2026-06-05', time: '10:30', location: 'Virtual (Zoom)', status: 'confirmed' },
+];
+
+const mockSchemes = [
+  { id: 'SCH-001', customer: 'Sunita Devi', plan: 'Swarna Nidhi 11-Month', installment: '₹5,000', paid: 8, total: 11, status: 'active' },
+  { id: 'SCH-002', customer: 'Mahesh Patel', plan: 'Diamond Savings 12-Month', installment: '₹10,000', paid: 12, total: 12, status: 'completed' },
+  { id: 'SCH-003', customer: 'Kavya Rao', plan: 'Silver Plan 6-Month', installment: '₹2,000', paid: 3, total: 6, status: 'active' },
+];
+
+const mockTransparency = [
+  { product: 'Diamond Solitaire Ring', makingCharge: 12, hallmarkFee: 2, gst: 3, stoneCost: 45, metalCost: 38, visible: true },
+  { product: 'Gold Antique Bangle', makingCharge: 15, hallmarkFee: 2, gst: 3, stoneCost: 0, metalCost: 80, visible: true },
+  { product: 'Polki Kundan Choker', makingCharge: 20, hallmarkFee: 2, gst: 3, stoneCost: 30, metalCost: 45, visible: false },
+];
+
+// ─── Tab config ───────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'campaigns', label: 'Campaigns', icon: Mail },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'certificates', label: 'Certifications', icon: Shield },
+  { id: 'exchanges', label: 'Exchange/Buyback', icon: RefreshCw },
+  { id: 'appointments', label: 'Appointments', icon: Calendar },
+  { id: 'schemes', label: 'Scheme Enrollments', icon: Star },
+  { id: 'transparency', label: 'Transparency', icon: Eye },
+];
 
 export default function CommunicationManagement() {
   const { showToast } = useApp();
+  const [activeTab, setActiveTab] = useState('campaigns');
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewReport, setViewReport] = useState(null);
-  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
   const [commsList, setCommsList] = useState(communications);
+  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
   const [newCampaignData, setNewCampaignData] = useState({ subject: '', type: 'Email', target: 'All Customers', content: '' });
 
-  const filteredComms = commsList.filter(c => 
-    c.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.target.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Certificates state
+  const [certificates, setCertificates] = useState(mockCertificates);
+  const [uploadModal, setUploadModal] = useState({ open: false, certId: null });
+  const fileRef = useRef(null);
+
+  // Exchanges state
+  const [exchanges, setExchanges] = useState(mockExchanges);
+
+  // Appointments state
+  const [appointments, setAppointments] = useState(mockAppointments);
+  const [newAptOpen, setNewAptOpen] = useState(false);
+  const [newApt, setNewApt] = useState({ customer: '', type: 'Bridal Consultation', date: '', time: '10:00', location: 'Mumbai HQ' });
+
+  // Schemes state
+  const [schemes, setSchemes] = useState(mockSchemes);
+  const [newSchemeOpen, setNewSchemeOpen] = useState(false);
+  const [newScheme, setNewScheme] = useState({ customer: '', plan: 'Swarna Nidhi 11-Month', installment: 5000 });
+
+  // Transparency state
+  const [transparencyItems, setTransparencyItems] = useState(mockTransparency);
+
+  // Notification state
+  const [notifModal, setNotifModal] = useState(false);
+  const [notifForm, setNotifForm] = useState({ type: 'Order Confirmed', customer: '', orderId: '', message: '' });
+
+  const notifTemplates = {
+    'Order Confirmed': 'Dear {customer}, your order #{orderId} has been confirmed. Expected delivery in 5-7 business days.',
+    'Shipped': 'Dear {customer}, your order #{orderId} has been shipped! Track your order in the app.',
+    'Offer Alert': 'Dear {customer}, exclusive offer! Get 20% off on bridal jewellery this festive season. Shop now!',
+    'Appointment Reminder': 'Dear {customer}, reminder: your store appointment is scheduled. We look forward to seeing you!',
+  };
+
+  // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const handleSendCampaign = (e) => {
     e.preventDefault();
@@ -28,176 +103,561 @@ export default function CommunicationManagement() {
       status: 'active'
     };
     setCommsList([newCampaign, ...commsList]);
-    showToast('New campaign successfully dispatched to targets!');
+    showToast('Campaign successfully dispatched!');
     setNewCampaignOpen(false);
     setNewCampaignData({ subject: '', type: 'Email', target: 'All Customers', content: '' });
   };
 
+  const handleUploadCert = (certId) => {
+    setCertificates(certificates.map(c =>
+      c.id === certId ? { ...c, status: 'verified', file: 'uploaded_cert.pdf' } : c
+    ));
+    showToast('Certificate uploaded and verified!');
+    setUploadModal({ open: false, certId: null });
+  };
+
+  const handleExchangeStatus = (id, status) => {
+    setExchanges(exchanges.map(e => e.id === id ? { ...e, status } : e));
+    showToast(`Exchange request ${status}.`);
+  };
+
+  const handleAptStatus = (id, status) => {
+    setAppointments(appointments.map(a => a.id === id ? { ...a, status } : a));
+    showToast(`Appointment ${status}.`);
+  };
+
+  const handleBookApt = (e) => {
+    e.preventDefault();
+    const apt = {
+      id: `APT-${Math.floor(100 + Math.random() * 900)}`,
+      ...newApt,
+      status: 'confirmed'
+    };
+    setAppointments([apt, ...appointments]);
+    showToast(`Appointment booked for ${newApt.customer}!`);
+    setNewAptOpen(false);
+    setNewApt({ customer: '', type: 'Bridal Consultation', date: '', time: '10:00', location: 'Mumbai HQ' });
+  };
+
+  const handleEnrollScheme = (e) => {
+    e.preventDefault();
+    const s = {
+      id: `SCH-${Math.floor(100 + Math.random() * 900)}`,
+      customer: newScheme.customer,
+      plan: newScheme.plan,
+      installment: `₹${Number(newScheme.installment).toLocaleString()}`,
+      paid: 0,
+      total: newScheme.plan.includes('11') ? 11 : newScheme.plan.includes('12') ? 12 : 6,
+      status: 'active'
+    };
+    setSchemes([s, ...schemes]);
+    showToast(`Scheme enrollment created for ${newScheme.customer}!`);
+    setNewSchemeOpen(false);
+    setNewScheme({ customer: '', plan: 'Swarna Nidhi 11-Month', installment: 5000 });
+  };
+
+  const handleToggleTransparency = (idx) => {
+    const updated = transparencyItems.map((t, i) => i === idx ? { ...t, visible: !t.visible } : t);
+    setTransparencyItems(updated);
+    showToast(`Transparency ${updated[idx].visible ? 'enabled' : 'hidden'} for "${updated[idx].product}".`);
+  };
+
+  const handleSendNotification = (e) => {
+    e.preventDefault();
+    showToast(`${notifForm.type} notification sent to ${notifForm.customer || 'all customers'}!`);
+    setNotifModal(false);
+    setNotifForm({ type: 'Order Confirmed', customer: '', orderId: '', message: '' });
+  };
+
+  // ─── Status Badge ─────────────────────────────────────────────────────────
+  const StatusBadge = ({ status }) => {
+    const map = {
+      verified: 'badge-active', pending: 'badge-pending', completed: 'badge-delivered',
+      approved: 'badge-shipped', confirmed: 'badge-active', active: 'badge-active',
+    };
+    return <span className={`badge ${map[status] || 'badge-pending'}`}>{status.toUpperCase()}</span>;
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Page Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Communication Management</h1>
-          <p className="page-subtitle">Manage customer emails, SMS alerts, and automated notifications.</p>
+          <h1 className="page-title">Communication Hub</h1>
+          <p className="page-subtitle">Campaigns, notifications, certifications, exchanges, appointments, schemes & price transparency.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => showToast('Template library is currently empty.', 'error')}>Template Library</button>
-          <button className="btn btn-gold" onClick={() => setNewCampaignOpen(true)}>+ New Campaign</button>
+          {activeTab === 'campaigns' && (
+            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewCampaignOpen(true)}>
+              <Plus size={14} /> New Campaign
+            </button>
+          )}
+          {activeTab === 'notifications' && (
+            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNotifModal(true)}>
+              <Bell size={14} /> Send Notification
+            </button>
+          )}
+          {activeTab === 'certificates' && (
+            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => showToast('Upload window opened.')}>
+              <Upload size={14} /> Upload Certificate
+            </button>
+          )}
+          {activeTab === 'appointments' && (
+            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewAptOpen(true)}>
+              <Calendar size={14} /> Book Appointment
+            </button>
+          )}
+          {activeTab === 'schemes' && (
+            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewSchemeOpen(true)}>
+              <Plus size={14} /> Enroll Customer
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid-3 mb-15">
-        <div className="admin-card text-center" style={{ padding: '2rem 1rem' }}>
-          <div className="icon-wrapper" style={{ margin: '0 auto 1rem', background: 'var(--gold-light)' }}>
-            <Mail color="var(--gold)" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>45.2K</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Emails Sent (This Month)</div>
-        </div>
-        <div className="admin-card text-center" style={{ padding: '2rem 1rem' }}>
-          <div className="icon-wrapper" style={{ margin: '0 auto 1rem', background: 'var(--gold-light)' }}>
-            <MessageSquare color="var(--gold)" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>12.4K</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>SMS Delivered</div>
-        </div>
-        <div className="admin-card text-center" style={{ padding: '2rem 1rem' }}>
-          <div className="icon-wrapper" style={{ margin: '0 auto 1rem', background: 'var(--gold-light)' }}>
-            <Bell color="var(--gold)" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>98.5%</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Delivery Rate</div>
-        </div>
+      {/* Tabs */}
+      <div className="tab-nav" style={{ overflowX: 'auto' }}>
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab.id); setSearchTerm(''); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
+            >
+              <Icon size={14} /> {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="admin-card">
-        <div className="card-header">
-          <div className="card-title">Recent Campaigns & Alerts</div>
-          <div className="filter-search" style={{ margin: 0, width: '250px' }}>
-            <Search size={14} />
-            <input 
-              placeholder="Search communications..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th>Subject</th>
-                <th>Target Audience</th>
-                <th>Sent Date</th>
-                <th>Performance</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredComms.map((comm) => (
-                <tr key={comm.id}>
-                  <td style={{ fontFamily: 'Inter, monospace', fontSize: '0.85rem' }}>{comm.id}</td>
-                  <td>{comm.type}</td>
-                  <td style={{ fontWeight: 600 }}>{comm.subject}</td>
-                  <td>{comm.target}</td>
-                  <td style={{ fontSize: '0.85rem' }}>{comm.sentDate}</td>
-                  <td style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>{comm.performance}</td>
-                  <td>
-                    <span className={`badge badge-${comm.status === 'completed' ? 'active' : 'superadmin'}`}>
-                      {comm.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td>
-                     <button className="btn btn-sm btn-outline" title="View Report" onClick={() => setViewReport(comm)}>
-                       <Send size={12} />
-                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* View Report Modal */}
-      {viewReport && (
-        <div className="modal-overlay" onClick={() => setViewReport(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h3>Campaign Report: {viewReport.id}</h3>
-              <button className="modal-close" onClick={() => setViewReport(null)}><X size={20} /></button>
+      {/* ──── CAMPAIGNS TAB ──────────────────────────────────────────────────── */}
+      {activeTab === 'campaigns' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Email & SMS Campaigns</div>
+            <div className="filter-search" style={{ margin: 0, width: '250px' }}>
+              <Search size={14} />
+              <input placeholder="Search campaigns..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Subject</p>
-                <p style={{ fontWeight: 600, fontSize: '1rem' }}>{viewReport.subject}</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Type</p>
-                  <p>{viewReport.type}</p>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>ID</th><th>Type</th><th>Subject</th><th>Target</th><th>Date</th><th>Performance</th><th>Status</th></tr></thead>
+              <tbody>
+                {commsList.filter(c => c.subject?.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{c.id}</td>
+                    <td><span className="badge badge-info">{c.type}</span></td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.subject}</td>
+                    <td>{c.target}</td>
+                    <td>{c.sentDate}</td>
+                    <td>{c.performance}</td>
+                    <td><StatusBadge status={c.status || 'active'} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ──── NOTIFICATIONS TAB ──────────────────────────────────────────────── */}
+      {activeTab === 'notifications' && (
+        <div>
+          <div className="grid-3 mb-15">
+            {[
+              { label: 'Order Confirmations', count: '1,204', icon: Package, color: 'var(--status-green)' },
+              { label: 'Shipping Alerts', count: '876', icon: Send, color: 'var(--status-blue)' },
+              { label: 'Offer Campaigns', count: '45', icon: Bell, color: 'var(--gold)' },
+            ].map(item => (
+              <div className="admin-card text-center" key={item.label} style={{ padding: '1.5rem' }}>
+                <div className="icon-wrapper" style={{ margin: '0 auto 0.75rem', background: `${item.color}20` }}>
+                  <item.icon color={item.color} />
                 </div>
-                <div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Target</p>
-                  <p>{viewReport.target}</p>
+                <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{item.count}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="admin-card">
+            <div className="card-header"><div className="card-title">Notification Templates</div></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {Object.entries(notifTemplates).map(([type, msg]) => (
+                <div key={type} style={{ padding: '1rem', background: 'var(--admin-surface)', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{type}</div>
+                    <button className="btn btn-sm btn-outline" onClick={() => {
+                      setNotifForm({ ...notifForm, type, message: msg });
+                      setNotifModal(true);
+                    }}>Use Template</button>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{msg}</div>
                 </div>
-              </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Sent Date</p>
-                <p>{viewReport.sentDate}</p>
-              </div>
-              <div style={{ background: 'var(--bg-card-hover)', padding: '1rem', borderRadius: '8px' }}>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Performance</p>
-                <h2 style={{ color: 'var(--gold)' }}>{viewReport.performance}</h2>
-              </div>
-              <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { showToast('Detailed report downloading...'); setViewReport(null); }}>Download Detailed Report</button>
+              ))}
             </div>
           </div>
         </div>
       )}
 
+      {/* ──── CERTIFICATIONS TAB ─────────────────────────────────────────────── */}
+      {activeTab === 'certificates' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Certification Uploads</div>
+            <div className="card-subtitle">Manage GIA, IGI, BIS hallmark certificates for products.</div>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>ID</th><th>Customer</th><th>Product</th><th>Cert Number</th><th>Issue Date</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {certificates.map(cert => (
+                  <tr key={cert.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{cert.id}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cert.customer}</td>
+                    <td>{cert.product}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{cert.certNo}</td>
+                    <td>{cert.issueDate}</td>
+                    <td><StatusBadge status={cert.status} /></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        {cert.file ? (
+                          <button className="btn btn-sm btn-outline" onClick={() => showToast(`Downloading ${cert.file}...`)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <Download size={12} /> Download
+                          </button>
+                        ) : (
+                          <button className="btn btn-sm btn-gold" style={{ color: '#fff' }} onClick={() => setUploadModal({ open: true, certId: cert.id })}>
+                            <Upload size={12} /> Upload
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ──── EXCHANGE/BUYBACK TAB ───────────────────────────────────────────── */}
+      {activeTab === 'exchanges' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Exchange & Buyback Requests</div>
+            <div className="card-subtitle">Review and process customer jewellery exchange and buyback requests.</div>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>ID</th><th>Customer</th><th>Item</th><th>Weight</th><th>Est. Value</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {exchanges.map(ex => (
+                  <tr key={ex.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{ex.id}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{ex.customer}</td>
+                    <td>{ex.product}</td>
+                    <td>{ex.weight}</td>
+                    <td style={{ color: 'var(--status-green)', fontWeight: 700 }}>{ex.estimatedValue}</td>
+                    <td>{ex.requested}</td>
+                    <td><StatusBadge status={ex.status} /></td>
+                    <td>
+                      {ex.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button className="btn btn-sm btn-success" onClick={() => handleExchangeStatus(ex.id, 'approved')}>
+                            <CheckCircle size={12} /> Approve
+                          </button>
+                          <button className="btn btn-sm btn-danger" onClick={() => handleExchangeStatus(ex.id, 'rejected')}>
+                            <X size={12} /> Reject
+                          </button>
+                        </div>
+                      )}
+                      {ex.status === 'approved' && (
+                        <button className="btn btn-sm btn-outline" onClick={() => handleExchangeStatus(ex.id, 'completed')}>
+                          Mark Completed
+                        </button>
+                      )}
+                      {(ex.status === 'completed' || ex.status === 'rejected') && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ──── APPOINTMENTS TAB ───────────────────────────────────────────────── */}
+      {activeTab === 'appointments' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Store Appointments</div>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>ID</th><th>Customer</th><th>Type</th><th>Date</th><th>Time</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {appointments.map(apt => (
+                  <tr key={apt.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{apt.id}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{apt.customer}</td>
+                    <td>{apt.type}</td>
+                    <td>{apt.date}</td>
+                    <td>{apt.time}</td>
+                    <td>{apt.location}</td>
+                    <td><StatusBadge status={apt.status} /></td>
+                    <td>
+                      {apt.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button className="btn btn-sm btn-success" onClick={() => handleAptStatus(apt.id, 'confirmed')}>
+                            <CheckCircle size={12} /> Confirm
+                          </button>
+                          <button className="btn btn-sm btn-danger" onClick={() => handleAptStatus(apt.id, 'cancelled')}>
+                            <X size={12} /> Cancel
+                          </button>
+                        </div>
+                      )}
+                      {apt.status !== 'pending' && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ──── SCHEME ENROLLMENTS TAB ─────────────────────────────────────────── */}
+      {activeTab === 'schemes' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Scheme Enrollments</div>
+            <div className="card-subtitle">Track customer gold savings plan installments and progress.</div>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>ID</th><th>Customer</th><th>Plan</th><th>Installment</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {schemes.map(s => (
+                  <tr key={s.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{s.id}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.customer}</td>
+                    <td>{s.plan}</td>
+                    <td style={{ fontWeight: 700 }}>{s.installment}/mo</td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.paid}/{s.total} months</div>
+                        <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', width: '100px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${(s.paid / s.total) * 100}%`, background: 'linear-gradient(90deg, var(--gold-dark), var(--gold))', borderRadius: '99px' }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td><StatusBadge status={s.status} /></td>
+                    <td>
+                      {s.status === 'active' && (
+                        <button className="btn btn-sm btn-outline" onClick={() => {
+                          setSchemes(schemes.map(sc => sc.id === s.id ? { ...sc, paid: Math.min(sc.paid + 1, sc.total), status: sc.paid + 1 >= sc.total ? 'completed' : 'active' } : sc));
+                          showToast(`Installment recorded for ${s.customer}.`);
+                        }}>
+                          + Record Installment
+                        </button>
+                      )}
+                      {s.status === 'completed' && <span style={{ fontSize: '0.8rem', color: 'var(--status-green)' }}>✓ Completed</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ──── TRANSPARENCY TAB ───────────────────────────────────────────────── */}
+      {activeTab === 'transparency' && (
+        <div>
+          <div className="admin-card" style={{ marginBottom: '1.25rem', background: 'linear-gradient(90deg, var(--admin-card), rgba(201,168,76,0.04))' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Eye size={18} color="var(--gold)" />
+              <div className="card-title">Price Transparency Control</div>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Control which products show a full breakdown of making charges, hallmark fees, stone cost, metal cost, and GST to customers on the storefront.
+            </p>
+          </div>
+
+          {transparencyItems.map((item, idx) => (
+            <div key={idx} className="admin-card" style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>{item.product}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: item.visible ? 'var(--status-green)' : 'var(--text-muted)' }}>
+                    {item.visible ? '👁 Visible to customers' : '🚫 Hidden from customers'}
+                  </span>
+                  <label className="toggle">
+                    <input type="checkbox" checked={item.visible} onChange={() => handleToggleTransparency(idx)} />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              <div className="grid-3" style={{ gap: '0.75rem' }}>
+                {[
+                  { label: 'Metal Cost', value: `${item.metalCost}%`, color: '#C9A84C' },
+                  { label: 'Stone Cost', value: `${item.stoneCost}%`, color: '#3498db' },
+                  { label: 'Making Charge', value: `${item.makingCharge}%`, color: '#9b59b6' },
+                  { label: 'Hallmark Fee', value: `${item.hallmarkFee}%`, color: '#2ecc71' },
+                  { label: 'GST', value: `${item.gst}%`, color: '#e74c3c' },
+                ].map(kpi => (
+                  <div key={kpi.label} style={{ padding: '0.75rem 1rem', background: 'var(--admin-surface)', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{kpi.label}</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ──── MODALS ─────────────────────────────────────────────────────────── */}
+
       {/* New Campaign Modal */}
       {newCampaignOpen && (
-        <div className="modal-overlay" onClick={() => setNewCampaignOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <div className="modal-overlay">
+          <div className="modal-box">
             <div className="modal-header">
-              <h3>Create New Campaign</h3>
-              <button className="modal-close" onClick={() => setNewCampaignOpen(false)}><X size={20} /></button>
+              <h3 className="modal-title">New Campaign</h3>
+              <button className="modal-close" onClick={() => setNewCampaignOpen(false)}><X size={16} /></button>
             </div>
             <form onSubmit={handleSendCampaign} className="modal-body">
-              <div className="form-group">
-                <label>Campaign Subject</label>
-                <input type="text" className="form-input" placeholder="e.g. Diwali Special Offer" required value={newCampaignData.subject} onChange={e => setNewCampaignData({...newCampaignData, subject: e.target.value})} />
+              <div className="form-group"><label>Subject</label><input required className="form-input" value={newCampaignData.subject} onChange={e => setNewCampaignData({ ...newCampaignData, subject: e.target.value })} /></div>
+              <div className="form-group"><label>Type</label>
+                <select className="form-input" value={newCampaignData.type} onChange={e => setNewCampaignData({ ...newCampaignData, type: e.target.value })}>
+                  <option>Email</option><option>SMS</option><option>Push Notification</option><option>WhatsApp</option>
+                </select>
               </div>
-              <div className="grid-2">
-                <div className="form-group">
-                  <label>Type</label>
-                  <select className="form-select" value={newCampaignData.type} onChange={e => setNewCampaignData({...newCampaignData, type: e.target.value})}>
-                    <option>Email</option>
-                    <option>SMS</option>
-                    <option>Push Notification</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Target Audience</label>
-                  <select className="form-select" value={newCampaignData.target} onChange={e => setNewCampaignData({...newCampaignData, target: e.target.value})}>
-                    <option>All Customers</option>
-                    <option>VIP Members</option>
-                    <option>Inactive (6+ months)</option>
-                  </select>
-                </div>
+              <div className="form-group"><label>Target Audience</label>
+                <select className="form-input" value={newCampaignData.target} onChange={e => setNewCampaignData({ ...newCampaignData, target: e.target.value })}>
+                  <option>All Customers</option><option>VIP Customers</option><option>New Registrations</option><option>Inactive 30+ Days</option><option>Scheme Enrollees</option>
+                </select>
               </div>
-              <div className="form-group">
-                <label>Message Content</label>
-                <textarea className="form-input" rows="4" placeholder="Write your message here..." required value={newCampaignData.content} onChange={e => setNewCampaignData({...newCampaignData, content: e.target.value})}></textarea>
-              </div>
-              <div className="modal-actions" style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <div className="form-group"><label>Message Content</label><textarea required className="form-input" rows={4} value={newCampaignData.content} onChange={e => setNewCampaignData({ ...newCampaignData, content: e.target.value })} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button type="button" className="btn btn-outline" onClick={() => setNewCampaignOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold">Send Campaign</button>
+                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><Send size={14} /> Send Campaign</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {notifModal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header">
+              <h3 className="modal-title">Send Notification</h3>
+              <button className="modal-close" onClick={() => setNotifModal(false)}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleSendNotification} className="modal-body">
+              <div className="form-group"><label>Notification Type</label>
+                <select className="form-input" value={notifForm.type} onChange={e => setNotifForm({ ...notifForm, type: e.target.value, message: notifTemplates[e.target.value] || '' })}>
+                  {Object.keys(notifTemplates).map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group"><label>Customer Name (leave blank for all)</label><input className="form-input" value={notifForm.customer} onChange={e => setNotifForm({ ...notifForm, customer: e.target.value })} /></div>
+              <div className="form-group"><label>Order ID (if applicable)</label><input className="form-input" value={notifForm.orderId} onChange={e => setNotifForm({ ...notifForm, orderId: e.target.value })} /></div>
+              <div className="form-group"><label>Message</label><textarea className="form-input" rows={4} value={notifForm.message} onChange={e => setNotifForm({ ...notifForm, message: e.target.value })} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setNotifModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><Send size={14} /> Send Now</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Certificate Modal */}
+      {uploadModal.open && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header">
+              <h3 className="modal-title">Upload Certificate</h3>
+              <button className="modal-close" onClick={() => setUploadModal({ open: false, certId: null })}><X size={16} /></button>
+            </div>
+            <div className="modal-body">
+              <div style={{ border: '2px dashed var(--admin-border-bright)', borderRadius: '12px', padding: '2rem', textAlign: 'center', cursor: 'pointer', marginBottom: '1rem' }}
+                onClick={() => fileRef.current?.click()}>
+                <Upload size={32} color="var(--gold)" style={{ margin: '0 auto 0.75rem' }} />
+                <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.25rem' }}>Click to upload PDF/Image</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Supported: GIA, IGI, BIS Hallmark</div>
+                <input ref={fileRef} type="file" accept=".pdf,.jpg,.png" style={{ display: 'none' }} onChange={() => handleUploadCert(uploadModal.certId)} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button className="btn btn-outline" onClick={() => setUploadModal({ open: false, certId: null })}>Cancel</button>
+                <button className="btn btn-gold" style={{ color: '#fff' }} onClick={() => handleUploadCert(uploadModal.certId)}>
+                  <Upload size={14} /> Confirm Upload
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Book Appointment Modal */}
+      {newAptOpen && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header">
+              <h3 className="modal-title">Book Appointment</h3>
+              <button className="modal-close" onClick={() => setNewAptOpen(false)}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleBookApt} className="modal-body">
+              <div className="form-group"><label>Customer Name</label><input required className="form-input" value={newApt.customer} onChange={e => setNewApt({ ...newApt, customer: e.target.value })} /></div>
+              <div className="form-group"><label>Consultation Type</label>
+                <select className="form-input" value={newApt.type} onChange={e => setNewApt({ ...newApt, type: e.target.value })}>
+                  <option>Bridal Consultation</option><option>Jewellery Trial</option><option>Gold Exchange Consultation</option><option>Virtual Video Tour</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div className="form-group" style={{ flex: 1 }}><label>Date</label><input required type="date" className="form-input" value={newApt.date} onChange={e => setNewApt({ ...newApt, date: e.target.value })} min={new Date().toISOString().split('T')[0]} /></div>
+                <div className="form-group" style={{ flex: 1 }}><label>Time</label><input required type="time" className="form-input" value={newApt.time} onChange={e => setNewApt({ ...newApt, time: e.target.value })} /></div>
+              </div>
+              <div className="form-group"><label>Location</label>
+                <select className="form-input" value={newApt.location} onChange={e => setNewApt({ ...newApt, location: e.target.value })}>
+                  <option>Mumbai HQ</option><option>Delhi Flagship</option><option>Bangalore Studio</option><option>Virtual (Zoom)</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setNewAptOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><CheckCircle size={14} /> Book Appointment</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Enroll Scheme Modal */}
+      {newSchemeOpen && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header">
+              <h3 className="modal-title">Enroll in Scheme</h3>
+              <button className="modal-close" onClick={() => setNewSchemeOpen(false)}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleEnrollScheme} className="modal-body">
+              <div className="form-group"><label>Customer Name</label><input required className="form-input" value={newScheme.customer} onChange={e => setNewScheme({ ...newScheme, customer: e.target.value })} /></div>
+              <div className="form-group"><label>Savings Plan</label>
+                <select className="form-input" value={newScheme.plan} onChange={e => setNewScheme({ ...newScheme, plan: e.target.value })}>
+                  <option>Swarna Nidhi 11-Month</option><option>Diamond Savings 12-Month</option><option>Silver Plan 6-Month</option>
+                </select>
+              </div>
+              <div className="form-group"><label>Monthly Installment (₹)</label><input required type="number" min={500} className="form-input" value={newScheme.installment} onChange={e => setNewScheme({ ...newScheme, installment: e.target.value })} /></div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setNewSchemeOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><Star size={14} /> Enroll Customer</button>
               </div>
             </form>
           </div>
