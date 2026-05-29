@@ -35,7 +35,15 @@ const footerLinks = {
   Company: ['About Us', 'Our Story', 'Careers', 'Press', 'Blog'],
 };
 
-const paymentMethods = ['Visa', 'Mastercard', 'UPI', 'Net Banking', 'EMI'];
+const paymentMethods = [
+  { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png' },
+  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png' },
+  { name: 'PayPal', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/200px-PayPal.svg.png' },
+  { name: 'Skrill', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Skrill_Logo.svg/200px-Skrill_Logo.svg.png' },
+  { name: 'Payoneer', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Payoneer_logo.svg/200px-Payoneer_logo.svg.png' },
+  { name: 'Amazon Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Amazon_Pay_logo.svg/200px-Amazon_Pay_logo.svg.png' },
+  { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/200px-Google_Pay_Logo.svg.png' }
+];
 
 export default function Footer() {
   const { setIsSupportOpen } = useApp();
@@ -44,9 +52,9 @@ export default function Footer() {
     <footer className="footer" id="footer">
       <div className="footer-top">
         <div className="container">
-          <div className="footer-grid">
+          <div className="footer-grid stagger-container">
             {/* Brand */}
-            <div className="footer-brand">
+            <div className="footer-brand stagger-item">
               <div className="footer-logo">
                 <div className="footer-logo-icon"><Gem size={20} /></div>
                 <div>
@@ -70,15 +78,15 @@ export default function Footer() {
                 </span>
               </div>
               <div className="footer-socials">
-                <a href="#" className="footer-social-btn" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
-                <a href="#" className="footer-social-btn" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
-                <a href="#" className="footer-social-btn" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
+                <a href="#" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
+                <a href="#" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
+                <a href="#" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
               </div>
             </div>
 
             {/* Links */}
             {Object.entries(footerLinks).map(([section, links]) => (
-              <div key={section} className="footer-links-col">
+              <div key={section} className="footer-links-col stagger-item">
                 <h4 className="footer-col-title">{section}</h4>
                 <ul className="footer-links-list">
                   {links.map(link => (
@@ -115,7 +123,9 @@ export default function Footer() {
             <div className="footer-payments">
               <span className="footer-payment-label">We Accept:</span>
               {paymentMethods.map(p => (
-                <span key={p} className="footer-payment-badge">{p}</span>
+                <div key={p.name} className="footer-payment-icon-wrapper" style={{ background: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', minWidth: '45px' }}>
+                  <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
+                </div>
               ))}
             </div>
             <div className="footer-legal">

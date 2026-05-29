@@ -52,16 +52,16 @@
 }
 
 .header-inner {
-  background: rgba(13, 8, 0, 0.6);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-  transition: var(--transition);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 .header.scrolled .header-inner {
-  background: rgba(13, 8, 0, 0.95);
+  background: rgba(13, 8, 0, 0.6);
+  backdrop-filter: blur(20px);
   border-bottom-color: var(--border-bright);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
 .header-container {

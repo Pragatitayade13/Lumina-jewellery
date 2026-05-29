@@ -33,12 +33,11 @@ export default function FeaturedCategories() {
           </p>
         </div>
 
-        <div className="categories-grid">
+        <div className="categories-grid stagger-container clip-reveal-trigger">
           {categories.map((cat, i) => (
             <div
               key={cat.id}
-              className={`category-card ${categoryBgs[i]} reveal`}
-              style={{ transitionDelay: `${i * 0.06}s` }}
+              className={`category-card ${categoryBgs[i]} stagger-item`}
               id={`category-card-${cat.id}`}
               role="button"
               tabIndex={0}

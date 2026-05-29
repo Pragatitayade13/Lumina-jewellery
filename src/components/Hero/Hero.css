@@ -22,12 +22,15 @@
   inset: 0;
   background-size: cover;
   background-position: center;
-  transform: scale(1.05);
-  transition: transform 8s ease;
 }
 
-.hero-slide.active .hero-slide-bg {
-  transform: scale(1);
+.hero-slide-bg.zoom-in {
+  animation: slowZoomIn 10s ease-out forwards;
+}
+
+@keyframes slowZoomIn {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
 }
 
 .hero-overlay {

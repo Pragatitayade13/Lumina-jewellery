@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
+import SmoothScroll from './components/SmoothScroll/SmoothScroll';
+import CustomCursor from './components/CustomCursor/CustomCursor';
 
 import Header from './components/Header/Header';
 import Hero from './components/Hero/Hero';
@@ -50,7 +52,7 @@ function StoreLayout() {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   return (
-    <>
+    <SmoothScroll>
       <Header onCartClick={() => setIsCartOpen(true)} onWishlistClick={() => setIsWishlistOpen(true)} />
       <main>
         <Outlet />
@@ -60,7 +62,7 @@ function StoreLayout() {
       <AuthModal />
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
-    </>
+    </SmoothScroll>
   );
 }
 
@@ -120,6 +122,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
+        <CustomCursor />
         <BrowserRouter>
           <GlobalModals />
           <Routes>

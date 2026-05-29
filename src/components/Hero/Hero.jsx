@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
@@ -80,16 +81,17 @@ export default function Hero() {
         <motion.div 
           key={`bg-${active}`}
           className="hero-slide active"
-          initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
         >
           <div
-            className="hero-slide-bg"
+            className="hero-slide-bg zoom-in"
             style={{ backgroundImage: `url(${slides[active].bg})` }}
           />
           <div className="hero-overlay" />
+          <FloatingParticles count={40} />
         </motion.div>
       </AnimatePresence>
 

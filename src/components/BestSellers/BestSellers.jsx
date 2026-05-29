@@ -25,9 +25,9 @@ export default function BestSellers() {
         </div>
 
         <div className="bestsellers-featured">
-          <div className="products-grid">
+          <div className="products-grid stagger-container">
             {bestsellers.map((product, i) => (
-              <div key={product.id} className="reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
+              <div key={product.id} className="stagger-item">
                 <ProductCard product={product} onQuickView={setQuickView} />
               </div>
             ))}
