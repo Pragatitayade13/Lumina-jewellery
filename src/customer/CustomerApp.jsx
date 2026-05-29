@@ -11,6 +11,7 @@ import StoreAppointments from './pages/StoreAppointments';
 import BridalPlanner from './pages/BridalPlanner';
 import BuybackCalculator from './pages/BuybackCalculator';
 import OrderTracking from './pages/OrderTracking';
+import CertificateVerification from './pages/CertificateVerification';
 import './customer.css';
 
 const ProtectedCustomerRoute = ({ children }) => {
@@ -37,6 +38,7 @@ export default function CustomerApp() {
           <Route path="appointments" element={<ProtectedCustomerRoute><StoreAppointments /></ProtectedCustomerRoute>} />
           <Route path="planner" element={<ProtectedCustomerRoute><BridalPlanner /></ProtectedCustomerRoute>} />
           <Route path="buyback" element={<ProtectedCustomerRoute><BuybackCalculator /></ProtectedCustomerRoute>} />
+          <Route path="certificate" element={<ProtectedCustomerRoute><CertificateVerification /></ProtectedCustomerRoute>} />
           <Route path="track/:orderId" element={<ProtectedCustomerRoute><OrderTracking /></ProtectedCustomerRoute>} />
           <Route path="*" element={<Navigate to="/account" replace />} />
         </Routes>

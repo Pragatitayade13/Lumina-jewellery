@@ -5,15 +5,16 @@ import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { products } from '../../data/products';
 import './Header.css';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const navLinks = [
-  { label: 'Home', href: '#home' },
-  { label: 'Shop', href: '#new-arrivals' },
-  { label: 'Collections', href: '#categories' },
-  { label: 'New Arrivals', href: '#new-arrivals' },
-  { label: 'Best Sellers', href: '#best-sellers' },
-  { label: 'About Us', href: '#brand-story' },
-  { label: 'Contact Us', href: '#footer' },
+  { label: 'Home', href: '/' },
+  { label: 'Shop', href: '/collections' },
+  { label: 'Collections', href: '/collections' },
+  { label: 'New Arrivals', href: '/#new-arrivals' },
+  { label: 'Best Sellers', href: '/#best-sellers' },
+  { label: 'About Us', href: '/#brand-story' },
+  { label: 'Contact Us', href: '/#footer' },
 ];
 
 export default function Header({ onCartClick, onWishlistClick }) {
@@ -22,6 +23,8 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const [searchQuery, setSearchQuery] = useState('');
   const { cartCount, wishlistCount, setIsAuthOpen } = useApp();
   const { rates } = useRates();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -31,8 +34,17 @@ export default function Header({ onCartClick, onWishlistClick }) {
 
   const handleNavClick = (href) => {
     setMenuOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    if (href.startsWith('/#')) {
+      if (location.pathname !== '/') {
+        navigate(href);
+      } else {
+        const id = href.replace('/#', '#');
+        const el = document.querySelector(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate(href);
+    }
   };
 
   return (

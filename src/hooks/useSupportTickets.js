@@ -13,16 +13,25 @@ export function useSupportTickets() {
       return;
     }
 
-    const q = query(collection(db, 'support_tickets'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'support_tickets'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ticketsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // Format timestamp for display safely
-        date: doc.data().createdAt?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) || 'Just now',
-        sortTime: doc.data().createdAt?.toDate().getTime() || Date.now()
-      }));
+      const ticketsData = [];
+      snapshot.docs.forEach(doc => {
+        try {
+          const data = doc.data();
+          ticketsData.push({
+            id: doc.id,
+            ...data,
+            date: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (typeof data.createdAt === 'string' ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'),
+            sortTime: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().getTime() : (typeof data.createdAt === 'string' ? new Date(data.createdAt).getTime() : Date.now())
+          });
+        } catch (e) {
+          console.error("Error processing ticket:", doc.id, e);
+        }
+      });
+      // Sort manually since we removed orderBy
+      ticketsData.sort((a, b) => b.sortTime - a.sortTime);
       setTickets(ticketsData);
       setLoading(false);
     }, (err) => {

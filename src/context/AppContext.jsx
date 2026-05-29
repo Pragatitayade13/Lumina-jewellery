@@ -95,6 +95,20 @@ export function AppProvider({ children }) {
     setCart(prev => prev.filter(i => i.id !== id));
   };
 
+  const updateQuantity = (id, delta) => {
+    setCart(prev => prev.map(i => {
+      if (i.id === id) {
+        const newQty = Math.max(1, i.qty + delta);
+        return { ...i, qty: newQty };
+      }
+      return i;
+    }));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const toggleWishlist = (product) => {
     setWishlist(prev => {
       const exists = prev.find(i => i.id === product.id);
@@ -118,7 +132,7 @@ export function AppProvider({ children }) {
       isAuthOpen, setIsAuthOpen,
       isSupportOpen, setIsSupportOpen,
       theme, toggleTheme,
-      addToCart, removeFromCart, toggleWishlist, isWishlisted,
+      addToCart, removeFromCart, updateQuantity, clearCart, toggleWishlist, isWishlisted,
       cartCount, wishlistCount, showToast
     }}>
       {children}

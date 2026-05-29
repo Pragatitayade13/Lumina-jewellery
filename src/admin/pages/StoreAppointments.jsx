@@ -1,14 +1,32 @@
 import { useState } from 'react';
 import { appointments } from '../data/mockData';
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, Search } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, Search, X, Save } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 export default function StoreAppointments() {
+  const { showToast } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [appointmentsList, setAppointmentsList] = useState(appointments);
+  const [form, setForm] = useState({ customer: '', type: 'Bridal Consultation', date: '', time: '10:00', location: 'Mumbai HQ (VIP Lounge)' });
 
-  const filteredAppointments = appointments.filter(a => 
+  const filteredAppointments = appointmentsList.filter(a => 
     a.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleBook = (e) => {
+    e.preventDefault();
+    const newApt = {
+      id: `APT-${Math.floor(1000 + Math.random() * 9000)}`,
+      ...form,
+      status: 'confirmed'
+    };
+    setAppointmentsList([newApt, ...appointmentsList]);
+    showToast(`Appointment scheduled for ${form.customer}!`);
+    setModalOpen(false);
+    setForm({ customer: '', type: 'Bridal Consultation', date: '', time: '10:00', location: 'Mumbai HQ (VIP Lounge)' });
+  };
 
   return (
     <div>
@@ -18,7 +36,7 @@ export default function StoreAppointments() {
           <p className="page-subtitle">Manage customer visits for consultations, trials, and custom designs.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-gold">+ Schedule Visit</button>
+          <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setModalOpen(true)}>+ Schedule Visit</button>
         </div>
       </div>
 
@@ -86,6 +104,62 @@ export default function StoreAppointments() {
           </table>
         </div>
       </div>
+
+      {modalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-box" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Schedule Store Visit</h3>
+              <button className="modal-close" onClick={() => setModalOpen(false)}><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={handleBook} className="modal-body">
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Customer Name</label>
+                <input type="text" required className="form-input" value={form.customer} onChange={e => setForm({...form, customer: e.target.value})} />
+              </div>
+              
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label>Consultation Type</label>
+                <select className="form-input" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                  <option>Bridal Consultation</option>
+                  <option>Jewellery Trial</option>
+                  <option>Virtual Video Tour</option>
+                  <option>Gold Exchange/Buyback</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Date</label>
+                  <input type="date" required className="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} min={new Date().toISOString().split('T')[0]} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Time</label>
+                  <input type="time" required className="form-input" value={form.time} onChange={e => setForm({...form, time: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Location</label>
+                <select className="form-input" value={form.location} onChange={e => setForm({...form, location: e.target.value})}>
+                  <option>Mumbai HQ (VIP Lounge)</option>
+                  <option>Delhi Flagship Store</option>
+                  <option>Bangalore Studio</option>
+                  <option>Virtual Meeting (Zoom)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
+                  <Save size={14} /> Schedule Visit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

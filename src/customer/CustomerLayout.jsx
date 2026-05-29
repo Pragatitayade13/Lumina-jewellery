@@ -1,10 +1,11 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Package, Heart, LifeBuoy, 
-  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon
+  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
+import { useRates } from '../hooks/useRates';
 
 const navItems = [
   { path: '/account', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true },
@@ -16,6 +17,7 @@ const navItems = [
   { path: '/account/appointments', label: 'Store Appointments', icon: <Calendar size={18} /> },
   { path: '/account/planner', label: 'Bridal Planner', icon: <Sparkles size={18} /> },
   { path: '/account/buyback', label: 'Buyback Calculator', icon: <Calculator size={18} /> },
+  { path: '/account/certificate', label: 'Certificate Verification', icon: <ShieldCheck size={18} /> },
   { section: 'Help' },
   { path: '/account/support', label: 'Customer Support', icon: <LifeBuoy size={18} /> },
 ];
@@ -29,6 +31,7 @@ const pageTitles = {
   '/account/appointments': 'My Appointments',
   '/account/planner': 'Bridal Planner Studio',
   '/account/buyback': 'Buyback Exchange Calculator',
+  '/account/certificate': 'Certificate Verification',
   '/account/support': 'Support & Tickets',
 };
 
@@ -36,6 +39,7 @@ export default function CustomerLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, setUser, theme, toggleTheme } = useApp();
+  const { rates } = useRates();
   
   const pageTitle = pageTitles[location.pathname] || 'My Account';
 
@@ -81,7 +85,6 @@ export default function CustomerLayout({ children }) {
               <div className="customer-avatar">{user?.name ? user.name.substring(0, 2).toUpperCase() : 'CU'}</div>
               <div>
                 <div className="customer-name">{user?.name || 'Customer'}</div>
-                <div className="customer-role-badge">VIP Member</div>
               </div>
             </div>
             <button onClick={handleLogout} className="btn btn-icon btn-outline" style={{ border: 'none', color: 'var(--text-muted)' }} title="Logout">
@@ -99,11 +102,17 @@ export default function CustomerLayout({ children }) {
             <div className="topbar-breadcrumb">Home › Account › {pageTitle}</div>
           </div>
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {rates && rates.gold24k && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '1rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Live Gold (24K)</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gold)' }}>₹{rates.gold24k.toLocaleString()}/g</span>
+              </div>
+            )}
             <button className="btn btn-icon btn-outline" style={{ border: 'none', color: 'var(--text-primary)' }} title="Toggle Theme" onClick={toggleTheme}>
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <NotificationDropdown userRole="customer" />
-            <button className="btn btn-primary" onClick={() => navigate('/')}>Continue Shopping</button>
+            <button className="btn btn-primary" onClick={() => navigate('/collections')}>Continue Shopping</button>
           </div>
         </header>
 

@@ -40,12 +40,13 @@
 .notif-dropdown-menu {
   position: absolute;
   top: 120%;
-  right: -10px;
-  width: 400px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  right: 0;
+  width: 380px;
+  max-width: 90vw;
+  background: var(--surface, #111111);
+  border: 1px solid var(--border-color, #333);
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
   z-index: 1000;
   overflow: hidden;
   animation: slideDown 0.2s ease-out;
@@ -142,6 +143,8 @@
   color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 0.5rem;
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .notif-time {

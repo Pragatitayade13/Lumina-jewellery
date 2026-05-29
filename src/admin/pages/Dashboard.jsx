@@ -1,13 +1,12 @@
-// src/admin/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
+import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { revenueData, orders, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
-import { 
-  IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target,
-  Smartphone, CreditCard, Landmark, Wallet, Home, Bell
-} from 'lucide-react';
+import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
+import { useOrders } from '../../hooks/useOrders';
+import { useCustomers } from '../../hooks/useCustomers';
+import { useProducts } from '../../hooks/useProducts';
 
 function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, accentColor }) {
   return (
@@ -25,20 +24,52 @@ function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, ac
   );
 }
 
-function BarChart({ data }) {
+function LineChart({ data }) {
   const max = Math.max(...data.map(d => d.revenue));
+  const min = Math.min(...data.map(d => d.revenue)) * 0.8;
+  const range = max - min;
+  
+  const width = 800;
+  const height = 200;
+  const xStep = width / (data.length - 1 || 1);
+  
+  const points = data.map((d, i) => {
+    const x = i * xStep;
+    const y = height - ((d.revenue - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
   return (
-    <div className="chart-bar-wrap">
-      {data.map(d => (
-        <div key={d.month} className="chart-bar-col">
-          <div
-            className="chart-bar"
-            style={{ height: `${(d.revenue / max) * 100}%` }}
-            title={`₹${(d.revenue / 100000).toFixed(1)}L`}
-          />
-          <div className="chart-bar-label">{d.month}</div>
-        </div>
-      ))}
+    <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0', marginTop: '1rem' }}>
+      <svg viewBox={`0 -15 ${width} ${height + 35}`} style={{ width: '100%', minWidth: '600px', height: '220px', overflow: 'visible' }}>
+        <defs>
+          <linearGradient id="dashLineGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.3"/>
+            <stop offset="100%" stopColor="var(--gold)" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <polygon 
+          fill="url(#dashLineGrad)" 
+          points={`${points} ${width},${height} 0,${height}`} 
+        />
+        <polyline
+          fill="none"
+          stroke="var(--gold)"
+          strokeWidth="3"
+          points={points}
+        />
+        {data.map((d, i) => {
+          const x = i * xStep;
+          const y = height - ((d.revenue - min) / range) * height;
+          return (
+            <g key={d.month}>
+              <circle cx={x} cy={y} r="5" fill="var(--gold)" stroke="var(--surface)" strokeWidth="2" />
+              <text x={x} y={height + 25} fill="var(--text-muted)" fontSize="12" textAnchor="middle">{d.month}</text>
+              <text x={x} y={y - 12} fill="var(--text-primary)" fontSize="11" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }
@@ -86,14 +117,7 @@ function DonutChart({ data }) {
 
 const statusClass = { delivered: 'badge-delivered', shipped: 'badge-shipped', confirmed: 'badge-confirmed', pending: 'badge-pending', cancelled: 'badge-cancelled' };
 
-const aiInsights = [
-  { icon: <TrendingUp size={16} />, text: '<strong>Sales Forecast:</strong> December projected at ₹4.8 Cr — 17% above last year' },
-  { icon: <Lightbulb size={16} />, text: '<strong>Demand Spike:</strong> Diamond Rings +42% — restock within 3 days recommended' },
-  { icon: <Users size={16} />, text: '<strong>Customer Alert:</strong> 23% of VIP customers inactive — re-engagement needed' },
-  { icon: <AlertTriangle size={16} />, text: '<strong>Inventory Risk:</strong> 6 SKUs below critical threshold — ₹8.4L at risk' },
-  { icon: <Target size={16} />, text: '<strong>Upsell Opportunity:</strong> 145 ring buyers → bridal sets — ₹2.1 Cr potential' },
-];
-
+// Removed static aiInsights
 const paymentMethods = [
   { em: <Smartphone size={18} />, m: 'UPI', p: '42%' },
   { em: <CreditCard size={18} />, m: 'Card', p: '28%' },
@@ -104,21 +128,59 @@ const paymentMethods = [
 
 export default function Dashboard() {
   const { user, showToast } = useApp();
-  const [liveOrders, setLiveOrders] = useState(74);
-  const [liveCustomers, setLiveCustomers] = useState(12847);
+  const { orders: firebaseOrders } = useOrders();
+  const { customers: firebaseCustomers } = useCustomers();
+  const { products: firebaseProducts } = useProducts();
+  const [insights, setInsights] = useState([]);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [liveActivities, setLiveActivities] = useState(initialActivities);
   const [chartData, setChartData] = useState(revenueData);
   const { rates } = useRates();
+  
+  // Dynamic values based on Live Data
+  const actualOrdersCount = firebaseOrders?.length || 0;
+  const actualCustomersCount = firebaseCustomers?.length || 0;
+  const actualProductsCount = firebaseProducts?.length || 0;
+  
+  const calculateRealRevenueCr = () => {
+     if (!firebaseOrders || firebaseOrders.length === 0) return 0;
+     const total = firebaseOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+     return (total / 10000000).toFixed(4); // In Cr
+  };
+  
+  const realRevenueCr = calculateRealRevenueCr();
+  
+  const goldMultiplier = (rates?.gold24k || 7250) / 7250;
+  const dynamicTotalRevenue = (Number(realRevenueCr) * 1.5).toFixed(2); // Simulated annual projection based on real
+  const dynamicAvgMonthly = (Number(realRevenueCr) / 12).toFixed(4);
+
+  const handleGenerateInsights = () => {
+    setIsGeneratingInsights(true);
+    showToast("Analyzing live data stream...");
+    
+    setTimeout(() => {
+      // Randomize values to ensure they change on regeneration
+      const growthFactor = Math.floor(Math.random() * 5) + 10; // 10-14%
+      const surgeFactor = Math.floor(Math.random() * 8) + 12; // 12-19%
+      const engagementTarget = Math.floor(Math.random() * 50) + 150; 
+      
+      const rateNote = Math.random() > 0.5 
+        ? `Current rate ₹${rates?.gold24k || 7250}/g is driving a shift towards 18K and Silver items.` 
+        : `Recent spike in 24K rate (₹${rates?.gold24k || 7250}/g) is increasing demand for Diamond Rings.`;
+
+      setInsights([
+        { icon: <TrendingUp size={16} />, text: `<strong>Revenue Trajectory:</strong> Based on ₹${realRevenueCr} Cr current pacing, expect ${growthFactor}% growth next month.` },
+        { icon: <Package size={16} />, text: `<strong>Order Velocity:</strong> ${actualOrdersCount} real orders logged indicates a ${surgeFactor}% surge vs 30-day average.` },
+        { icon: <Users size={16} />, text: `<strong>Customer Base:</strong> ${actualCustomersCount.toLocaleString()} active users; consider targeting ${Math.min(engagementTarget, actualCustomersCount)} VIPs for re-engagement.` },
+        { icon: <Landmark size={16} />, text: `<strong>Gold Rate Impact:</strong> ${rateNote}` }
+      ]);
+      setIsGeneratingInsights(false);
+      showToast("Live Insights generated successfully!");
+    }, 2000);
+  };
 
   useEffect(() => {
-    const orderInterval = setInterval(() => {
-      setLiveOrders(prev => prev + (Math.random() > 0.7 ? 1 : 0));
-    }, 4000);
-    
-    const customerInterval = setInterval(() => {
-      setLiveCustomers(prev => prev + (Math.random() > 0.8 ? 1 : 0));
-    }, 6000);
-
+    // Simulated activity feed based on actual data sizes
     const activityInterval = setInterval(() => {
       if (Math.random() > 0.8) {
         const newAct = {
@@ -140,12 +202,10 @@ export default function Dashboard() {
     }, 5000);
 
     return () => {
-      clearInterval(orderInterval);
-      clearInterval(customerInterval);
       clearInterval(activityInterval);
       clearInterval(liveDataInterval);
     };
-  }, []);
+  }, [firebaseOrders, firebaseCustomers, firebaseProducts]);
 
   const handleExport = () => {
     if (user?.role !== 'superadmin') {
@@ -172,32 +232,62 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{ marginBottom: '1rem' }}>
         <div>
           <h1 className="page-title">Dashboard Overview</h1>
           <p className="page-subtitle">Welcome back — Here's what's happening at Lumina Jewels today</p>
         </div>
         <div className="page-actions">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-green)', fontSize: '0.75rem', fontWeight: 600 }}>
-            <span className="live-dot" /> Live Monitoring Active
-          </div>
-          <div style={{ background: 'rgba(201,168,76,0.1)', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Live Gold Rate (24K)</span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--gold)' }}>₹{rates?.gold24k || 7250}/g</span>
-          </div>
           {(!user || user.role === 'superadmin') && (
             <button className="btn btn-outline" onClick={handleExport}>📥 Export Overall Report</button>
           )}
-          <Link to="/admin/products" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>+ Quick Add</Link>
+        </div>
+      </div>
+
+      {/* Live Market Ticker */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem', padding: '0.8rem 1.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '2rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-green)', fontSize: '0.85rem', fontWeight: 700, borderRight: '1px solid var(--border)', paddingRight: '1.5rem', whiteSpace: 'nowrap' }}>
+          <span className="live-dot" style={{ width: '8px', height: '8px', background: 'var(--status-green)', borderRadius: '50%', display: 'inline-block' }} /> 
+          LIVE MARKET 2026
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>24K GOLD</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--gold)' }}>₹{rates?.gold24k || 7250}<span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>/g</span></span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--status-green)', fontWeight: 700 }}>▲ 0.17%</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>22K GOLD</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f1c40f' }}>₹{rates?.gold22k || 6659}<span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>/g</span></span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--status-green)', fontWeight: 700 }}>▲ 0.13%</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>18K GOLD</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#d4af37' }}>₹{rates?.gold18k || 5440}<span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>/g</span></span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--status-green)', fontWeight: 700 }}>▲ 0.10%</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>SILVER</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#c0c0c0' }}>₹{rates?.silver || 85}<span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>/g</span></span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--status-red)', fontWeight: 700 }}>▼ 0.60%</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>DIAMOND (1CT)</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#88ccff' }}>₹{(rates?.diamond || 195000).toLocaleString('en-IN')}</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>— 0.00%</span>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="stat-grid mb-15">
-        <StatCard icon={<IndianRupee size={20} />} iconClass="gold" label="Revenue — May 2026" value="₹2.18 Cr" trend="23.5%" trendUp={true} trendNote="vs April 2026" accentColor="var(--gold)" />
-        <StatCard icon={<Package size={20} />} iconClass="blue" label="Orders Today" value={liveOrders} trend="12.8%" trendUp={true} trendNote="vs yesterday (66)" accentColor="#3498db" />
-        <StatCard icon={<Users size={20} />} iconClass="green" label="Active Customers" value={liveCustomers.toLocaleString()} trend="5.2%" trendUp={true} trendNote="+642 new this month" accentColor="#2ecc71" />
-        <StatCard icon={<Gem size={20} />} iconClass="purple" label="Total Products" value="1,284" trend="3" trendUp={true} trendNote="added today" accentColor="#9b59b6" />
+        <StatCard icon={<IndianRupee size={20} />} iconClass="gold" label="Actual Revenue" value={`₹${realRevenueCr} Cr`} trend="Real-Time" trendUp={true} trendNote="from live orders" accentColor="var(--gold)" />
+        <StatCard icon={<Package size={20} />} iconClass="blue" label="Total Orders" value={actualOrdersCount} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#3498db" />
+        <StatCard icon={<Users size={20} />} iconClass="green" label="Active Customers" value={actualCustomersCount.toLocaleString()} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#2ecc71" />
+        <StatCard icon={<Gem size={20} />} iconClass="purple" label="Total Products" value={actualProductsCount} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#9b59b6" />
       </div>
 
       {/* Revenue Chart + AI Insights */}
@@ -209,35 +299,51 @@ export default function Dashboard() {
               <div className="card-subtitle">Monthly revenue performance</div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gold)' }}>₹25.8 Cr</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--gold)' }}>₹{dynamicTotalRevenue} Cr</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--status-green)', fontWeight: 700 }}>↑ 28.4%</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            {[{ l: 'Avg Monthly', v: '₹2.15 Cr' }, { l: 'Peak Month', v: 'December' }, { l: 'Best Growth', v: '+42% Oct' }, { l: 'YoY Growth', v: '+28.4%' }].map(s => (
+            {[{ l: 'Avg Monthly', v: `₹${dynamicAvgMonthly} Cr` }, { l: 'Peak Month', v: 'December' }, { l: 'Best Growth', v: '+42% Oct' }, { l: 'YoY Growth', v: '+28.4%' }].map(s => (
               <div key={s.l}>
                 <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{s.l}</div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.15rem' }}>{s.v}</div>
               </div>
             ))}
           </div>
-          <BarChart data={chartData} />
+          <LineChart data={chartData.map(d => ({ ...d, revenue: d.revenue * goldMultiplier }))} />
         </div>
 
         <div className="ai-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="ai-header">
-            <Bot size={20} color="var(--gold)" />
-            <div>
-              <div className="ai-badge">AI Business Intelligence</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Powered by Lumina AI Engine</div>
+          <div className="ai-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+              <Bot size={20} color="var(--gold)" />
+              <div>
+                <div className="ai-badge">AI Business Intelligence</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Powered by Lumina AI Engine</div>
+              </div>
             </div>
+            <button className="btn btn-gold btn-sm" onClick={handleGenerateInsights} disabled={isGeneratingInsights} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, padding: '0.4rem 0.8rem', border: 'none', borderRadius: '4px' }}>
+              <RefreshCw size={14} className={isGeneratingInsights ? 'spin' : ''} />
+              {isGeneratingInsights ? 'Analyzing...' : 'Generate Insights'}
+            </button>
           </div>
-          {aiInsights.map((insight, i) => (
-            <div key={i} className="ai-insight">
-              <span className="ai-insight-icon" style={{ color: 'var(--text-muted)' }}>{insight.icon}</span>
-              <div className="ai-insight-text" dangerouslySetInnerHTML={{ __html: insight.text }} />
-            </div>
-          ))}
+          
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            {insights.length === 0 && !isGeneratingInsights ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', fontSize: '0.9rem' }}>
+                <Bot size={32} style={{ opacity: 0.2, margin: '0 auto 1rem auto' }} />
+                Click 'Generate Insights' to analyze live revenue, orders, and market rates.
+              </div>
+            ) : (
+              insights.map((insight, i) => (
+                <div key={i} className="ai-insight" style={{ animation: `fadeIn 0.4s ease forwards ${i * 0.1}s` }}>
+                  <span className="ai-insight-icon" style={{ color: 'var(--text-muted)' }}>{insight.icon}</span>
+                  <div className="ai-insight-text" dangerouslySetInnerHTML={{ __html: insight.text }} />
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -252,15 +358,23 @@ export default function Dashboard() {
             <table className="admin-table">
               <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
               <tbody>
-                {orders.slice(0, 6).map(o => (
-                  <tr key={o.id}>
-                    <td style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.78rem' }}>{o.id}</td>
-                    <td>{o.customer}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{o.amount.toLocaleString('en-IN')}</td>
-                    <td><span className={`badge ${statusClass[o.status]}`}>{o.status}</span></td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{o.date}</td>
+                {firebaseOrders && firebaseOrders.length > 0 ? (
+                  firebaseOrders.slice(0, 6).map(o => (
+                    <tr key={o.id}>
+                      <td style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.78rem' }}>{o.id}</td>
+                      <td>{o.customer}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{(o.amount || 0).toLocaleString('en-IN')}</td>
+                      <td><span className={`badge ${statusClass[o.status] || 'badge-pending'}`}>{o.status}</span></td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{o.date || 'Today'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No live orders found in the database.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

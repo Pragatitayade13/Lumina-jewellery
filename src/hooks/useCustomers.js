@@ -13,25 +13,32 @@ export function useCustomers() {
       return;
     }
 
-    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'users'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const customersData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || 'Anonymous User',
-          email: data.email || 'No Email',
-          phone: data.phone || 'No Phone',
-          role: data.role || 'customer',
-          status: data.status || 'active', // active, vip, inactive
-          loyaltyPoints: data.loyaltyPoints || 0,
-          totalSpent: data.totalSpent || 0,
-          totalOrders: data.totalOrders || 0,
-          joinDate: data.createdAt?.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) || 'Recently',
-          avatarColor: ['#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f'][Math.floor(Math.random() * 5)],
-          avatar: (data.name || 'U').charAt(0).toUpperCase()
-        };
+      const customersData = [];
+      snapshot.docs.forEach(doc => {
+        try {
+          const data = doc.data();
+          const safeName = typeof data.name === 'string' ? data.name : String(data.name || 'Anonymous User');
+          customersData.push({
+            id: doc.id,
+            name: safeName,
+            email: data.email || 'No Email',
+            phone: data.phone || 'No Phone',
+            role: typeof data.role === 'string' ? data.role : 'customer',
+            department: typeof data.department === 'string' ? data.department : 'Unassigned',
+            status: data.status || 'active', // active, vip, inactive
+            loyaltyPoints: data.loyaltyPoints || 0,
+            totalSpent: data.totalSpent || 0,
+            totalOrders: data.totalOrders || 0,
+            joinDate: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (typeof data.createdAt === 'string' ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'),
+            avatarColor: ['#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f'][Math.floor(Math.random() * 5)],
+            avatar: safeName.charAt(0).toUpperCase()
+          });
+        } catch (e) {
+          console.error("Error processing document:", doc.id, e);
+        }
       });
       setCustomers(customersData);
       setLoading(false);

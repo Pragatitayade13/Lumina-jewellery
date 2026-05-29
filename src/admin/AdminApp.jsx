@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import AdminLayout from './AdminLayout';
 import Dashboard from './pages/Dashboard';
-import UserManagement from './pages/UserManagement';
+import StaffManagement from './pages/UserManagement';
 import ProductManagement from './pages/ProductManagement';
 import OrderManagement from './pages/OrderManagement';
 import CustomerManagement from './pages/CustomerManagement';
@@ -19,6 +19,10 @@ import SupportManagement from './pages/SupportManagement';
 import TaxManagement from './pages/TaxManagement';
 import GoldRateDashboard from './pages/GoldRateDashboard';
 import DeliveryOperations from './pages/DeliveryOperations';
+import StaffProfile from './pages/StaffProfile';
+import VendorManagement from './pages/VendorManagement';
+import InvoiceBilling from './pages/InvoiceBilling';
+import FinanceDashboard from './pages/FinanceDashboard';
 import './admin.css';
 
 // A simple protective wrapper for roles
@@ -44,10 +48,13 @@ export default function AdminApp() {
           <Route index element={role === 'delivery' ? <Navigate to="/admin/delivery" replace /> : <Dashboard />} />
           
           {/* Superadmin & Manager only routes */}
-          <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager']}><UserManagement /></ProtectedRoute>} />
+          <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager']}><StaffManagement /></ProtectedRoute>} />
           
           {/* Logistics routes */}
           <Route path="delivery" element={<ProtectedRoute allowedRoles={['superadmin', 'delivery']}><DeliveryOperations /></ProtectedRoute>} />
+          
+          {/* Profile route for all roles */}
+          <Route path="profile" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager', 'finance', 'delivery']}><StaffProfile /></ProtectedRoute>} />
 
           {/* Superadmin only routes */}
           <Route path="settings" element={<ProtectedRoute allowedRoles={['superadmin']}><SystemSettings /></ProtectedRoute>} />
@@ -70,7 +77,10 @@ export default function AdminApp() {
           <Route path="payments" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><PaymentManagement /></ProtectedRoute>} />
           <Route path="tax" element={<ProtectedRoute allowedRoles={['superadmin', 'finance']}><TaxManagement /></ProtectedRoute>} />
           <Route path="gold-rates" element={<ProtectedRoute allowedRoles={['superadmin', 'finance', 'manager']}><GoldRateDashboard /></ProtectedRoute>} />
-          <Route path="analytics" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><Analytics /></ProtectedRoute>} />
+          <Route path="analytics" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager', 'staff']}><Analytics /></ProtectedRoute>} />
+          <Route path="vendors" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><VendorManagement /></ProtectedRoute>} />
+          <Route path="invoices" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><InvoiceBilling /></ProtectedRoute>} />
+          <Route path="finance" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><FinanceDashboard /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>

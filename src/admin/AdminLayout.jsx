@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Gem, Package, UsersRound, 
-  Store, CreditCard, BarChart3, FileText, Shield, 
-  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu
+  Store, CreditCard, BarChart3, BarChart2, FileText, Shield, 
+  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
@@ -15,9 +15,14 @@ const allNavItems = [
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery', label: 'Delivery Operations', icon: <Map size={18} />, badge: 'new', roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/users', label: 'Staff Monitoring', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager'] },
+  { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager'] },
   { path: '/admin/products', label: 'Product Supervision', icon: <Gem size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/orders', label: 'Order Management', icon: <Package size={18} />, badge: '5', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/customers', label: 'Customers', icon: <UsersRound size={18} />, roles: ['superadmin', 'admin', 'manager'] },
@@ -33,7 +38,9 @@ const allNavItems = [
   { path: '/admin/payments', label: 'Payments & Transactions', icon: <CreditCard size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
   { path: '/admin/tax', label: 'Tax Management', icon: <Receipt size={18} />, roles: ['superadmin', 'finance'] },
   { path: '/admin/gold-rates', label: 'Gold Rate & Pricing', icon: <Coins size={18} />, roles: ['superadmin', 'finance', 'manager'] },
-  { path: '/admin/analytics', label: 'Analytics & Reports', icon: <BarChart3 size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
+  { path: '/admin/analytics', label: 'Analytics & Reports', icon: <BarChart3 size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager', 'staff'] },
+  { path: '/admin/vendors', label: 'Vendor & Commissions', icon: <Store size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
+  { path: '/admin/invoices', label: 'Invoice & Billing', icon: <FileText size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
   
   { section: 'System', roles: ['superadmin', 'admin'] },
   { path: '/admin/content', label: 'Content Management', icon: <FileText size={18} />, roles: ['superadmin', 'admin'] },
@@ -44,7 +51,7 @@ const allNavItems = [
 const pageTitles = {
   '/admin': 'Dashboard Overview',
   '/admin/delivery': 'Active Delivery Routes',
-  '/admin/users': 'User Management',
+  '/admin/users': 'Staff Management',
   '/admin/products': 'Product Management',
   '/admin/orders': 'Order Management',
   '/admin/customers': 'Customer Management',
@@ -57,6 +64,8 @@ const pageTitles = {
   '/admin/tax': 'Tax & Compliance Management',
   '/admin/gold-rates': 'Gold Rate & Pricing Dashboard',
   '/admin/analytics': 'Analytics & AI Reports',
+  '/admin/vendors': 'Vendor & Commission Management',
+  '/admin/invoices': 'Invoice & Billing System',
   '/admin/content': 'Content Management',
   '/admin/security': 'Security & Access Control',
   '/admin/settings': 'System Settings',

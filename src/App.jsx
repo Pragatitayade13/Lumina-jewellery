@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
 
@@ -22,9 +22,12 @@ import CartModal from './components/CartModal/CartModal';
 import WishlistModal from './components/WishlistModal/WishlistModal';
 import SupportModal from './components/SupportModal/SupportModal';
 
-import AdminApp from './admin/AdminApp';
+import Catalog from './pages/Catalog';
+import ProductDetails from './pages/ProductDetails';
 
+import AdminApp from './admin/AdminApp';
 import CustomerApp from './customer/CustomerApp';
+import DeliveryApp from './delivery/DeliveryApp';
 
 import './index.css';
 
@@ -41,7 +44,7 @@ function GlobalModals() {
   );
 }
 
-function MainSite() {
+function StoreLayout() {
   useScrollReveal();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -50,23 +53,31 @@ function MainSite() {
     <>
       <Header onCartClick={() => setIsCartOpen(true)} onWishlistClick={() => setIsWishlistOpen(true)} />
       <main>
-        <Hero />
-        <FeaturedCategories />
-        <NewArrivals />
-        <BestSellers />
-        <ExclusiveOffers />
-        <BrandStory />
-        <ProductShowcase />
-        <Testimonials />
-        <WhyChooseUs />
-        <Newsletter />
-        <SocialGallery />
+        <Outlet />
       </main>
       <Footer />
       <Toast />
       <AuthModal />
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
+    </>
+  );
+}
+
+function HomePage() {
+  return (
+    <>
+      <Hero />
+      <FeaturedCategories />
+      <NewArrivals />
+      <BestSellers />
+      <ExclusiveOffers />
+      <BrandStory />
+      <ProductShowcase />
+      <Testimonials />
+      <WhyChooseUs />
+      <Newsletter />
+      <SocialGallery />
     </>
   );
 }
@@ -114,7 +125,12 @@ export default function App() {
           <Routes>
             <Route path="/admin/*" element={<AdminApp />} />
             <Route path="/account/*" element={<CustomerApp />} />
-            <Route path="/*" element={<MainSite />} />
+            <Route path="/delivery/*" element={<DeliveryApp />} />
+            <Route path="/*" element={<StoreLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="collections" element={<Catalog />} />
+              <Route path="product/:id" element={<ProductDetails />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </AppProvider>

@@ -13,12 +13,13 @@ export default function CustomerManagement() {
   const [editStatus, setEditStatus] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Dynamic KPIs
-  const totalCustomers = customers.length;
-  const vipMembers = customers.filter(c => c.status === 'vip').length;
+  // Dynamic KPIs (Only count actual customers)
+  const actualCustomers = customers.filter(c => c.role === 'customer');
+  const totalCustomers = actualCustomers.length;
+  const vipMembers = actualCustomers.filter(c => c.status === 'vip').length;
   
-  const totalSpendSum = customers.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
-  const totalOrdersSum = customers.reduce((sum, c) => sum + (c.totalOrders || 0), 0);
+  const totalSpendSum = actualCustomers.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
+  const totalOrdersSum = actualCustomers.reduce((sum, c) => sum + (c.totalOrders || 0), 0);
   const avgOrderValue = totalOrdersSum > 0 ? (totalSpendSum / totalOrdersSum) : 0;
   
   // Format AOV for display (e.g. ₹1.2L or ₹45K)
@@ -28,6 +29,9 @@ export default function CustomerManagement() {
   else aovDisplay = `₹${Math.round(avgOrderValue)}`;
 
   const filteredCustomers = customers.filter(c => {
+    // Only show actual customers, filter out staff members
+    if (c.role !== 'customer') return false;
+    
     const searchString = searchTerm.toLowerCase();
     const matchesSearch = c.name?.toLowerCase().includes(searchString) || 
                           c.email?.toLowerCase().includes(searchString) ||

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, setDoc, addDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment } from 'firebase/firestore';
 import { inventory as mockInventory } from '../admin/data/mockData';
 
 export function useInventory() {
   const [inventory, setInventory] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [stockTransfers, setStockTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -52,6 +54,17 @@ export function useInventory() {
           return `${diffMins || 1} min ago`;
         };
 
+        // Inject image from mockInventory if missing in DB
+        let image = data.image || '';
+        let subcategory = data.subcategory || '';
+        if (!image || !subcategory) {
+          const mockItem = mockInventory?.find(m => m.sku === (data.sku || doc.id));
+          if (mockItem) {
+            if (!image) image = mockItem.image || '';
+            if (!subcategory) subcategory = mockItem.subcategory || '';
+          }
+        }
+
         return {
           id: doc.id,
           sku: data.sku || doc.id,
@@ -61,19 +74,45 @@ export function useInventory() {
           minStock: data.minStock || 5,
           warehouse: data.warehouse || 'Unassigned',
           price: data.price || 0,
+          mrp: data.mrp || data.price || 0,
+          weight: data.weight || '',
+          purity: data.purity || '',
+          image: image,
+          subcategory: subcategory,
+          badge: data.badge || null,
           lastUpdated: formatTime(data.updatedAt?.toDate()),
           status: status
         };
       });
       setInventory(inventoryData);
       setLoading(false);
-    }, (err) => {
-      console.error("Error fetching inventory:", err);
-      setError(err);
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    const poQuery = query(collection(db, 'purchase_orders'));
+    const unsubscribePO = onSnapshot(poQuery, (snapshot) => {
+      const poData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+      }));
+      setPurchaseOrders(poData);
+    }, (err) => console.error("Error fetching POs:", err));
+
+    const transferQuery = query(collection(db, 'stock_transfers'));
+    const unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
+      const transferData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+      }));
+      setStockTransfers(transferData);
+    }, (err) => console.error("Error fetching Transfers:", err));
+
+    return () => {
+      unsubscribe();
+      unsubscribePO();
+      unsubscribeTransfers();
+    };
   }, []);
 
   const updateStock = async (id, updateData) => {
@@ -105,5 +144,43 @@ export function useInventory() {
     }
   };
 
-  return { inventory, loading, error, updateStock, addPurchaseOrder };
+  const receivePurchaseOrder = async (poId, sku, quantity) => {
+    if (!db) throw new Error("Firebase not initialized");
+    try {
+      await updateDoc(doc(db, 'purchase_orders', poId), {
+        status: 'received',
+        updatedAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'inventory', sku), {
+        stock: increment(quantity)
+      });
+    } catch (err) {
+      console.error("Error receiving PO:", err);
+      throw err;
+    }
+  };
+
+  const addStockTransfer = async (transferData) => {
+    if (!db) throw new Error("Firebase not initialized");
+    try {
+      const docRef = await addDoc(collection(db, 'stock_transfers'), {
+        ...transferData,
+        status: 'completed',
+        createdAt: serverTimestamp()
+      });
+      
+      // Update the warehouse of the existing SKU to reflect the transfer
+      await updateDoc(doc(db, 'inventory', transferData.sku), {
+        warehouse: transferData.to,
+        updatedAt: serverTimestamp()
+      });
+      
+      return docRef.id;
+    } catch (err) {
+      console.error("Error logging stock transfer:", err);
+      throw err;
+    }
+  };
+
+  return { inventory, purchaseOrders, stockTransfers, loading, error, updateStock, addPurchaseOrder, receivePurchaseOrder, addStockTransfer };
 }

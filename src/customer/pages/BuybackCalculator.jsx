@@ -1,12 +1,15 @@
 import { Calculator, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useRates } from '../../hooks/useRates';
 
 export default function BuybackCalculator() {
   const [weight, setWeight] = useState(10);
   const [purity, setPurity] = useState(22);
+  const navigate = useNavigate();
+  const { rates } = useRates();
   
-  // Mock live gold rate (per gram for 24K)
-  const currentLiveRate24k = 7250; 
+  const currentLiveRate24k = rates.gold24k; 
   
   // Calculation logic
   const purityFactor = purity / 24;
@@ -72,7 +75,11 @@ export default function BuybackCalculator() {
             *Final value is subject to physical evaluation and melting purity tests at our store.
           </p>
           
-          <button className="btn btn-gold" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 2rem', fontSize: '1.1rem' }}>
+          <button 
+            className="btn btn-gold" 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 2rem', fontSize: '1.1rem' }}
+            onClick={() => navigate('/account/appointments')}
+          >
             Book Evaluation <ArrowRight size={18} />
           </button>
         </div>

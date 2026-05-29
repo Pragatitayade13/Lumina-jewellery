@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Search, X, Package, Save, ShoppingCart } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
 import { useApp } from '../../context/AppContext';
+import { Check } from 'lucide-react';
 
 export default function InventoryManagement() {
-  const { inventory, loading, updateStock, addPurchaseOrder } = useInventory();
+  const { inventory, purchaseOrders, stockTransfers, loading, updateStock, addPurchaseOrder, addStockTransfer, receivePurchaseOrder } = useInventory();
   const { showToast } = useApp();
   
+  const [activeTab, setActiveTab] = useState('Inventory List');
   const [searchTerm, setSearchTerm] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('Warehouse: All');
   const [statusFilter, setStatusFilter] = useState('Status: All');
@@ -16,6 +18,9 @@ export default function InventoryManagement() {
   
   const [isPoModalOpen, setIsPoModalOpen] = useState(false);
   const [poForm, setPoForm] = useState({ sku: '', vendor: '', quantity: '', expectedCost: '', deliveryDate: '' });
+
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferForm, setTransferForm] = useState({ sku: '', from: '', to: '', quantity: '' });
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -89,6 +94,34 @@ export default function InventoryManagement() {
     setIsSaving(false);
   };
 
+  const handleStockTransfer = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await addStockTransfer({
+        sku: transferForm.sku,
+        from: transferForm.from,
+        to: transferForm.to,
+        quantity: parseInt(transferForm.quantity, 10)
+      });
+      showToast(`Successfully transferred ${transferForm.quantity} units of ${transferForm.sku} from ${transferForm.from} to ${transferForm.to}.`);
+      setIsTransferModalOpen(false);
+      setTransferForm({ sku: '', from: '', to: '', quantity: '' });
+    } catch (err) {
+      showToast("Failed to transfer stock", "error");
+    }
+    setIsSaving(false);
+  };
+
+  const handleReceivePO = async (po) => {
+    try {
+      await receivePurchaseOrder(po.id, po.sku, po.quantity);
+      showToast(`Received ${po.quantity} units of ${po.sku}. Stock updated.`);
+    } catch (err) {
+      showToast("Failed to receive PO.", "error");
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -97,12 +130,26 @@ export default function InventoryManagement() {
           <p className="page-subtitle">Monitor stock levels, set low-stock alerts, and manage warehouses.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline">Stock Transfer</button>
-          <button className="btn btn-gold" onClick={() => setIsPoModalOpen(true)}>+ Purchase Order</button>
+          <button className="btn btn-outline" onClick={() => setIsTransferModalOpen(true)}>Stock Transfer</button>
+          <button className="btn btn-gold" onClick={() => setIsPoModalOpen(true)} style={{ color: '#FFFFFF', fontWeight: 'bold' }}>+ Purchase Order</button>
         </div>
       </div>
 
-      <div className="stat-grid mb-15">
+      <div className="tab-nav">
+        {['Inventory List', 'Purchase Orders', 'Stock Transfers'].map(tab => (
+          <button 
+            key={tab} 
+            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => { setActiveTab(tab); setSearchTerm(''); }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'Inventory List' && (
+        <>
+          <div className="stat-grid mb-15">
         <div className="stat-card">
           <div className="stat-label">Total SKUs</div>
           <div className="stat-value">{totalSkus.toLocaleString()}</div>
@@ -217,6 +264,69 @@ export default function InventoryManagement() {
           </table>
         </div>
       </div>
+      </>
+      )}
+
+      {activeTab === 'Purchase Orders' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Active Purchase Orders</div>
+          </div>
+          <table className="admin-table">
+            <thead>
+              <tr><th>PO ID</th><th>SKU</th><th>Vendor</th><th>Quantity</th><th>Expected Delivery</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {purchaseOrders.length === 0 ? (
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No purchase orders found.</td></tr>
+              ) : purchaseOrders.map(po => (
+                <tr key={po.id}>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{po.id.substring(0,8).toUpperCase()}</td>
+                  <td>{po.sku}</td>
+                  <td>{po.vendor}</td>
+                  <td>{po.quantity} Units</td>
+                  <td>{po.deliveryDate}</td>
+                  <td><span className={`badge badge-${po.status === 'pending' ? 'warning' : 'active'}`}>{po.status.toUpperCase()}</span></td>
+                  <td>
+                    {po.status === 'pending' && (
+                      <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--status-green)', color: 'var(--status-green)' }} onClick={() => handleReceivePO(po)}>
+                        <Check size={14} /> Receive
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'Stock Transfers' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Recent Transfers</div>
+          </div>
+          <table className="admin-table">
+            <thead>
+              <tr><th>Date</th><th>SKU</th><th>From</th><th>To</th><th>Quantity</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {(!stockTransfers || stockTransfers.length === 0) ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No recent stock transfers.</td></tr>
+              ) : stockTransfers.map(t => (
+                <tr key={t.id}>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.date}</td>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{t.sku}</td>
+                  <td>{t.from}</td>
+                  <td>{t.to}</td>
+                  <td style={{ fontWeight: 600 }}>{t.quantity}</td>
+                  <td><span className="badge badge-active">{t.status.toUpperCase()}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Stock Update Modal */}
       {updateModal.isOpen && updateModal.item && (
@@ -361,8 +471,64 @@ export default function InventoryManagement() {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                   <button type="button" className="btn btn-outline" onClick={() => setIsPoModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-gold" disabled={isSaving} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
+                  <button type="submit" className="btn btn-gold" disabled={isSaving} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FFFFFF', fontWeight: 'bold' }}>
                     <Save size={14} /> {isSaving ? 'Submitting...' : 'Send Purchase Order'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Transfer Modal */}
+      {isTransferModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-box" style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Package size={18} /> Initiate Stock Transfer</h3>
+              <button className="modal-close" onClick={() => setIsTransferModalOpen(false)}><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={handleStockTransfer}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Select Product / SKU</label>
+                  <select className="form-input" required value={transferForm.sku} onChange={(e) => setTransferForm({...transferForm, sku: e.target.value})}>
+                    <option value="">Select an item to transfer...</option>
+                    {inventory.map(item => (
+                      <option key={item.id} value={item.sku}>{item.sku} - {item.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label>From Warehouse</label>
+                    <select className="form-input" required value={transferForm.from} onChange={(e) => setTransferForm({...transferForm, from: e.target.value})}>
+                      <option value="">Select Source...</option>
+                      <option value="Mumbai HQ">Mumbai HQ</option>
+                      <option value="Delhi Vault">Delhi Vault</option>
+                      <option value="Bangalore">Bangalore</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>To Warehouse</label>
+                    <select className="form-input" required value={transferForm.to} onChange={(e) => setTransferForm({...transferForm, to: e.target.value})}>
+                      <option value="">Select Destination...</option>
+                      <option value="Mumbai HQ">Mumbai HQ</option>
+                      <option value="Delhi Vault">Delhi Vault</option>
+                      <option value="Bangalore">Bangalore</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Quantity to Transfer</label>
+                  <input type="number" className="form-input" min="1" required value={transferForm.quantity} onChange={(e) => setTransferForm({...transferForm, quantity: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-gold" disabled={isSaving} style={{ color: '#000', fontWeight: 'bold' }}>
+                    {isSaving ? 'Processing...' : 'Transfer Stock'}
                   </button>
                 </div>
               </div>

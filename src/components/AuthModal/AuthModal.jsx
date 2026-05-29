@@ -15,6 +15,10 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [customJoinDate, setCustomJoinDate] = useState('');
+  const [error, setError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Reset state when modal closes
@@ -27,6 +31,8 @@ export default function AuthModal() {
       setEmail('');
       setPassword('');
       setFullName('');
+      setPhone('');
+      setAddress('');
       setConfirmPassword('');
     }
   }, [isAuthOpen]);
@@ -53,14 +59,30 @@ export default function AuthModal() {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           await updateProfile(userCredential.user, { displayName: fullName });
           
-          // Create user doc with role
+          let formattedJoinDate = new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+          if (customJoinDate) {
+            const d = new Date(customJoinDate);
+            formattedJoinDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          }
+
           await setDoc(doc(db, 'users', userCredential.user.uid), {
             name: fullName,
             email: email,
+            phone: phone,
+            addresses: address ? [{
+              id: Date.now().toString(),
+              title: 'Home Address',
+              street: address,
+              city: '',
+              state: '',
+              pincode: '',
+              isDefault: true
+            }] : [],
             role: selectedOption.id,
+            joinDate: formattedJoinDate,
             createdAt: new Date().toISOString()
           });
-          setUser({ uid: userCredential.user.uid, email, role: selectedOption.id, name: fullName });
+          setUser({ uid: userCredential.user.uid, email, role: selectedOption.id, name: fullName, phone, joinDate: formattedJoinDate });
         } else {
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
@@ -87,10 +109,42 @@ export default function AuthModal() {
     } else {
       // Fallback to mock auth if Firebase is not configured yet
       console.warn("Firebase not configured. Falling back to mock auth.");
-      setUser({ 
+      let formattedJoinDate = new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+      if (customJoinDate) {
+        const d = new Date(customJoinDate);
+        formattedJoinDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+
+      const mockUser = { 
+        uid: `mock-${Date.now()}`,
         role: selectedOption.id, 
+        email: email,
+        phone: phone || '+91 00000 00000',
+        joinDate: `Joined ${formattedJoinDate}`,
         name: isSignUp ? fullName : `${selectedOption.title} User` 
-      });
+      };
+      setUser(mockUser);
+      
+      // Also add to local storage so Admin UserManagement sees them!
+      if (isSignUp && selectedOption.id !== 'customer') {
+        try {
+          const existing = JSON.parse(localStorage.getItem('jw_admin_users') || '[]');
+          existing.unshift({
+            id: mockUser.uid,
+            name: mockUser.name,
+            email: mockUser.email,
+            phone: mockUser.phone,
+            role: mockUser.role,
+            department: 'New Staff',
+            status: 'active',
+            avatar: mockUser.name.substring(0, 2).toUpperCase(),
+            avatarColor: '#16a085',
+            lastLogin: 'Just now',
+            joinDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          });
+          localStorage.setItem('jw_admin_users', JSON.stringify(existing));
+        } catch(e) {}
+      }
 
       setIsAuthOpen(false);
       if (selectedOption.path) {
@@ -204,20 +258,56 @@ export default function AuthModal() {
           ) : (
             <form className="auth-form" onSubmit={handleAuthSubmit}>
                {isSignUp && (
-                 <div className="form-group">
-                   <label>Full Name</label>
-                   <input 
-                     type="text" 
-                     required 
-                     placeholder="Enter your full name"
-                     value={fullName}
-                     onChange={e => setFullName(e.target.value)}
-                   />
-                 </div>
+                 <>
+                   <div className="form-group">
+                     <label>Full Name</label>
+                     <input 
+                       type="text" 
+                       required 
+                       placeholder="Enter your full name"
+                       value={fullName}
+                       onChange={e => setFullName(e.target.value)}
+                     />
+                   </div>
+                   
+                   <div className="form-group">
+                     <label>Contact Number (Mobile)</label>
+                     <input 
+                       type="tel" 
+                       required 
+                       placeholder="Enter your contact number"
+                       value={phone}
+                       onChange={e => setPhone(e.target.value)}
+                     />
+                   </div>
+
+                   <div className="form-group">
+                     <label>Date of Joining / Registration</label>
+                     <input 
+                       type="date" 
+                       required 
+                       value={customJoinDate}
+                       onChange={e => setCustomJoinDate(e.target.value)}
+                     />
+                   </div>
+                   
+                   {selectedOption.id === 'customer' && (
+                     <div className="form-group">
+                       <label>Shipping Address</label>
+                       <input 
+                         type="text" 
+                         required 
+                         placeholder="Enter your shipping address"
+                         value={address}
+                         onChange={e => setAddress(e.target.value)}
+                       />
+                     </div>
+                   )}
+                 </>
                )}
                
                <div className="form-group">
-                 <label>Email Address / Username</label>
+                 <label>Email Address</label>
                  <input 
                    type="text" 
                    required 

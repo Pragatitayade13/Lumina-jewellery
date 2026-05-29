@@ -7,16 +7,19 @@ import imgSolitaireRing from '../../assets/products/solitaire_diamond_ring.png';
 import imgDiamondMangalsutra from '../../assets/products/diamond_mangalsutra.png';
 import imgPlatinumRing from '../../assets/products/platinum_solitaire_ring.png';
 import imgMaangTikka from '../../assets/products/bridal_maang_tikka.png';
+import imgSilverChoker from '../../assets/products/oxidised_silver_choker.png';
+import imgDiamondStuds from '../../assets/products/diamond_stud_earrings.png';
+import imgGoldBangles from '../../assets/products/gold_antique_bangles.png';
 
 export const adminUsers = [
-  { id: 1, name: 'Priya Sharma', email: 'priya@luminajewels.com', role: 'superadmin', department: 'Management', status: 'active', lastLogin: '2 min ago', joinDate: '15 Jan 2021', avatar: 'PS', avatarColor: '#C9A84C' },
-  { id: 2, name: 'Rahul Kumar', email: 'rahul@luminajewels.com', role: 'manager', department: 'Products', status: 'active', lastLogin: '1 hr ago', joinDate: '10 Jun 2021', avatar: 'RK', avatarColor: '#9b59b6' },
-  { id: 3, name: 'Anita Patel', email: 'anita@luminajewels.com', role: 'staff', department: 'Orders', status: 'active', lastLogin: '3 hr ago', joinDate: '20 Feb 2022', avatar: 'AP', avatarColor: '#3498db' },
-  { id: 4, name: 'Vikram Singh', email: 'vikram@luminajewels.com', role: 'staff', department: 'Inventory', status: 'inactive', lastLogin: '2 days ago', joinDate: '05 Apr 2022', avatar: 'VS', avatarColor: '#e74c3c' },
-  { id: 5, name: 'Deepa Nair', email: 'deepa@luminajewels.com', role: 'manager', department: 'Marketing', status: 'active', lastLogin: '30 min ago', joinDate: '12 Nov 2021', avatar: 'DN', avatarColor: '#2ecc71' },
-  { id: 6, name: 'Amit Shah', email: 'amit@luminajewels.com', role: 'staff', department: 'Support', status: 'blocked', lastLogin: '1 week ago', joinDate: '08 Jan 2023', avatar: 'AS', avatarColor: '#f39c12' },
-  { id: 7, name: 'Neha Joshi', email: 'neha@luminajewels.com', role: 'staff', department: 'Content', status: 'active', lastLogin: '4 hr ago', joinDate: '22 Mar 2023', avatar: 'NJ', avatarColor: '#1abc9c' },
-  { id: 8, name: 'Karan Mehta', email: 'karan@luminajewels.com', role: 'manager', department: 'Finance', status: 'active', lastLogin: '1 hr ago', joinDate: '09 Sep 2022', avatar: 'KM', avatarColor: '#e67e22' },
+  { id: 1, name: 'Priya Sharma', email: 'priya@luminajewels.com', phone: '+91 9876543211', role: 'superadmin', department: 'Management', status: 'active', lastLogin: '2 min ago', joinDate: '15 Jan 2021', avatar: 'PS', avatarColor: '#C9A84C' },
+  { id: 2, name: 'Rahul Kumar', email: 'rahul@luminajewels.com', phone: '+91 8765432101', role: 'manager', department: 'Products', status: 'active', lastLogin: '1 hr ago', joinDate: '10 Jun 2021', avatar: 'RK', avatarColor: '#9b59b6' },
+  { id: 3, name: 'Anita Patel', email: 'anita@luminajewels.com', phone: '+91 7654321098', role: 'staff', department: 'Orders', status: 'active', lastLogin: '3 hr ago', joinDate: '20 Feb 2022', avatar: 'AP', avatarColor: '#3498db' },
+  { id: 4, name: 'Vikram Singh', email: 'vikram@luminajewels.com', phone: '+91 6543210987', role: 'staff', department: 'Inventory', status: 'inactive', lastLogin: '2 days ago', joinDate: '05 Apr 2022', avatar: 'VS', avatarColor: '#e74c3c' },
+  { id: 5, name: 'Deepa Nair', email: 'deepa@luminajewels.com', phone: '+91 5432109876', role: 'manager', department: 'Marketing', status: 'active', lastLogin: '30 min ago', joinDate: '12 Nov 2021', avatar: 'DN', avatarColor: '#2ecc71' },
+  { id: 6, name: 'Amit Shah', email: 'amit@luminajewels.com', phone: '+91 4321098765', role: 'staff', department: 'Support', status: 'blocked', lastLogin: '1 week ago', joinDate: '08 Jan 2023', avatar: 'AS', avatarColor: '#f39c12' },
+  { id: 7, name: 'Neha Joshi', email: 'neha@luminajewels.com', phone: '+91 3210987654', role: 'staff', department: 'Content', status: 'active', lastLogin: '4 hr ago', joinDate: '22 Mar 2023', avatar: 'NJ', avatarColor: '#1abc9c' },
+  { id: 8, name: 'Karan Mehta', email: 'karan@luminajewels.com', phone: '+91 2109876543', role: 'manager', department: 'Finance', status: 'active', lastLogin: '1 hr ago', joinDate: '09 Sep 2022', avatar: 'KM', avatarColor: '#e67e22' },
 ];
 
 export const products = [
@@ -54,14 +57,17 @@ export const customers = [
 ];
 
 export const inventory = [
-  { id: 1, sku: 'DN-2026-001', name: 'Royal Diamond Necklace Set', category: 'Diamond Jewellery', stock: 12, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '2 hr ago', status: 'ok' },
-  { id: 2, sku: 'BC-2026-014', name: 'Polki Kundan Choker', category: 'Bridal', stock: 5, minStock: 8, warehouse: 'Mumbai HQ', lastUpdated: '1 day ago', status: 'low' },
-  { id: 3, sku: 'DR-2026-007', name: 'Solitaire Diamond Ring', category: 'Diamond Jewellery', stock: 8, minStock: 5, warehouse: 'Delhi Vault', lastUpdated: '3 hr ago', status: 'ok' },
-  { id: 4, sku: 'GE-2026-032', name: 'Gold Jhumka Earrings', category: 'Gold Jewellery', stock: 24, minStock: 10, warehouse: 'Mumbai HQ', lastUpdated: '5 hr ago', status: 'ok' },
-  { id: 5, sku: 'TN-2026-009', name: 'Antique Temple Necklace', category: 'Necklaces', stock: 0, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '2 days ago', status: 'out' },
-  { id: 6, sku: 'GM-2026-021', name: 'Diamond Mangalsutra', category: 'Gold Jewellery', stock: 3, minStock: 8, warehouse: 'Bangalore', lastUpdated: '6 hr ago', status: 'critical' },
-  { id: 7, sku: 'PR-2026-003', name: 'Platinum Solitaire Ring', category: 'Rings', stock: 6, minStock: 5, warehouse: 'Delhi Vault', lastUpdated: '1 day ago', status: 'ok' },
-  { id: 8, sku: 'BM-2026-011', name: 'Bridal Maang Tikka', category: 'Bridal', stock: 9, minStock: 6, warehouse: 'Mumbai HQ', lastUpdated: '4 hr ago', status: 'ok' },
+  { id: 1, sku: 'DN-2026-001', name: 'Royal Diamond Necklace Set', category: 'Diamond Jewellery', subcategory: 'Diamond Necklaces', stock: 12, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '2 hr ago', status: 'ok', image: imgDiamondNecklace },
+  { id: 2, sku: 'BC-2026-014', name: 'Polki Kundan Choker', category: 'Bridal Collections', subcategory: 'Bridal Choker Sets', stock: 5, minStock: 8, warehouse: 'Mumbai HQ', lastUpdated: '1 day ago', status: 'low', image: imgPolkiChoker },
+  { id: 3, sku: 'DR-2026-007', name: 'Solitaire Diamond Ring', category: 'Diamond Jewellery', subcategory: 'Solitaire Collection', stock: 8, minStock: 5, warehouse: 'Delhi Vault', lastUpdated: '3 hr ago', status: 'ok', image: imgSolitaireRing },
+  { id: 4, sku: 'GE-2026-032', name: 'Gold Jhumka Earrings', category: 'Gold Jewellery', subcategory: 'Gold Earrings', stock: 24, minStock: 10, warehouse: 'Mumbai HQ', lastUpdated: '5 hr ago', status: 'ok', image: imgGoldJhumka },
+  { id: 5, sku: 'TN-2026-009', name: 'Antique Temple Necklace', category: 'Necklaces', subcategory: 'Temple Necklaces', stock: 0, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '2 days ago', status: 'out', image: imgTempleNecklace },
+  { id: 6, sku: 'GM-2026-021', name: 'Diamond Mangalsutra', category: 'Gold Jewellery', subcategory: 'Gold Mangalsutra', stock: 3, minStock: 8, warehouse: 'Bangalore', lastUpdated: '6 hr ago', status: 'critical', image: imgDiamondMangalsutra },
+  { id: 7, sku: 'PR-2026-003', name: 'Platinum Solitaire Ring', category: 'Rings', subcategory: 'Platinum Rings', stock: 6, minStock: 5, warehouse: 'Delhi Vault', lastUpdated: '1 day ago', status: 'ok', image: imgPlatinumRing },
+  { id: 8, sku: 'BM-2026-011', name: 'Bridal Maang Tikka', category: 'Bridal Collections', subcategory: 'Bridal Maang Tikka', stock: 9, minStock: 6, warehouse: 'Mumbai HQ', lastUpdated: '4 hr ago', status: 'ok', image: imgMaangTikka },
+  { id: 9, sku: 'SJ-2026-042', name: 'Oxidised Silver Choker', category: 'Silver Jewellery', subcategory: 'Silver Chokers', stock: 15, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '1 hr ago', status: 'ok', image: imgSilverChoker },
+  { id: 10, sku: 'ER-2026-018', name: 'Diamond Stud Earrings', category: 'Earrings', subcategory: 'Diamond Earrings', stock: 20, minStock: 10, warehouse: 'Delhi Vault', lastUpdated: '5 hr ago', status: 'ok', image: imgDiamondStuds },
+  { id: 11, sku: 'BG-2026-005', name: '22K Gold Antique Bangles', category: 'Bangles', subcategory: 'Gold Bangles', stock: 4, minStock: 5, warehouse: 'Bangalore', lastUpdated: '2 hr ago', status: 'low', image: imgGoldBangles },
 ];
 
 export const transactions = [

@@ -41,7 +41,7 @@ export default function ProfileDropdown({ userRole, userName, onLogout, isSuperA
             <div style={{ fontSize: '0.75rem', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{userRole}</div>
           </div>
           <div className="notif-list" style={{ padding: '0.5rem' }}>
-            <div className="notif-item" style={{ cursor: 'pointer', padding: '0.75rem', borderRadius: '6px' }} onClick={() => handleAction('/admin/settings')}>
+            <div className="notif-item" style={{ cursor: 'pointer', padding: '0.75rem', borderRadius: '6px' }} onClick={() => handleAction('/admin/profile')}>
               <User size={16} color="var(--text-secondary)" style={{ marginRight: '0.75rem' }} />
               <div style={{ fontSize: '0.85rem' }}>My Profile</div>
             </div>

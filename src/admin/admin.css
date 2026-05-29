@@ -462,8 +462,8 @@
 
 .btn-gold { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #0D0800; }
 .btn-gold:hover { background: linear-gradient(135deg, var(--gold-light), var(--gold)); transform: translateY(-1px); box-shadow: 0 4px 16px var(--gold-glow); }
-.btn-outline { background: transparent; border: 1px solid var(--admin-border); color: var(--text-secondary); }
-.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+.btn-outline { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--admin-border-bright); color: var(--text-primary); }
+.btn-outline:hover { background: rgba(201, 168, 76, 0.1); border-color: var(--gold); color: var(--gold); }
 .btn-danger { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; }
 .btn-danger:hover { background: rgba(231,76,60,0.2); }
 .btn-success { background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); color: #2ecc71; }
