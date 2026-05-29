@@ -10,6 +10,10 @@ import slide2 from '../../assets/showcase_slide_2.jpg';
 import slide3 from '../../assets/showcase_slide_3.png';
 import slide4 from '../../assets/showcase_slide_4.jpg';
 import slide5 from '../../assets/showcase_slide_5.jpg';
+import slide6 from '../../assets/showcase_slide_6.jpg';
+import slide7 from '../../assets/showcase_slide_7.jpg';
+import slide8 from '../../assets/showcase_slide_8.jpg';
+import slide9 from '../../assets/showcase_slide_9.png';
 import './ProductShowcase.css';
 
 export default function ProductShowcase() {
@@ -37,7 +41,7 @@ export default function ProductShowcase() {
         {/* Sliding Image Gallery */}
         <div className="showcase-slider-container reveal">
           <div className="showcase-slider-track">
-            {[slide1, slide2, slide3, slide4, slide5, slide1, slide2, slide3, slide4, slide5].map((img, i) => (
+            {[slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9, slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9].map((img, i) => (
               <div key={i} className="showcase-slide-item">
                 <img src={img} alt={`Showcase Gallery ${i}`} />
               </div>
