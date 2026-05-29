@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import SmoothScroll from './components/SmoothScroll/SmoothScroll';
-import CustomCursor from './components/CustomCursor/CustomCursor';
 
 import Header from './components/Header/Header';
 import Hero from './components/Hero/Hero';
@@ -26,6 +25,7 @@ import SupportModal from './components/SupportModal/SupportModal';
 
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
+import LegalPage from './pages/LegalPage';
 
 import AdminApp from './admin/AdminApp';
 import CustomerApp from './customer/CustomerApp';
@@ -122,7 +122,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <CustomCursor />
         <BrowserRouter>
           <GlobalModals />
           <Routes>
@@ -133,6 +132,9 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="collections" element={<Catalog />} />
               <Route path="product/:id" element={<ProductDetails />} />
+              <Route path="privacy-policy" element={<LegalPage />} />
+              <Route path="terms-of-service" element={<LegalPage />} />
+              <Route path="cookies" element={<LegalPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

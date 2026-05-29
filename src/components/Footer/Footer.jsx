@@ -1,5 +1,6 @@
 // src/components/Footer/Footer.jsx
 import { Gem, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 
 // Inline SVG social icons (not available in lucide-react@1.16.0)
@@ -129,9 +130,9 @@ export default function Footer() {
               ))}
             </div>
             <div className="footer-legal">
-              <a href="#" className="footer-legal-link">Privacy Policy</a>
-              <a href="#" className="footer-legal-link">Terms of Service</a>
-              <a href="#" className="footer-legal-link">Cookies</a>
+              <Link to="/privacy-policy" className="footer-legal-link">Privacy Policy</Link>
+              <Link to="/terms-of-service" className="footer-legal-link">Terms of Service</Link>
+              <Link to="/cookies" className="footer-legal-link">Cookies</Link>
             </div>
           </div>
         </div>
