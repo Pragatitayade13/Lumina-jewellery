@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
 import ProfileDropdown from '../components/ProfileDropdown/ProfileDropdown';
 import QuickActionsDropdown from '../components/QuickActionsDropdown/QuickActionsDropdown';
+import LanguageSwitcher from '../components/LanguageSwitcher/LanguageSwitcher';
 
 const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
@@ -130,7 +131,7 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
           {navItems.map((item, i) => {
             if (item.section) {
               return <div key={`sec-${i}`} className="nav-section-label">{item.section}</div>;
@@ -201,6 +202,7 @@ export default function AdminLayout({ children }) {
         <div className="topbar-actions">
           <NotificationDropdown userRole={userRole} />
           <QuickActionsDropdown userRole={userRole} />
+          <LanguageSwitcher variant="admin" />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
           <ProfileDropdown userRole={userRole} userName={user?.name || `${portalName} User`} onLogout={handleLogout} isSuperAdmin={isSuperAdmin} />
         </div>

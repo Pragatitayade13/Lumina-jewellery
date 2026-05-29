@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { products } from '../../data/products';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../LanguageSwitcher/LanguageSwitcher';
 import './Header.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -25,6 +27,17 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const { rates } = useRates();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+
+  const navLinks = [
+    { label: t('nav.home'), href: '/' },
+    { label: t('nav.shop'), href: '/collections' },
+    { label: t('nav.collections'), href: '/collections' },
+    { label: t('nav.newArrivals'), href: '/#new-arrivals' },
+    { label: t('nav.bestSellers'), href: '/#best-sellers' },
+    { label: t('nav.aboutUs'), href: '/#brand-story' },
+    { label: t('nav.contactUs'), href: '/#footer' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -47,6 +60,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
     }
   };
 
+  // Translate live rates labels
+  const goldLabel = t('common.gold24k');
+  const silverLabel = t('common.silver');
+  const liveRatesLabel = t('common.liveRates');
+
   return (
     <>
       {/* Contact Strip */}
@@ -58,13 +76,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
           </div>
           <div className="strip-right" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--gold)', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
-              <span className="live-dot" /> Today's Live Rates:
+              <span className="live-dot" /> {liveRatesLabel}:
             </span>
-            <span>Gold (24K) ₹{rates.gold24k}/g</span>
+            <span>{goldLabel} ₹{rates.gold24k}/g</span>
             <span style={{ color: 'var(--gold)', opacity: 0.5 }}>✦</span>
-            <span>Silver ₹{rates.silver}/g</span>
+            <span>{silverLabel} ₹{rates.silver}/g</span>
             <span style={{ color: 'var(--gold)', opacity: 0.5 }}>✦</span>
-            <span>Diamond (Base) ₹{rates.diamond.toLocaleString()}/ct</span>
+            <span>{t('common.diamond')} ₹{rates.diamond.toLocaleString()}/ct</span>
           </div>
         </div>
       </div>
@@ -109,10 +127,10 @@ export default function Header({ onCartClick, onWishlistClick }) {
                 <Search size={14} color="var(--text-muted)" />
                 <input
                   type="text"
-                  placeholder="Search jewellery..."
+                  placeholder={t('common.searchPlaceholder')}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  aria-label="Search products"
+                  aria-label={t('common.search')}
                   id="header-search-input"
                 />
                 <AnimatePresence>
@@ -170,11 +188,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
                 className="login-btn"
                 id="login-btn"
                 onClick={() => setIsAuthOpen(true)}
-                aria-label="Login or Register"
+                aria-label={t('nav.login')}
               >
                 <User size={14} />
-                <span>Login</span>
+                <span>{t('nav.login')}</span>
               </button>
+
+              <LanguageSwitcher variant="storefront" />
 
               <button
                 className={`hamburger${menuOpen ? ' open' : ''}`}

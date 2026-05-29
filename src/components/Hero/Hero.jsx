@@ -1,59 +1,63 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
 import './Hero.css';
 
-const slides = [
-  {
-    id: 1,
-    badge: '✦ New Collection 2026',
-    title: 'Where Gold',
-    titleAccent: 'Tells Stories',
-    subtitle: 'Discover our exquisite gold jewellery collection — crafted by master artisans with generations of expertise.',
-    bg: heroBg1,
-    ctas: [
-      { label: 'Shop Gold', href: '#new-arrivals', primary: true },
-      { label: 'Explore Collection', href: '#categories', primary: false },
-    ],
-  },
-  {
-    id: 2,
-    badge: '✦ Bridal 2026',
-    title: 'Your Perfect',
-    titleAccent: 'Bridal Look',
-    subtitle: 'Complete bridal sets crafted for the most special day of your life. Diamond-studded elegance meets tradition.',
-    bg: heroBg2,
-    ctas: [
-      { label: 'Explore Bridal', href: '#categories', primary: true },
-      { label: 'View Offers', href: '#exclusive-offers', primary: false },
-    ],
-  },
-  {
-    id: 3,
-    badge: '✦ Festive Sale',
-    title: 'Flat 20% Off',
-    titleAccent: 'Festive Collection',
-    subtitle: 'Celebrate every occasion with our handcrafted festive jewellery. Limited time offers with exclusive coupon codes.',
-    bg: heroBg3,
-    ctas: [
-      { label: 'Shop Sale', href: '#exclusive-offers', primary: true },
-      { label: 'New Arrivals', href: '#new-arrivals', primary: false },
-    ],
-  },
-];
-
 const stats = [
-  { value: '25+', label: 'Years of Craft' },
-  { value: '50K+', label: 'Happy Customers' },
-  { value: '10K+', label: 'Unique Designs' },
+  { valueKey: '25+', labelKey: 'hero.stats.yearsOfCraft' },
+  { valueKey: '50K+', labelKey: 'hero.stats.happyCustomers' },
+  { valueKey: '10K+', labelKey: 'hero.stats.uniqueDesigns' },
 ];
 
 export default function Hero() {
   const [active, setActive] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const { t } = useTranslation();
+
+  const slides = [
+    {
+      id: 1,
+      badgeKey: 'hero.slide1.badge',
+      titleKey: 'hero.slide1.title',
+      titleAccentKey: 'hero.slide1.titleAccent',
+      subtitleKey: 'hero.slide1.subtitle',
+      bg: heroBg1,
+      ctas: [
+        { labelKey: 'hero.slide1.cta1', href: '#new-arrivals', primary: true },
+        { labelKey: 'hero.slide1.cta2', href: '#categories', primary: false },
+      ],
+    },
+    {
+      id: 2,
+      badgeKey: 'hero.slide2.badge',
+      titleKey: 'hero.slide2.title',
+      titleAccentKey: 'hero.slide2.titleAccent',
+      subtitleKey: 'hero.slide2.subtitle',
+      bg: heroBg2,
+      ctas: [
+        { labelKey: 'hero.slide2.cta1', href: '#categories', primary: true },
+        { labelKey: 'hero.slide2.cta2', href: '#exclusive-offers', primary: false },
+      ],
+    },
+    {
+      id: 3,
+      badgeKey: 'hero.slide3.badge',
+      titleKey: 'hero.slide3.title',
+      titleAccentKey: 'hero.slide3.titleAccent',
+      subtitleKey: 'hero.slide3.subtitle',
+      bg: heroBg3,
+      ctas: [
+        { labelKey: 'hero.slide3.cta1', href: '#exclusive-offers', primary: true },
+        { labelKey: 'hero.slide3.cta2', href: '#new-arrivals', primary: false },
+      ],
+    },
+  ];
+
+
 
   const next = useCallback(() => setActive(p => (p + 1) % slides.length), []);
   const prev = useCallback(() => setActive(p => (p - 1 + slides.length) % slides.length), []);
@@ -109,21 +113,21 @@ export default function Hero() {
                 className="hero-badge"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                <Sparkles size={12} />{slides[active].badge}
+                <Sparkles size={12} />{t(slides[active].badgeKey)}
               </motion.span>
               
               <motion.h1 
                 className="hero-title"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {slides[active].title}<span>{slides[active].titleAccent}</span>
+                {t(slides[active].titleKey)}<span>{t(slides[active].titleAccentKey)}</span>
               </motion.h1>
               
               <motion.p 
                 className="hero-subtitle"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {slides[active].subtitle}
+                {t(slides[active].subtitleKey)}
               </motion.p>
               
               <motion.div 
@@ -132,12 +136,12 @@ export default function Hero() {
               >
                 {slides[active].ctas.map(cta => (
                   <button
-                    key={cta.label}
+                    key={cta.labelKey}
                     className={`btn ${cta.primary ? 'btn-primary' : 'btn-outline'}`}
                     onClick={() => handleCTA(cta.href)}
-                    id={`hero-cta-${cta.label.replace(/\s+/g, '-').toLowerCase()}`}
+                    id={`hero-cta-${cta.labelKey.replace(/\./g, '-')}`}
                   >
-                    {cta.label}
+                    {t(cta.labelKey)}
                   </button>
                 ))}
               </motion.div>
@@ -147,9 +151,9 @@ export default function Hero() {
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
                 {stats.map(s => (
-                  <div key={s.label}>
-                    <div className="hero-stat-value">{s.value}</div>
-                    <div className="hero-stat-label">{s.label}</div>
+                  <div key={s.labelKey}>
+                    <div className="hero-stat-value">{s.valueKey}</div>
+                    <div className="hero-stat-label">{t(s.labelKey)}</div>
                   </div>
                 ))}
               </motion.div>
@@ -181,7 +185,7 @@ export default function Hero() {
 
       {/* Scroll Indicator */}
       <div className="hero-scroll-indicator">
-        <span>Scroll</span>
+        <span>{t('common.scrollDown')}</span>
         <div className="scroll-line" />
       </div>
     </section>

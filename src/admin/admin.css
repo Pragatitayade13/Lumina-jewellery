@@ -68,7 +68,7 @@
 /* SIDEBAR */
 .admin-sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
   background: var(--admin-sidebar);
   border-right: 1px solid var(--admin-border);
   display: flex;
@@ -78,6 +78,7 @@
   left: 0;
   z-index: 100;
   transition: var(--transition);
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -123,7 +124,10 @@
   padding: 0.875rem 0;
 }
 
-.sidebar-nav::-webkit-scrollbar { width: 0; }
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.3); border-radius: 999px; }
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.6); }
 
 .nav-section-label {
   font-size: 0.58rem;
