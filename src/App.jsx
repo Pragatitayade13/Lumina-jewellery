@@ -12,6 +12,7 @@ import NewArrivals from './components/NewArrivals/NewArrivals';
 import BestSellers from './components/BestSellers/BestSellers';
 import ExclusiveOffers from './components/ExclusiveOffers/ExclusiveOffers';
 import BrandStory from './components/BrandStory/BrandStory';
+import PromoBanner from './components/PromoBanner/PromoBanner';
 import ProductShowcase from './components/ProductShowcase/ProductShowcase';
 import Testimonials from './components/Testimonials/Testimonials';
 import WhyChooseUs from './components/WhyChooseUs/WhyChooseUs';
@@ -74,6 +75,7 @@ function HomePage() {
       <NewArrivals />
       <BestSellers />
       <ExclusiveOffers />
+      <PromoBanner />
       <BrandStory />
       <ProductShowcase />
       <Testimonials />
