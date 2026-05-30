@@ -48,29 +48,6 @@ export default function ProductShowcase() {
             ))}
           </div>
         </div>
-
-        {/* Filter Tabs */}
-        <div className="showcase-filters reveal">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              className={`showcase-filter-btn${filter === cat ? ' active' : ''}`}
-              onClick={() => setFilter(cat)}
-              id={`filter-${cat.toLowerCase()}-btn`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Products Grid */}
-        <div className="products-grid reveal">
-          {filtered.map((product, i) => (
-            <div key={product.id} style={{ transitionDelay: `${i * 0.1}s` }} className="reveal">
-              <ProductCard product={product} onQuickView={setQuickView} />
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );

@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useEffect, useRef } from 'react';
+import Lenis from 'lenis';
 import AdminLayout from './AdminLayout';
+import AdminBackground from './components/AdminBackground';
 import Dashboard from './pages/Dashboard';
 import StaffManagement from './pages/UserManagement';
 import ProductManagement from './pages/ProductManagement';
@@ -38,12 +41,39 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 export default function AdminApp() {
-  const { user } = useApp();
+  const { user, theme } = useApp();
   const role = user?.role || 'superadmin';
+  const lenisRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize Lenis for the admin dashboard
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      direction: 'vertical',
+      gestureDirection: 'vertical',
+      smooth: true,
+      smoothTouch: false,
+      touchMultiplier: 2,
+    });
+    lenisRef.current = lenis;
+
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
 
   return (
-    <div className="admin-root">
-      <AdminLayout>
+    <div className={`admin-root ${theme === 'dark' ? 'dark' : ''}`} data-theme={theme} style={{ position: 'relative', minHeight: '100vh', zIndex: 1 }}>
+      <AdminBackground />
+      <div style={{ position: 'relative', zIndex: 10 }}>
+        <AdminLayout>
         <Routes>
           <Route index element={role === 'delivery' ? <Navigate to="/admin/delivery" replace /> : <Dashboard />} />
           
@@ -85,6 +115,7 @@ export default function AdminApp() {
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </AdminLayout>
+      </div>
     </div>
   );
 }
