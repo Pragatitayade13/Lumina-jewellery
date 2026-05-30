@@ -51,10 +51,10 @@ const galleryItems = [
 ];
 
 const socialLinks = [
-  { icon: <IconInstagram size={20} />, label: 'Instagram', handle: '@luminajewels', color: '#E1306C', href: '#' },
-  { icon: <IconFacebook size={20} />, label: 'Facebook', handle: 'Lumina Jewels', color: '#1877F2', href: '#' },
-  { icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.688 0 1.029-.653 2.568-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.163 0 7.398 2.967 7.398 6.923 0 4.136-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/></svg>, label: 'Pinterest', handle: 'Lumina Jewels', color: '#E60023', href: '#' },
-  { icon: <IconYoutube size={20} />, label: 'YouTube', handle: 'Lumina Jewels TV', color: '#FF0000', href: '#' },
+  { icon: <IconInstagram size={20} />, label: 'Instagram', handle: '@luminajewels', color: '#E1306C', href: 'https://instagram.com/luminajewels' },
+  { icon: <IconFacebook size={20} />, label: 'Facebook', handle: 'Lumina Jewels', color: '#1877F2', href: 'https://facebook.com/luminajewels' },
+  { icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.688 0 1.029-.653 2.568-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.163 0 7.398 2.967 7.398 6.923 0 4.136-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/></svg>, label: 'Pinterest', handle: 'Lumina Jewels', color: '#E60023', href: 'https://pinterest.com/luminajewels' },
+  { icon: <IconYoutube size={20} />, label: 'YouTube', handle: 'Lumina Jewels TV', color: '#FF0000', href: 'https://youtube.com/luminajewels' },
 ];
 
 export default function SocialGallery() {
@@ -75,7 +75,9 @@ export default function SocialGallery() {
           {galleryItems.map((item, i) => (
             <a
               key={item.id}
-              href="#"
+              href="https://instagram.com/luminajewels"
+              target="_blank"
+              rel="noopener noreferrer"
               className="social-item"
               id={`social-item-${item.id}`}
               style={{ animationDelay: `${i * 0.05}s` }}
@@ -101,6 +103,8 @@ export default function SocialGallery() {
               <a
                 key={i}
                 href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="social-link-card"
                 id={`social-link-${s.label.toLowerCase()}`}
                 style={{ '--platform-color': s.color }}

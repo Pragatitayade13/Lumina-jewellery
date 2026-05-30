@@ -46,6 +46,13 @@ const paymentMethods = [
   { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg' }
 ];
 
+const getLinkRoute = (link) => {
+  const shopLinks = ['Gold Jewellery', 'Diamond Jewellery', 'Silver Jewellery', 'Bridal Sets', 'New Arrivals'];
+  if (shopLinks.includes(link)) return '/collections';
+  if (['Returns Policy', 'Size Guide', 'Care Instructions'].includes(link)) return '/privacy-policy';
+  return '/';
+};
+
 export default function Footer() {
   const { setIsSupportOpen } = useApp();
 
@@ -79,9 +86,9 @@ export default function Footer() {
                 </span>
               </div>
               <div className="footer-socials">
-                <a href="#" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
-                <a href="#" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
-                <a href="#" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
+                <a href="https://instagram.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
+                <a href="https://facebook.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
+                <a href="https://youtube.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
               </div>
             </div>
 
@@ -92,18 +99,21 @@ export default function Footer() {
                 <ul className="footer-links-list">
                   {links.map(link => (
                     <li key={link}>
-                      <a 
-                        href="#" 
+                      <Link 
+                        to={getLinkRoute(link)}
                         className="footer-link"
                         onClick={(e) => {
-                          e.preventDefault();
                           if (link === 'Contact Support' || link === 'Track Order') {
+                            e.preventDefault();
                             setIsSupportOpen(true);
+                          } else if (link === 'New Arrivals') {
+                            e.preventDefault();
+                            document.getElementById('new-arrivals')?.scrollIntoView({ behavior: 'smooth' });
                           }
                         }}
                       >
                         <ArrowRight size={12} /> {link}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ul>

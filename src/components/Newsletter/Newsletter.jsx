@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Mail, Send, CheckCircle, Sparkles } from 'lucide-react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Link } from 'react-router-dom';
 import './Newsletter.css';
 
 export default function Newsletter() {
@@ -96,7 +97,7 @@ export default function Newsletter() {
               </div>
               {error && <p className="newsletter-error">{error}</p>}
               <p className="newsletter-privacy">
-                By subscribing, you agree to our <a href="#footer">Privacy Policy</a>. Unsubscribe anytime.
+                By subscribing, you agree to our <Link to="/privacy-policy">Privacy Policy</Link>. Unsubscribe anytime.
               </p>
             </form>
           ) : (
