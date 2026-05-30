@@ -105,7 +105,13 @@ export function useScrollReveal() {
       );
     });
 
+    // Force ScrollTrigger to recalculate positions after DOM updates
+    const timeout = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 100);
+
     return () => {
+      clearTimeout(timeout);
       ScrollTrigger.getAll().forEach(t => t.kill());
     };
   }, [location.pathname]);
