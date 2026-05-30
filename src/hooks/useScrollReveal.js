@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function useScrollReveal() {
+  const location = useLocation();
+
   useEffect(() => {
     // Reveal Fade-up
     const revealElements = document.querySelectorAll('.reveal');
@@ -105,5 +108,5 @@ export function useScrollReveal() {
     return () => {
       ScrollTrigger.getAll().forEach(t => t.kill());
     };
-  }, []);
+  }, [location.pathname]);
 }
