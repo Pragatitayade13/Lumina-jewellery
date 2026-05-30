@@ -16,14 +16,14 @@ const navLinks = [
   { label: 'New Arrivals', href: '/#new-arrivals' },
   { label: 'Best Sellers', href: '/#best-sellers' },
   { label: 'About Us', href: '/#brand-story' },
-  { label: 'Contact Us', href: '/#footer' },
+  { label: 'Contact Us', href: '#support' },
 ];
 
 export default function Header({ onCartClick, onWishlistClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { cartCount, wishlistCount, setIsAuthOpen, theme, toggleTheme } = useApp();
+  const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme } = useApp();
   const { rates } = useRates();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +36,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
     { label: t('nav.newArrivals'), href: '/#new-arrivals' },
     { label: t('nav.bestSellers'), href: '/#best-sellers' },
     { label: t('nav.aboutUs'), href: '/#brand-story' },
-    { label: t('nav.contactUs'), href: '/#footer' },
+    { label: t('nav.contactUs'), href: '#support' },
   ];
 
   useEffect(() => {
@@ -47,6 +47,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
 
   const handleNavClick = (href) => {
     setMenuOpen(false);
+    if (href === '#support') {
+      setIsSupportOpen(true);
+      return;
+    }
+    
     if (href.startsWith('/#')) {
       if (location.pathname !== '/') {
         navigate(href);
@@ -55,7 +60,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
         const el = document.querySelector(id);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }
-    } else {
+    } else if (href !== '#support') {
       navigate(href);
     }
   };
