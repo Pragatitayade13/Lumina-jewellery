@@ -33,7 +33,7 @@ import './Footer.css';
 const footerLinks = {
   Shop: ['Gold Jewellery', 'Diamond Jewellery', 'Silver Jewellery', 'Bridal Sets', 'New Arrivals'],
   Support: ['Track Order', 'Returns Policy', 'Size Guide', 'Care Instructions', 'Contact Support'],
-  Company: ['About Us', 'Our Story', 'Careers', 'Press', 'Blog'],
+  Company: ['About Us', 'Blog'],
 };
 
 const paymentMethods = [
