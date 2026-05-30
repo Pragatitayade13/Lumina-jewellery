@@ -103,7 +103,7 @@ export default function CartModal({ isOpen, onClose }) {
 
   return (
     <div className="auth-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="auth-modal" style={{ width: '500px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+      <div className="auth-modal cart-modal-box" style={{ width: '550px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
         
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -128,28 +128,33 @@ export default function CartModal({ isOpen, onClose }) {
         {/* STEP 0: CART */}
         {step === 0 && (
           <>
-            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
+            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', paddingRight: '0.5rem' }}>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-                  <ShoppingBag size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                  <p>Your cart is empty.</p>
+                <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
+                  <ShoppingBag size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />
+                  <p style={{ fontSize: '1.1rem' }}>Your cart is empty.</p>
+                  <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={onClose}>Continue Shopping</button>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: '8px' }}>
-                    <img src={item.image} alt={item.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px' }} />
+                  <div key={item.id} className="cart-item-card">
+                    <div className="cart-item-image-wrapper">
+                      <img src={item.image} alt={item.name} className="cart-item-image" />
+                    </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.5rem' }}>{item.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button onClick={() => updateQuantity(item.id, -1)} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{item.qty}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={14} /></button>
+                      <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', color: '#fff' }}>{item.name}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '1.1rem' }}>₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
+                      
+                      <div className="cart-qty-selector">
+                        <button className="cart-qty-btn" onClick={() => updateQuantity(item.id, -1)}><Minus size={14} /></button>
+                        <span className="cart-qty-val">{item.qty}</span>
+                        <button className="cart-qty-btn" onClick={() => updateQuantity(item.id, 1)}><Plus size={14} /></button>
                       </div>
-                      <div style={{ fontWeight: 700, color: 'var(--gold)', marginTop: '0.5rem' }}>₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
                     </div>
                     <button 
+                      className="cart-remove-btn"
                       onClick={() => removeFromCart(item.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--status-red)', cursor: 'pointer', padding: '0.5rem', alignSelf: 'flex-start' }}
+                      title="Remove item"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -159,42 +164,42 @@ export default function CartModal({ isOpen, onClose }) {
             </div>
 
             {cart.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div className="cart-summary">
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
                   <div style={{ position: 'relative', flex: 1 }}>
-                    <Tag size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <Tag size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                       type="text" 
                       placeholder="Promo Code (Try LUMINA10)" 
                       value={promoCode}
                       onChange={e => setPromoCode(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem 0.8rem 0.8rem 2rem', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px', fontSize: '0.9rem' }}
+                      style={{ width: '100%', padding: '0.8rem 0.8rem 0.8rem 2.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
                     />
                   </div>
-                  <button className="btn btn-outline btn-sm" onClick={handleApplyPromo}>Apply</button>
+                  <button className="btn btn-outline" style={{ padding: '0 1.5rem' }} onClick={handleApplyPromo}>Apply</button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>Subtotal</span>
-                  <span>₹{subtotal.toLocaleString('en-IN')}</span>
+                  <span style={{ color: '#fff' }}>₹{subtotal.toLocaleString('en-IN')}</span>
                 </div>
                 {discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--status-green)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--status-green)' }}>
                     <span>Discount</span>
                     <span>-₹{discount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
                   <span>Delivery Charges</span>
                   <span>{deliveryFee === 0 ? <span style={{color: 'var(--status-green)'}}>FREE</span> : `₹${deliveryFee}`}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 600, fontSize: '1.3rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                   <span>Total</span>
                   <span style={{ color: 'var(--gold)' }}>₹{total.toLocaleString('en-IN')}</span>
                 </div>
                 
-                <button className="btn btn-gold" style={{ width: '100%', padding: '1rem' }} onClick={proceedToAddress}>
-                  Proceed to Checkout
+                <button className="btn btn-gold cart-btn-checkout" onClick={proceedToAddress}>
+                  Proceed to Checkout <ArrowRight size={18} />
                 </button>
               </div>
             )}
