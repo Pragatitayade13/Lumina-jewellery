@@ -37,13 +37,10 @@ const footerLinks = {
 };
 
 const paymentMethods = [
+  { name: 'UPI', icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg' },
+  { name: 'Razorpay', icon: 'https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg' },
   { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg' },
-  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg' },
-  { name: 'PayPal', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg' },
-  { name: 'Skrill', icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d4/Skrill_Logo.svg' },
-  { name: 'Payoneer', icon: 'https://upload.wikimedia.org/wikipedia/commons/c/c2/Payoneer_logo.svg' },
-  { name: 'Amazon Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Amazon_Pay_logo.svg' },
-  { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg' }
+  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg' }
 ];
 
 const getLinkRoute = (link) => {
