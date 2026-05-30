@@ -21,6 +21,7 @@ export function AppProvider({ children }) {
     try { return localStorage.getItem('jw_theme') || 'dark'; }
     catch { return 'dark'; }
   });
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   useEffect(() => {
     // Listen to Firebase Auth state
@@ -132,6 +133,7 @@ export function AppProvider({ children }) {
       isAuthOpen, setIsAuthOpen,
       isSupportOpen, setIsSupportOpen,
       theme, toggleTheme,
+      quickViewProduct, setQuickViewProduct,
       addToCart, removeFromCart, updateQuantity, clearCart, toggleWishlist, isWishlisted,
       cartCount, wishlistCount, showToast
     }}>

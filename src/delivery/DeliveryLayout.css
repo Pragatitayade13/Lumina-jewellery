@@ -9,7 +9,7 @@
 .delivery-sidebar {
   width: 260px;
   background: #1e293b;
-  color: #fff;
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
@@ -47,7 +47,7 @@
 
 .del-nav-item:hover {
   background: rgba(255,255,255,0.05);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .del-nav-item.active {
@@ -95,7 +95,7 @@
   background: rgba(255,255,255,0.05);
   border: none;
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +137,7 @@
   top: 4px;
   right: 6px;
   background: #ef4444;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.65rem;
   font-weight: bold;
   padding: 0.1rem 0.3rem;

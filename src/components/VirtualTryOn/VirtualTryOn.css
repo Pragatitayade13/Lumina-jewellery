@@ -52,7 +52,7 @@
 }
 
 .vto-close:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .vto-body {
@@ -91,7 +91,7 @@
 
 .vto-loading {
   position: absolute;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.1rem;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }

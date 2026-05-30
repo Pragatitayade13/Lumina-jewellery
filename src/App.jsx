@@ -23,6 +23,7 @@ import AuthModal from './components/AuthModal/AuthModal';
 import CartModal from './components/CartModal/CartModal';
 import WishlistModal from './components/WishlistModal/WishlistModal';
 import SupportModal from './components/SupportModal/SupportModal';
+import QuickViewModal from './components/QuickViewModal/QuickViewModal';
 
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
@@ -43,7 +44,10 @@ function Toast() {
 function GlobalModals() {
   const { isSupportOpen, setIsSupportOpen } = useApp();
   return (
-    <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
+    <>
+      <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
+      <QuickViewModal />
+    </>
   );
 }
 

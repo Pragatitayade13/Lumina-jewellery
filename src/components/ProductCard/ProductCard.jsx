@@ -28,8 +28,8 @@ function getDiscount(price, original) {
   return Math.round(((original - price) / original) * 100);
 }
 
-export default function ProductCard({ product, onQuickView }) {
-  const { addToCart, toggleWishlist, isWishlisted } = useApp();
+export default function ProductCard({ product }) {
+  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct } = useApp();
   const wishlisted = isWishlisted(product.id);
   const original = product.originalPrice || product.mrp || product.price || 0;
   const current = product.price || 0;
@@ -46,26 +46,9 @@ export default function ProductCard({ product, onQuickView }) {
           </div>
         )}
 
-        <div className="product-card-actions">
-          <button
-            className={`product-action-btn${wishlisted ? ' active' : ''}`}
-            onClick={() => toggleWishlist(product)}
-            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            id={`wishlist-btn-${product.id}`}
-          >
-            <Heart size={14} fill={wishlisted ? 'currentColor' : 'none'} />
-          </button>
-          <button
-            className="product-action-btn"
-            onClick={() => onQuickView && onQuickView(product)}
-            aria-label="Quick view"
-            id={`quickview-btn-${product.id}`}
-          >
-            <Eye size={14} />
-          </button>
-        </div>
 
-        <div className="product-quick-view" onClick={() => onQuickView && onQuickView(product)}>
+
+        <div className="product-quick-view" onClick={(e) => { e.stopPropagation(); setQuickViewProduct(product); }}>
           ◈ Quick View
         </div>
       </div>
@@ -87,15 +70,33 @@ export default function ProductCard({ product, onQuickView }) {
               </>
             )}
           </div>
-          <button
-            className="add-to-cart-btn"
-            onClick={() => addToCart(product)}
-            aria-label={`Add ${product.name} to cart`}
-            id={`atc-btn-${product.id}`}
-          >
-            <ShoppingBag size={13} />
-            Add
-          </button>
+          <div className="footer-right-actions">
+            <div className="product-actions-vertical">
+              <button
+                className={`product-action-btn-small${wishlisted ? ' active' : ''}`}
+                onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }}
+                aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+              >
+                <Heart size={14} fill={wishlisted ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                className="product-action-btn-small"
+                onClick={(e) => { e.stopPropagation(); setQuickViewProduct(product); }}
+                aria-label="Quick view"
+              >
+                <Eye size={14} />
+              </button>
+            </div>
+            <button
+              className="add-to-cart-btn"
+              onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+              aria-label={`Add ${product.name} to cart`}
+              id={`atc-btn-${product.id}`}
+            >
+              <ShoppingBag size={13} />
+              Add
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -36,31 +36,14 @@ const footerLinks = {
   Company: ['About Us', 'Our Story', 'Careers', 'Press', 'Blog'],
 };
 
-// Inline SVGs for Payment Methods
-const IconVisa = () => (
-  <svg viewBox="0 0 38 12" height="16" fill="#1434CB">
-    <path d="M14.28.18L9.34 11.83H6.07l-2.4-8.08c-.28-1.28-.59-1.63-1.42-2.07L.13.62.3.06h5.08c.84 0 1.58.55 1.77 1.5l1.32 6.13L11.53.18h2.75zm10.72 3.12c-.08-.85-.82-1.44-2.12-1.44-2.28 0-3.89 1.15-3.9 2.8-.02 1.22 1.15 1.9 2.03 2.3 1.02.46 1.36.75 1.36 1.17-.02.63-.8.92-1.54.92-1.29 0-2-.2-3.08-.66l-.42 1.83c.77.34 2.2.66 3.66.68 2.45 0 4.05-1.15 4.06-2.85.01-1-.62-1.74-1.95-2.35-.9-.45-1.46-.75-1.46-1.22 0-.42.5-.88 1.48-.88.98 0 1.69.2 2.29.5l.39-1.8zm5.72 8.53h2.64l2.5-11.65h-2.58l-2.56 11.65zM22.05.18l-2.5 11.65h2.64L24.7.18h-2.65z"/>
-  </svg>
-);
-
-const IconMastercard = () => (
-  <svg viewBox="0 0 36 24" height="20">
-    <circle cx="12" cy="12" r="12" fill="#EB001B" />
-    <circle cx="24" cy="12" r="12" fill="#F79E1B" />
-    <path d="M18 21.5a12 12 0 000-19 12 12 0 000 19z" fill="#FF5F00" />
-  </svg>
-);
-
-const IconRazorpay = () => (
-  <svg viewBox="0 0 120 26" height="16">
-    <path fill="#02042B" d="M30.74 1.33c-3.15 0-5.74 2.2-6.31 5.17l-1.91 9.94h4.15l1.62-8.38c.18-.94 1.07-1.62 2.1-1.62h2.51l-1.93 10H35.1l3.05-15.11h-7.41zM42.2 11.39c-.16-1.54-.74-2.89-1.86-3.89-1.37-1.23-3.32-1.82-5.48-1.82h-4.08l-2.14 10.76H32.8l1.32-6.57h1.49c1.07 0 1.83.27 2.38.75.48.43.72 1.05.8 1.83l.2 2.12c.11 1.25.7 1.87 1.62 1.87h4.08l-.34-2.55-.15-2.5zM61.42 22.05l5.58-6.1-4.71-4.66h5.36l1.61 1.8 1.96-1.8h5.68l-4.71 4.54 4.87 6.22h-5.44l-2.02-2.83-2.67 2.83h-5.51zM80.05 11.39c-1.46-1.31-3.52-1.82-5.83-1.82h-4.08l-2.14 10.76h4.15l.77-3.83h1.41c2.31 0 4.1-.64 5.31-1.91 1.32-1.39 1.81-3.34 1.38-5.43-.3-1.47-1.07-2.61-2.28-3.71m-2.17 6.23c-.76.74-1.98 1.1-3.41 1.1h-1.56l1.01-5.06h1.56c1.23 0 2.18.24 2.65.67.54.49.8 1.16.8 1.83-.02 1.02-.38 1.57-1.05 2.22zM98.66 11.39c-1.46-1.31-3.52-1.82-5.83-1.82h-4.08l-2.14 10.76h4.15l.77-3.83h1.41c2.31 0 4.1-.64 5.31-1.91 1.32-1.39 1.81-3.34 1.38-5.43-.3-1.47-1.07-2.61-2.28-3.71m-2.17 6.23c-.76.74-1.98 1.1-3.41 1.1h-1.56l1.01-5.06h1.56c1.23 0 2.18.24 2.65.67.54.49.8 1.16.8 1.83-.02 1.02-.38 1.57-1.05 2.22zM107.5 15.65l-2.21-6.08h4.37l1.19 3.86.37 1.39 1.62-5.25h4.28l-6.17 15.42h-4.32l.87-9.34zM16.48 20.25l-2.31 4.31H.9l8.6-14.86h11.96L16.48 20.25z"/>
-  </svg>
-);
-
 const paymentMethods = [
-  { name: 'Razorpay', icon: <IconRazorpay /> },
-  { name: 'Visa', icon: <IconVisa /> },
-  { name: 'Mastercard', icon: <IconMastercard /> }
+  { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg' },
+  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg' },
+  { name: 'PayPal', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg' },
+  { name: 'Skrill', icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d4/Skrill_Logo.svg' },
+  { name: 'Payoneer', icon: 'https://upload.wikimedia.org/wikipedia/commons/c/c2/Payoneer_logo.svg' },
+  { name: 'Amazon Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Amazon_Pay_logo.svg' },
+  { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg' }
 ];
 
 export default function Footer() {
@@ -142,7 +125,7 @@ export default function Footer() {
               <span className="footer-payment-label">We Accept:</span>
               {paymentMethods.map(p => (
                 <div key={p.name} className="footer-payment-icon-wrapper" style={{ background: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', minWidth: '45px' }}>
-                  {p.icon}
+                  <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
                 </div>
               ))}
             </div>

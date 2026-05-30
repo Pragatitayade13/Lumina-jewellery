@@ -6,7 +6,6 @@ import ProductCard from '../ProductCard/ProductCard';
 import './BestSellers.css';
 
 export default function BestSellers() {
-  const [quickView, setQuickView] = useState(null);
   const bestsellers = products.filter(p => p.isBestSeller);
 
   return (
@@ -28,7 +27,7 @@ export default function BestSellers() {
           <div className="products-grid stagger-container">
             {bestsellers.map((product, i) => (
               <div key={product.id} className="stagger-item">
-                <ProductCard product={product} onQuickView={setQuickView} />
+                <ProductCard product={product} />
               </div>
             ))}
           </div>

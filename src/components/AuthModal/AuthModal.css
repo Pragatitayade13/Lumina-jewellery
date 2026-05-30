@@ -121,7 +121,7 @@
 
 .login-option-card:hover .icon-wrapper {
   background: var(--primary-color);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .login-option-title {

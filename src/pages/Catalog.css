@@ -88,7 +88,7 @@
 .search-box input {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-primary);
   padding: 0.8rem;
   width: 100%;
   outline: none;
@@ -158,7 +158,7 @@
 .sort-box select {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-primary);
   outline: none;
   font-size: 0.95rem;
   cursor: pointer;
@@ -166,7 +166,7 @@
 
 .sort-box select option {
   background: #111;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .product-grid {
@@ -256,7 +256,7 @@
 
 .icon-btn:hover {
   background: var(--gold);
-  color: #fff;
+  color: var(--text-dark);
 }
 
 .icon-btn:disabled {
@@ -277,7 +277,7 @@
 }
 
 .product-name {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 500;
   margin-bottom: 0.8rem;
@@ -299,7 +299,7 @@
 }
 
 .empty-state h3 {
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }

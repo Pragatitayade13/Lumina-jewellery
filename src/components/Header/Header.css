@@ -58,7 +58,7 @@
 }
 
 .header.scrolled .header-inner {
-  background: rgba(13, 8, 0, 0.6);
+  background: var(--bg-glass);
   backdrop-filter: blur(20px);
   border-bottom-color: var(--border-bright);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
@@ -273,7 +273,7 @@
   position: fixed;
   inset: 0;
   top: 72px;
-  background: rgba(13, 8, 0, 0.98);
+  background: var(--bg-primary);
   backdrop-filter: blur(20px);
   z-index: 800;
   padding: 2rem;

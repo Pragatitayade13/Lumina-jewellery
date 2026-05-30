@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
@@ -23,7 +23,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { cartCount, wishlistCount, setIsAuthOpen } = useApp();
+  const { cartCount, wishlistCount, setIsAuthOpen, theme, toggleTheme } = useApp();
   const { rates } = useRates();
   const navigate = useNavigate();
   const location = useLocation();
@@ -192,6 +192,15 @@ export default function Header({ onCartClick, onWishlistClick }) {
               >
                 <User size={14} />
                 <span>{t('nav.login')}</span>
+              </button>
+
+              <button
+                className="icon-btn"
+                id="theme-toggle-btn"
+                aria-label="Toggle Theme"
+                onClick={toggleTheme}
+              >
+                {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
               </button>
 
               <LanguageSwitcher variant="storefront" />

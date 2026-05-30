@@ -13,7 +13,7 @@
 }
 
 .pd-not-found h2 {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 2rem;
   margin-bottom: 1rem;
 }
@@ -74,7 +74,7 @@
   top: 1.5rem;
   left: 1.5rem;
   background: var(--status-red);
-  color: #fff;
+  color: var(--text-primary);
   padding: 0.4rem 1rem;
   font-size: 0.85rem;
   font-weight: 600;
@@ -92,7 +92,7 @@
 
 .pd-title {
   font-size: 2.5rem;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 400;
   margin-bottom: 0.5rem;
   line-height: 1.2;
@@ -113,7 +113,7 @@
 
 .pd-price {
   font-size: 2rem;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -160,7 +160,7 @@
 }
 
 .spec-value {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
   text-align: right;
 }
@@ -213,7 +213,7 @@
 }
 
 .pd-feature-item h4 {
-  color: #fff;
+  color: var(--text-primary);
   margin: 0 0 0.3rem 0;
   font-size: 1rem;
 }
@@ -233,7 +233,7 @@
 .pd-reviews h3 {
   font-size: 1.5rem;
   margin-bottom: 1rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .review-stars {
@@ -249,7 +249,7 @@
 
 .review-header {
   margin-bottom: 0.5rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .verified {

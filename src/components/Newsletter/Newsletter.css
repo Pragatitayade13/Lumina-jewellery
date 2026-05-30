@@ -15,7 +15,7 @@
 }
 
 .newsletter-card {
-  background: linear-gradient(135deg, #1a0f00, #0d0800);
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-primary));
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-xl);
   padding: 4rem 3rem;

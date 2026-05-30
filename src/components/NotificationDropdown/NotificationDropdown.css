@@ -28,7 +28,7 @@
   width: 14px;
   height: 14px;
   background: var(--status-red);
-  color: white;
+  color: var(--text-primary);
   border-radius: 50%;
   font-size: 0.6rem;
   display: flex;

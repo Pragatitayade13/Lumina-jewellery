@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: white;
+  color: #fff;
   font-weight: 700;
   font-size: 0.9rem;
 }
@@ -72,7 +72,7 @@
 }
 
 .social-insta-icon {
-  color: white;
+  color: #fff;
   opacity: 0.6;
   margin-top: 0.25rem;
 }

@@ -51,7 +51,7 @@
   --text-primary: #1A1A1A;
   --text-secondary: #4A4A4A;
   --text-muted: #7A7A7A;
-  --text-dark: #FFFFFF;
+  --text-dark: #000000;
   --border: rgba(0, 0, 0, 0.1);
   --border-bright: rgba(201, 168, 76, 0.6);
   --shadow-gold: 0 4px 20px rgba(201, 168, 76, 0.2);
@@ -321,12 +321,12 @@ section {
 
 .badge-hot {
   background: linear-gradient(135deg, #ff4444, #cc0000);
-  color: white;
+  color: var(--text-primary);
 }
 
 .badge-new {
   background: linear-gradient(135deg, #2ecc71, #27ae60);
-  color: white;
+  color: var(--text-primary);
 }
 
 /* =====================================================
