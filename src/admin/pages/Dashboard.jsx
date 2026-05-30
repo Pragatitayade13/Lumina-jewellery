@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import gsap from 'gsap';
 import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { useOrders } from '../../hooks/useOrders';
 import { useCustomers } from '../../hooks/useCustomers';
 import { useProducts } from '../../hooks/useProducts';
-import TrustedBrands from '../components/TrustedBrands';
 
 function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, accentColor }) {
   return (
@@ -202,13 +200,6 @@ export default function Dashboard() {
         revenue: d.revenue + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 50000)
       })));
     }, 5000);
-
-    // GSAP load animation for cards
-    gsap.fromTo(
-      '.admin-card, .stat-card',
-      { opacity: 0, y: 30, scale: 0.98 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.05, ease: 'power3.out' }
-    );
 
     return () => {
       clearInterval(activityInterval);
@@ -448,9 +439,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Trusted Brands Marquee */}
-      <TrustedBrands />
     </div>
   );
 }

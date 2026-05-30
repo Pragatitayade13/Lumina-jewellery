@@ -4,11 +4,11 @@
 .contact-strip {
   background: linear-gradient(135deg, var(--bg-secondary), var(--surface));
   border-bottom: 1px solid var(--border);
-  padding: 0.5rem 2rem;
+  padding: 0.8rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
 }
 
@@ -157,7 +157,7 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1.5rem;
 }
 
 .header-search {

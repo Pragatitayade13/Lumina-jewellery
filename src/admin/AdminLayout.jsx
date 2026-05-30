@@ -10,7 +10,6 @@ import NotificationDropdown from '../components/NotificationDropdown/Notificatio
 import ProfileDropdown from '../components/ProfileDropdown/ProfileDropdown';
 import QuickActionsDropdown from '../components/QuickActionsDropdown/QuickActionsDropdown';
 import LanguageSwitcher from '../components/LanguageSwitcher/LanguageSwitcher';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
@@ -201,14 +200,6 @@ export default function AdminLayout({ children }) {
         </div>
 
         <div className="topbar-actions">
-          <button 
-            className="topbar-btn theme-toggle-btn" 
-            onClick={toggleTheme} 
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            style={{ color: 'var(--gold)' }}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
           <NotificationDropdown userRole={userRole} />
           <QuickActionsDropdown userRole={userRole} />
           <LanguageSwitcher variant="admin" />
@@ -220,18 +211,7 @@ export default function AdminLayout({ children }) {
       {/* ─── Main Content ─── */}
       <main className="admin-main">
         <div className="admin-content">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ width: '100%', height: '100%' }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {children}
         </div>
       </main>
     </div>

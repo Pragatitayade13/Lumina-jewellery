@@ -78,11 +78,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
             <span style={{ color: 'var(--gold)', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
               <span className="live-dot" /> {liveRatesLabel}:
             </span>
-            <span>{goldLabel} ₹{rates.gold24k}/g</span>
+            <span>{goldLabel} <span style={{ color: '#ffffff', fontWeight: 'bold' }}>₹{rates.gold24k}/g</span></span>
             <span style={{ color: 'var(--gold)', opacity: 0.5 }}>✦</span>
-            <span>{silverLabel} ₹{rates.silver}/g</span>
+            <span>{silverLabel} <span style={{ color: '#ffffff', fontWeight: 'bold' }}>₹{rates.silver}/g</span></span>
             <span style={{ color: 'var(--gold)', opacity: 0.5 }}>✦</span>
-            <span>{t('common.diamond')} ₹{rates.diamond.toLocaleString()}/ct</span>
+            <span>{t('common.diamond')} <span style={{ color: '#ffffff', fontWeight: 'bold' }}>₹{rates.diamond.toLocaleString()}/ct</span></span>
           </div>
         </div>
       </div>
