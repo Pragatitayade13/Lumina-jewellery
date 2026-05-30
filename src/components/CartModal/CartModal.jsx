@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import './CartModal.css';
 
@@ -210,29 +210,37 @@ export default function CartModal({ isOpen, onClose }) {
         {step === 1 && (
           <form onSubmit={handleAddressSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Full Name</label>
-                <input type="text" className="form-input" required value={shippingDetails.name} onChange={e => setShippingDetails({...shippingDetails, name: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }} />
+              
+              <div className="checkout-grid-2-col">
+                <div className="checkout-form-group">
+                  <label className="checkout-label">Full Name</label>
+                  <input type="text" className="checkout-input" placeholder="e.g. Ram Kumar" required value={shippingDetails.name} onChange={e => setShippingDetails({...shippingDetails, name: e.target.value})} />
+                </div>
+                <div className="checkout-form-group">
+                  <label className="checkout-label">Phone Number</label>
+                  <input type="tel" className="checkout-input" placeholder="+91 9876543210" required value={shippingDetails.phone} onChange={e => setShippingDetails({...shippingDetails, phone: e.target.value})} />
+                </div>
               </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Email</label>
-                <input type="email" className="form-input" required value={shippingDetails.email} onChange={e => setShippingDetails({...shippingDetails, email: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }} />
+
+              <div className="checkout-form-group">
+                <label className="checkout-label">Email Address</label>
+                <input type="email" className="checkout-input" placeholder="e.g. ram12@gmail.com" required value={shippingDetails.email} onChange={e => setShippingDetails({...shippingDetails, email: e.target.value})} />
               </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Phone Number</label>
-                <input type="tel" className="form-input" required value={shippingDetails.phone} onChange={e => setShippingDetails({...shippingDetails, phone: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }} />
+              
+              <div className="checkout-form-group">
+                <label className="checkout-label">Full Address</label>
+                <textarea className="checkout-input checkout-textarea" placeholder="Flat No., Building Name, Street..." required value={shippingDetails.address} onChange={e => setShippingDetails({...shippingDetails, address: e.target.value})}></textarea>
               </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Full Address</label>
-                <textarea className="form-input" required value={shippingDetails.address} onChange={e => setShippingDetails({...shippingDetails, address: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px', resize: 'vertical', minHeight: '80px' }}></textarea>
-              </div>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>City</label>
-                <input type="text" className="form-input" required value={shippingDetails.city} onChange={e => setShippingDetails({...shippingDetails, city: e.target.value})} style={{ width: '100%', padding: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }} />
+              
+              <div className="checkout-form-group">
+                <label className="checkout-label">City</label>
+                <input type="text" className="checkout-input" placeholder="e.g. Mumbai" required value={shippingDetails.city} onChange={e => setShippingDetails({...shippingDetails, city: e.target.value})} />
               </div>
             </div>
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-               <button type="submit" className="btn btn-gold" style={{ width: '100%', padding: '1rem' }}>Continue to Payment</button>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+               <button type="submit" className="btn btn-gold cart-btn-checkout" style={{ marginTop: 0 }}>
+                 Continue to Payment <ArrowRight size={18} />
+               </button>
             </div>
           </form>
         )}
@@ -241,23 +249,25 @@ export default function CartModal({ isOpen, onClose }) {
         {step === 2 && (
           <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
-               <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Please select your preferred payment method.</p>
+               <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Please select your preferred payment method for a secure transaction.</p>
                
-               {['Credit Card', 'Debit Card', 'UPI', 'Net Banking', 'Digital Wallet', 'Cash on Delivery'].map(method => (
-                 <label key={method} style={{ display: 'block', background: 'var(--surface)', border: `1px solid ${paymentMethod === method ? 'var(--gold)' : 'var(--border-color)'}`, padding: '1rem', borderRadius: '8px', marginBottom: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                   <input type="radio" name="paymentMethod" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} style={{ accentColor: 'var(--gold)', transform: 'scale(1.2)' }} />
-                   <span style={{ fontWeight: 500, color: paymentMethod === method ? 'var(--gold)' : '#fff' }}>{method}</span>
-                 </label>
-               ))}
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                 {['Credit/Debit Card', 'UPI', 'Net Banking', 'Cash on Delivery'].map(method => (
+                   <label key={method} className={`payment-method-label ${paymentMethod === method ? 'active' : ''}`}>
+                     <input type="radio" name="paymentMethod" value={method} checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} className="payment-radio" />
+                     <span className="payment-method-text">{method}</span>
+                   </label>
+                 ))}
+               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.2rem' }}>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.3rem' }}>
                 <span>Amount to Pay</span>
                 <span style={{ color: 'var(--gold)' }}>₹{total.toLocaleString('en-IN')}</span>
               </div>
-               <button type="submit" className="btn btn-gold" style={{ width: '100%', padding: '1rem' }} disabled={isCheckingOut}>
-                 {isCheckingOut ? 'Processing Payment...' : 'Confirm Order & Pay'}
+               <button type="submit" className="btn btn-gold cart-btn-checkout" style={{ marginTop: 0 }} disabled={isCheckingOut}>
+                 {isCheckingOut ? 'Processing Payment...' : 'Confirm Order & Pay'} <CheckCircle size={18} />
                </button>
             </div>
           </form>
