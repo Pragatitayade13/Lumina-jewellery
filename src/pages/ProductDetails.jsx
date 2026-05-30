@@ -11,7 +11,7 @@ export default function ProductDetails() {
   const { id } = useParams();
   const { inventory, loading } = useInventory();
   const { reviews, loading: reviewsLoading, addReview } = useReviews(id);
-  const { addToCart, toggleWishlist, isWishlisted, user, showToast } = useApp();
+  const { addToCart, toggleWishlist, isWishlisted, user, showToast, setIsSupportOpen } = useApp();
   
   const [product, setProduct] = useState(null);
   
@@ -127,7 +127,24 @@ export default function ProductDetails() {
             <div className="pd-specs">
               <div className="spec-row">
                 <span className="spec-label">Approx Weight:</span> 
-                <span className="spec-value">{product.weight || 'Contact for details'}</span>
+                <span className="spec-value">
+                  {product.weight ? product.weight : (
+                    <button 
+                      onClick={() => setIsSupportOpen(true)}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: 'var(--gold)', 
+                        textDecoration: 'underline', 
+                        cursor: 'pointer', 
+                        padding: 0, 
+                        font: 'inherit' 
+                      }}
+                    >
+                      Contact for details
+                    </button>
+                  )}
+                </span>
               </div>
               <div className="spec-row">
                 <span className="spec-label">Material / Purity:</span> 
