@@ -26,6 +26,22 @@ export default function Newsletter() {
         subscribedAt: serverTimestamp(),
         source: 'landing_page',
       });
+      
+      // Trigger the welcome email via the backend
+      try {
+        const response = await fetch('http://localhost:5000/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.toLowerCase().trim() })
+        });
+        const data = await response.json();
+        if (data.previewUrl) {
+          console.log("Email Preview URL (For Dev Testing):", data.previewUrl);
+        }
+      } catch (emailErr) {
+        console.error("Failed to trigger welcome email:", emailErr);
+      }
+
       setSubmitted(true);
     } catch (err) {
       // Firebase not configured: just show success for demo

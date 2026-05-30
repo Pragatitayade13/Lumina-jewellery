@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
 require('./config/firebase'); // Initializes Firebase Admin SDK
 
 const authRoutes = require('./routes/authRoutes');
@@ -23,6 +24,69 @@ app.use('/api/jewellery', productRoutes);
 // Root Endpoint for checking API health
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to LuxeOrbit API (Firebase)' });
+});
+
+// Newsletter Subscription & Email Endpoint
+app.post('/api/subscribe', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  try {
+    let transporter;
+    
+    // Check if real SMTP credentials are provided in .env
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+    } else {
+      // Create a test account using Ethereal Mail for development
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+    }
+
+    const info = await transporter.sendMail({
+      from: '"Lumina Jewels" <hello@luminajewels.com>',
+      to: email,
+      subject: "Welcome to Lumina Jewels! ✨ Here is your ₹500 Voucher",
+      text: "Thank you for subscribing to our newsletter! As promised, here is your ₹500 Welcome Voucher code: LUMINA500",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a0a; color: #fff; padding: 2rem; border-radius: 8px; text-align: center;">
+          <h1 style="color: #c9a84c;">Welcome to Lumina Jewels! ✨</h1>
+          <p style="font-size: 16px; color: #e0e0e0;">Thank you for subscribing to our exclusive newsletter. You will now be the first to know about new collections, festive offers, and more.</p>
+          <div style="background: rgba(201, 168, 76, 0.1); border: 1px dashed #c9a84c; padding: 1.5rem; margin: 2rem 0; border-radius: 8px;">
+            <p style="margin: 0; color: #c9a84c; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Your Welcome Voucher</p>
+            <h2 style="margin: 10px 0 0; color: #fff; font-size: 28px; letter-spacing: 3px;">LUMINA500</h2>
+          </div>
+          <p style="font-size: 14px; color: #888;">Use this code at checkout to get ₹500 off your first purchase.</p>
+        </div>
+      `
+    });
+
+    // If using Ethereal, log the preview URL
+    let previewUrl = null;
+    if (!process.env.SMTP_USER) {
+      previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log("Email Preview URL: %s", previewUrl);
+    }
+
+    res.json({ success: true, message: 'Email sent successfully', previewUrl });
+  } catch (err) {
+    console.error("Email Error:", err);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
 });
 
 // Start Server
