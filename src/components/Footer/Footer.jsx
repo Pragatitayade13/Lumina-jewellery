@@ -37,13 +37,13 @@ const footerLinks = {
 };
 
 const paymentMethods = [
-  { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/200px-Visa_Inc._logo.svg.png' },
-  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/200px-Mastercard-logo.svg.png' },
-  { name: 'PayPal', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/PayPal.svg/200px-PayPal.svg.png' },
-  { name: 'Skrill', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Skrill_Logo.svg/200px-Skrill_Logo.svg.png' },
-  { name: 'Payoneer', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Payoneer_logo.svg/200px-Payoneer_logo.svg.png' },
-  { name: 'Amazon Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Amazon_Pay_logo.svg/200px-Amazon_Pay_logo.svg.png' },
-  { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/200px-Google_Pay_Logo.svg.png' }
+  { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg' },
+  { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg' },
+  { name: 'PayPal', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg' },
+  { name: 'Skrill', icon: 'https://upload.wikimedia.org/wikipedia/commons/d/d4/Skrill_Logo.svg' },
+  { name: 'Payoneer', icon: 'https://upload.wikimedia.org/wikipedia/commons/c/c2/Payoneer_logo.svg' },
+  { name: 'Amazon Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Amazon_Pay_logo.svg' },
+  { name: 'Google Pay', icon: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg' }
 ];
 
 export default function Footer() {

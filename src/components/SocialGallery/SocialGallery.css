@@ -129,11 +129,6 @@
   transition: var(--transition);
 }
 
-.social-link-card:hover .social-link-icon {
-  background: var(--platform-color);
-  color: white;
-}
-
 .social-link-label {
   font-weight: 700;
   color: var(--text-primary);
