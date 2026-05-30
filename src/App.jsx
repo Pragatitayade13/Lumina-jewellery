@@ -141,6 +141,9 @@ export default function App() {
               <Route path="privacy-policy" element={<LegalPage />} />
               <Route path="terms-of-service" element={<LegalPage />} />
               <Route path="cookies" element={<LegalPage />} />
+              <Route path="returns-policy" element={<LegalPage />} />
+              <Route path="size-guide" element={<LegalPage />} />
+              <Route path="care-instructions" element={<LegalPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

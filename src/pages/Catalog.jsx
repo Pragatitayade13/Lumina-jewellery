@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Search, Filter, SlidersHorizontal, ShoppingCart, Heart } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { useApp } from '../context/AppContext';
@@ -10,8 +10,12 @@ export default function Catalog() {
   const { inventory, loading } = useInventory();
   const { addToCart, toggleWishlist, isWishlisted } = useApp();
   
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialCategory = searchParams.get('category') || 'All';
+  
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
+  const [category, setCategory] = useState(initialCategory);
   const [subcategory, setSubcategory] = useState('All');
   const [sort, setSort] = useState('featured');
 
@@ -37,6 +41,15 @@ export default function Catalog() {
     setCategory(cat);
     setSubcategory('All');
   };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const cat = searchParams.get('category');
+    if (cat) {
+      setCategory(cat);
+      setSubcategory('All');
+    }
+  }, [location.search]);
 
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...inventory];

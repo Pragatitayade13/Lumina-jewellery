@@ -47,9 +47,21 @@ const paymentMethods = [
 ];
 
 const getLinkRoute = (link) => {
-  const shopLinks = ['Gold Jewellery', 'Diamond Jewellery', 'Silver Jewellery', 'Bridal Sets', 'New Arrivals'];
-  if (shopLinks.includes(link)) return '/collections';
-  if (['Returns Policy', 'Size Guide', 'Care Instructions'].includes(link)) return '/privacy-policy';
+  const shopLinks = ['Gold Jewellery', 'Diamond Jewellery', 'Silver Jewellery', 'Bridal Sets'];
+  if (shopLinks.includes(link)) {
+    if (link === 'Bridal Sets') return '/collections?category=Bridal%20Jewellery';
+    return `/collections?category=${encodeURIComponent(link)}`;
+  }
+  if (link === 'New Arrivals') return '/#new-arrivals';
+  if (link === 'About Us' || link === 'Our Story') return '/#brand-story';
+  if (link === 'Careers' || link === 'Press') return '/#footer';
+  if (link === 'Returns Policy') return '/returns-policy';
+  if (link === 'Size Guide') return '/size-guide';
+  if (link === 'Care Instructions') return '/care-instructions';
+  if (link === 'Privacy Policy') return '/privacy-policy';
+  if (link === 'Terms of Service') return '/terms-of-service';
+  if (link === 'Cookie Policy' || link === 'Cookies') return '/cookies';
+  if (link === 'Blog') return 'https://youtube.com';
   return '/';
 };
 
@@ -97,25 +109,44 @@ export default function Footer() {
               <div key={section} className="footer-links-col stagger-item">
                 <h4 className="footer-col-title">{section}</h4>
                 <ul className="footer-links-list">
-                  {links.map(link => (
-                    <li key={link}>
-                      <Link 
-                        to={getLinkRoute(link)}
-                        className="footer-link"
-                        onClick={(e) => {
-                          if (link === 'Contact Support' || link === 'Track Order') {
-                            e.preventDefault();
-                            setIsSupportOpen(true);
-                          } else if (link === 'New Arrivals') {
-                            e.preventDefault();
-                            document.getElementById('new-arrivals')?.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }}
-                      >
-                        <ArrowRight size={12} /> {link}
-                      </Link>
-                    </li>
-                  ))}
+                  {links.map(link => {
+                    const route = getLinkRoute(link);
+                    const isExternal = route.startsWith('http');
+                    
+                    if (isExternal) {
+                      return (
+                        <li key={link}>
+                          <a href={route} target="_blank" rel="noopener noreferrer" className="footer-link">
+                            <ArrowRight size={12} /> {link}
+                          </a>
+                        </li>
+                      );
+                    }
+                    
+                    return (
+                      <li key={link}>
+                        <Link 
+                          to={route}
+                          className="footer-link"
+                          onClick={(e) => {
+                            if (link === 'Contact Support' || link === 'Track Order') {
+                              e.preventDefault();
+                              setIsSupportOpen(true);
+                            } else if (route.includes('#')) {
+                              const id = route.split('#')[1];
+                              const el = document.getElementById(id);
+                              if (el) {
+                                e.preventDefault();
+                                el.scrollIntoView({ behavior: 'smooth' });
+                              }
+                            }
+                          }}
+                        >
+                          <ArrowRight size={12} /> {link}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
