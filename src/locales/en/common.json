@@ -1,0 +1,13 @@
+{
+  "greeting": "Hello {{name}}, welcome back!",
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit"
+  },
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "about": "About Us"
+  }
+}

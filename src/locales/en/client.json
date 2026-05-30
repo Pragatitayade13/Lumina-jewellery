@@ -1,0 +1,10 @@
+{
+  "hero": {
+    "title": "Discover Elegance",
+    "subtitle": "Timeless jewellery for every occasion."
+  },
+  "cart": {
+    "empty": "Your cart is empty.",
+    "checkout": "Proceed to Checkout"
+  }
+}
