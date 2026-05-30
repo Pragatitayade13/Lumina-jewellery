@@ -79,9 +79,16 @@ export default function BrandStory() {
               ))}
             </div>
 
-            <button className="btn btn-primary" id="brand-story-btn" style={{ marginTop: '1rem' }}>
+            <a 
+              href="https://en.wikipedia.org/wiki/Jewellery#India" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn btn-gold" 
+              id="brand-story-btn" 
+              style={{ marginTop: '1rem', display: 'inline-block' }}
+            >
               Discover Our Heritage
-            </button>
+            </a>
           </div>
         </div>
       </div>
