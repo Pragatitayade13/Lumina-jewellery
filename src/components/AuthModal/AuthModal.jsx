@@ -10,6 +10,7 @@ import './AuthModal.css';
 export default function AuthModal() {
   const { isAuthOpen, setIsAuthOpen, setUser } = useApp();
   const navigate = useNavigate();
+  const [selectedGroup, setSelectedGroup] = useState(null); // null | 'admin'
   const [selectedOption, setSelectedOption] = useState(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -25,6 +26,7 @@ export default function AuthModal() {
   useEffect(() => {
     if (!isAuthOpen) {
       setTimeout(() => {
+        setSelectedGroup(null);
         setSelectedOption(null);
         setIsSignUp(false);
       }, 300);
@@ -215,17 +217,23 @@ export default function AuthModal() {
         </button>
         
         <div className="auth-modal-header">
-          {selectedOption ? (
+          {selectedOption || selectedGroup === 'admin' ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               <button 
-                onClick={() => setSelectedOption(null)} 
+                onClick={() => {
+                  if (selectedOption) {
+                    setSelectedOption(null);
+                  } else if (selectedGroup === 'admin') {
+                    setSelectedGroup(null);
+                  }
+                }} 
                 className="auth-modal-back"
-                title="Back to options"
+                title="Back"
               >
                 <ArrowLeft size={18} />
               </button>
               <h2 className="auth-modal-title" style={{ margin: 0 }}>
-                {isSignUp ? 'Create Account' : selectedOption.title}
+                {selectedOption ? (isSignUp ? 'Create Account' : selectedOption.title) : 'Select Role'}
               </h2>
             </div>
           ) : (
@@ -237,9 +245,38 @@ export default function AuthModal() {
         </div>
         
         <div className="auth-modal-body">
-          {!selectedOption ? (
+          {!selectedOption && !selectedGroup && (
+            <div className="login-options-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+              <div 
+                className="login-option-card"
+                onClick={() => handleOptionClick(loginOptions.find(o => o.id === 'customer'))}
+              >
+                <div className="icon-wrapper">
+                  <User size={24} />
+                </div>
+                <div>
+                  <div className="login-option-title">Customer Login</div>
+                  <div className="login-option-desc">Access your orders and wishlist</div>
+                </div>
+              </div>
+              <div 
+                className="login-option-card"
+                onClick={() => setSelectedGroup('admin')}
+              >
+                <div className="icon-wrapper">
+                  <Shield size={24} />
+                </div>
+                <div>
+                  <div className="login-option-title">Admin / Staff Login</div>
+                  <div className="login-option-desc">Access employee portals</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!selectedOption && selectedGroup === 'admin' && (
             <div className="login-options-grid">
-              {loginOptions.map(option => (
+              {loginOptions.filter(o => o.id !== 'customer').map(option => (
                 <div 
                   key={option.id} 
                   className="login-option-card"
@@ -255,7 +292,9 @@ export default function AuthModal() {
                 </div>
               ))}
             </div>
-          ) : (
+          )}
+
+          {selectedOption && (
             <form className="auth-form" onSubmit={handleAuthSubmit}>
                {isSignUp && (
                  <>
