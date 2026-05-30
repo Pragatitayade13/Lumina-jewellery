@@ -103,7 +103,7 @@ export default function CartModal({ isOpen, onClose }) {
 
   return (
     <div className="auth-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="auth-modal cart-modal-box" style={{ width: '550px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
         
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

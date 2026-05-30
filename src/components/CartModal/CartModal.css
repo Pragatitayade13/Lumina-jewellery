@@ -6,6 +6,7 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
   border-radius: 12px;
   overflow: hidden;
+  padding: 2.5rem !important;
 }
 
 .cart-item-card {
