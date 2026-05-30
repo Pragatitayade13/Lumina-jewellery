@@ -78,6 +78,10 @@ export default function Footer() {
     '/care-instructions'
   ].includes(location.pathname);
 
+  if (isLegalPage) {
+    return null;
+  }
+
   return (
     <footer className="footer" id="footer">
       <div className="footer-top">
@@ -164,33 +168,30 @@ export default function Footer() {
         </div>
       </div>
 
-      {!isLegalPage && (
-        <>
-          <div className="footer-divider" />
-          <div className="footer-bottom">
-            <div className="container">
-              <div className="footer-bottom-inner">
-                <p className="footer-copy">
-                  © 2026 Lumina Jewels. All rights reserved. Crafted with ♥ in India.
-                </p>
-                <div className="footer-payments">
-                  <span className="footer-payment-label">We Accept:</span>
-                  {paymentMethods.map(p => (
-                    <div key={p.name} className="footer-payment-icon-wrapper" style={{ background: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', minWidth: '45px' }}>
-                      <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
-                    </div>
-                  ))}
+      <div className="footer-divider" />
+
+      <div className="footer-bottom">
+        <div className="container">
+          <div className="footer-bottom-inner">
+            <p className="footer-copy">
+              © 2026 Lumina Jewels. All rights reserved. Crafted with ♥ in India.
+            </p>
+            <div className="footer-payments">
+              <span className="footer-payment-label">We Accept:</span>
+              {paymentMethods.map(p => (
+                <div key={p.name} className="footer-payment-icon-wrapper" style={{ background: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', minWidth: '45px' }}>
+                  <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
                 </div>
-                <div className="footer-legal">
-                  <Link to="/privacy-policy" className="footer-legal-link">Privacy Policy</Link>
-                  <Link to="/terms-of-service" className="footer-legal-link">Terms of Service</Link>
-                  <Link to="/cookies" className="footer-legal-link">Cookies</Link>
-                </div>
-              </div>
+              ))}
+            </div>
+            <div className="footer-legal">
+              <Link to="/privacy-policy" className="footer-legal-link">Privacy Policy</Link>
+              <Link to="/terms-of-service" className="footer-legal-link">Terms of Service</Link>
+              <Link to="/cookies" className="footer-legal-link">Cookies</Link>
             </div>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </footer>
   );
 }
