@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, FileText, Cookie, RefreshCcw, Ruler, Heart, ChevronRight } from 'lucide-react';
+import NewArrivals from '../components/NewArrivals/NewArrivals';
 
 const policies = [
   {
@@ -196,6 +197,11 @@ export default function LegalPage() {
           </main>
         </div>
 
+      </div>
+      
+      {/* New Arrivals Section at the bottom */}
+      <div style={{ marginTop: '5rem' }}>
+        <NewArrivals />
       </div>
     </div>
   );
