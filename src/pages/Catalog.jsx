@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Filter, SlidersHorizontal, ShoppingCart, Heart } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
 import { useApp } from '../context/AppContext';
+import ProductCard from '../components/ProductCard/ProductCard';
 import './Catalog.css';
 
 export default function Catalog() {
@@ -166,29 +167,9 @@ export default function Catalog() {
           ) : (
             <div className="product-grid">
               {filteredAndSortedProducts.map(product => (
-                <Link to={`/product/${product.id}`} key={product.id} className="product-card">
-                  <div className="product-image-wrap">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div className="product-placeholder-img">
-                        {product.name.charAt(0)}
-                      </div>
-                    )}
-                    {product.status === 'out' && <div className="product-badge out-stock">Out of Stock</div>}
-                    <div className="product-actions">
-                      <button className="icon-btn" onClick={(e) => handleAddToWishlist(e, product)} title={isWishlisted(product.id) ? "Remove from Wishlist" : "Add to Wishlist"}>
-                        <Heart size={18} fill={isWishlisted(product.id) ? "var(--gold)" : "none"} color={isWishlisted(product.id) ? "var(--gold)" : "currentColor"} />
-                      </button>
-                      <button className="icon-btn" onClick={(e) => handleAddToCart(e, product)} title="Add to Cart" disabled={product.status === 'out'}><ShoppingCart size={18} /></button>
-                    </div>
-                  </div>
-                  <div className="product-info">
-                    <div className="product-category">{product.category}</div>
-                    <h3 className="product-name">{product.name}</h3>
-                    <div className="product-price">₹{product.price.toLocaleString()}</div>
-                  </div>
-                </Link>
+                <div key={product.id}>
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           )}

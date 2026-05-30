@@ -1,5 +1,5 @@
-// src/components/ProductCard/ProductCard.jsx
 import { Heart, ShoppingBag, Eye, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import './ProductCard.css';
 
@@ -38,7 +38,9 @@ export default function ProductCard({ product }) {
   return (
     <div className="product-card" id={`product-card-${product.id}`}>
       <div className="product-card-img-wrap">
-        <img src={product.image} alt={product.name} className="product-card-img" loading="lazy" />
+        <Link to={`/product/${product.id}`} style={{ display: 'block', width: '100%', height: '100%' }}>
+          <img src={product.image} alt={product.name} className="product-card-img" loading="lazy" />
+        </Link>
         
         {product.badge && (
           <div className="product-card-badge">
@@ -55,7 +57,9 @@ export default function ProductCard({ product }) {
 
       <div className="product-card-body">
         <div className="product-card-category">{product.category}</div>
-        <div className="product-card-name">{product.name}</div>
+        <Link to={`/product/${product.id}`} style={{ textDecoration: 'none' }}>
+          <div className="product-card-name">{product.name}</div>
+        </Link>
         <div className="product-card-rating">
           <StarRating rating={product.rating} />
           <span className="rating-count">({product.reviews})</span>
