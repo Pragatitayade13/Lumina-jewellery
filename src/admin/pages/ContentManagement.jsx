@@ -71,7 +71,7 @@ export default function ContentManagement() {
         </div>
         <div className="page-actions">
           <button className="btn btn-outline" onClick={() => setMediaLibraryOpen(true)}>Media Library</button>
-          <button className="btn btn-gold" onClick={() => setPostModal({ isOpen: true, post: { title: '', author: user?.name || 'Admin', status: 'draft' }, isEditing: false })}>+ Create Post</button>
+          <button className="btn btn-gold" style={{ color: '#000', fontWeight: 'bold' }} onClick={() => setPostModal({ isOpen: true, post: { title: '', author: user?.name || 'Admin', status: 'draft' }, isEditing: false })}>+ Create Post</button>
         </div>
       </div>
 
