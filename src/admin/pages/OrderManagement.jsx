@@ -185,7 +185,7 @@ export default function OrderManagement() {
       // Allow time for rendering before printing
       setTimeout(() => {
         printWindow.print();
-        showToast(\`Successfully generated and opened \${filteredAndSortedOrders.length} invoices.\`);
+        showToast(`Successfully generated and opened ${filteredAndSortedOrders.length} invoices.`);
       }, 500);
       
     } catch (error) {
