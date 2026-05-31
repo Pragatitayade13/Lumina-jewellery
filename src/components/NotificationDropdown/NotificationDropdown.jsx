@@ -102,15 +102,15 @@ export default function NotificationDropdown({ userRole }) {
       </div>
 
       {showAll && (
-        <div className="modal-overlay" onClick={() => setShowAll(false)} style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ background: '#0a0a0a', border: '1px solid var(--gold, #c9a84c)', borderRadius: '12px', width: '100%', maxWidth: '800px', padding: '2rem' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-              <h3 className="modal-title" style={{ color: 'var(--gold, #c9a84c)', fontSize: '1.5rem', margin: 0 }}>All Notifications</h3>
-              <button className="modal-close" onClick={() => setShowAll(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted, #888)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+        <div className="modal-overlay" onClick={() => setShowAll(false)} style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ background: 'rgba(15, 15, 15, 0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(201, 168, 76, 0.1) inset', borderRadius: '16px', width: '100%', maxWidth: '800px', padding: '2rem' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
+              <h3 className="modal-title" style={{ color: 'var(--text-primary)', fontSize: '1.5rem', margin: 0, fontWeight: 600, letterSpacing: '0.01em' }}>All Notifications</h3>
+              <button className="modal-close" onClick={() => setShowAll(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color = '#fff'} onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-                <button className="btn btn-outline" style={{ borderColor: 'var(--gold, #c9a84c)', color: 'var(--gold, #c9a84c)', background: 'transparent', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }} onClick={markAllAsRead}>Mark all as read</button>
+                <button className="btn btn-outline" style={{ borderColor: 'var(--gold, #c9a84c)', color: 'var(--gold, #c9a84c)', background: 'transparent', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }} onClick={markAllAsRead}>Mark all as read</button>
               </div>
               <div className="notif-list-full" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {notifications.map(notif => (
@@ -119,22 +119,23 @@ export default function NotificationDropdown({ userRole }) {
                     className={`notif-item-full ${notif.unread ? 'unread' : ''}`} 
                     onClick={() => markAsRead(notif.id)}
                     style={{ 
-                      display: 'flex', gap: '1.5rem', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
-                      cursor: 'pointer', background: notif.unread ? 'rgba(201,168,76,0.08)' : '#111',
-                      transition: 'background 0.2s, border-color 0.2s'
+                      display: 'flex', gap: '1.5rem', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px',
+                      cursor: 'pointer', background: notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%)' : 'rgba(255,255,255,0.02)',
+                      borderLeft: notif.unread ? '3px solid var(--gold, #c9a84c)' : '1px solid rgba(255,255,255,0.05)',
+                      transition: 'all 0.2s ease'
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--gold, #c9a84c)'}
-                    onMouseOut={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                    onMouseOver={(e) => e.currentTarget.style.background = notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.12) 0%, transparent 100%)' : 'rgba(255,255,255,0.05)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%)' : 'rgba(255,255,255,0.02)'}
                   >
-                    <div className="notif-icon" style={{ width: '48px', height: '48px', flexShrink: 0, background: 'rgba(201,168,76,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold, #c9a84c)' }}>
+                    <div className="notif-icon" style={{ width: '48px', height: '48px', flexShrink: 0, background: 'linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05))', border: '1px solid rgba(201,168,76,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold, #c9a84c)' }}>
                       {notif.icon}
                     </div>
                     <div className="notif-content" style={{ flex: 1 }}>
-                      <div style={{ fontWeight: notif.unread ? '600' : '500', fontSize: '1.1rem', color: '#fff', marginBottom: '0.4rem' }}>{notif.title}</div>
-                      <div style={{ color: '#aaa', fontSize: '0.95rem', lineHeight: '1.5' }}>{notif.desc}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#777', marginTop: '0.8rem' }}>{notif.time}</div>
+                      <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#fff', marginBottom: '0.4rem', letterSpacing: '-0.01em' }}>{notif.title}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', lineHeight: '1.5' }}>{notif.desc}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.8rem', fontWeight: 500 }}>{notif.time}</div>
                     </div>
-                    {notif.unread && <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'var(--gold, #c9a84c)', alignSelf: 'center' }} />}
+                    {notif.unread && <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #ff4757, #ff6b81)', boxShadow: '0 0 8px rgba(255,71,87,0.5)', alignSelf: 'center' }} />}
                   </div>
                 ))}
               </div>
