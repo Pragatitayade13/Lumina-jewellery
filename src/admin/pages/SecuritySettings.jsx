@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Monitor, Smartphone } from 'lucide-react';
+import { Monitor, Smartphone, X, Key, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export default function SecuritySettings() {
@@ -21,9 +21,40 @@ export default function SecuritySettings() {
     { id: 'sg', name: 'SendGrid Email API', env: 'Production', key: 'sg_live_••••••••••••p09', lastUsed: '1 hr ago' }
   ]);
 
+  const [newKeyModal, setNewKeyModal] = useState({ isOpen: false, service: '', env: 'Production' });
+  const [ipModal, setIpModal] = useState({ isOpen: false, ip: '' });
+
   const handleToggle = (key) => {
+    if (key === 'ipWhitelist' && !policies.ipWhitelist) {
+      setIpModal({ isOpen: true, ip: '' });
+      return; // Will be toggled on save
+    }
     setPolicies({ ...policies, [key]: !policies[key] });
     showToast(`Security policy updated successfully.`);
+  };
+
+  const handleSaveIp = () => {
+    if (!ipModal.ip) return;
+    setPolicies({ ...policies, ipWhitelist: true });
+    setIpModal({ isOpen: false, ip: '' });
+    showToast(`IP ${ipModal.ip} has been whitelisted.`);
+  };
+
+  const handleGenerateKey = (e) => {
+    e.preventDefault();
+    if (!newKeyModal.service) return;
+    const prefix = newKeyModal.service.substring(0,3).toLowerCase();
+    const envStr = newKeyModal.env === 'Production' ? 'live' : 'test';
+    const newKey = {
+      id: Date.now().toString(),
+      name: newKeyModal.service,
+      env: newKeyModal.env,
+      key: `${prefix}_${envStr}_••••••••••••${Math.floor(100 + Math.random() * 899)}`,
+      lastUsed: 'Never'
+    };
+    setApiKeys([newKey, ...apiKeys]);
+    showToast(`New API Key generated for ${newKeyModal.service}`);
+    setNewKeyModal({ isOpen: false, service: '', env: 'Production' });
   };
 
   const handleForceLogout = () => {
@@ -126,7 +157,7 @@ export default function SecuritySettings() {
               <div className="card-title">API Keys & Integrations</div>
               <div className="card-subtitle">Keys for payment gateways, SMS providers, and external services</div>
             </div>
-            <button className="btn btn-sm btn-gold">+ Generate New Key</button>
+            <button className="btn btn-sm btn-gold" style={{ color: '#000', fontWeight: 'bold' }} onClick={() => setNewKeyModal({ isOpen: true, service: '', env: 'Production' })}>+ Generate New Key</button>
          </div>
 
          <div className="admin-table-wrap">
@@ -156,6 +187,60 @@ export default function SecuritySettings() {
             </table>
          </div>
       </div>
+
+      {newKeyModal.isOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-box" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Key size={18} color="var(--gold)" /> Generate API Key</h3>
+              <button className="modal-close" onClick={() => setNewKeyModal({ isOpen: false, service: '', env: 'Production' })}><X size={16} /></button>
+            </div>
+            <form onSubmit={handleGenerateKey}>
+              <div className="modal-body">
+                <div className="form-group mb-1">
+                  <label>Service Name / Identifier</label>
+                  <input type="text" className="form-input" required placeholder="e.g. Analytics Webhook" value={newKeyModal.service} onChange={e => setNewKeyModal({...newKeyModal, service: e.target.value})} />
+                </div>
+                <div className="form-group mb-1">
+                  <label>Environment</label>
+                  <select className="form-input" value={newKeyModal.env} onChange={e => setNewKeyModal({...newKeyModal, env: e.target.value})}>
+                    <option value="Production">Production (Live)</option>
+                    <option value="Development">Development (Test)</option>
+                  </select>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                  Warning: The raw key will only be shown once upon generation. Please store it securely in your secrets manager.
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setNewKeyModal({ isOpen: false, service: '', env: 'Production' })}>Cancel</button>
+                  <button type="submit" className="btn btn-gold" style={{ color: '#000', fontWeight: 'bold' }}>Generate Key</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {ipModal.isOpen && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-box" style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShieldAlert size={18} color="var(--status-green)" /> Configure IP Whitelist</h3>
+              <button className="modal-close" onClick={() => setIpModal({ isOpen: false, ip: '' })}><X size={16} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Authorized Office IP Address</label>
+                <input type="text" className="form-input" placeholder="e.g. 192.168.1.1" value={ipModal.ip} onChange={e => setIpModal({...ipModal, ip: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                <button className="btn btn-outline" onClick={() => setIpModal({ isOpen: false, ip: '' })}>Cancel</button>
+                <button className="btn btn-gold" onClick={handleSaveIp} style={{ color: '#000', fontWeight: 'bold' }}>Enable Whitelist</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
