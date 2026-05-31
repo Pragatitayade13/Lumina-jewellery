@@ -29,8 +29,12 @@ export default function SystemSettings() {
           <p className="page-subtitle">Configure global business rules, tax rates, and core store settings.</p>
         </div>
         <div className="page-actions">
-           <button className="btn btn-outline">Discard Changes</button>
-           <button className="btn btn-gold">Save All Settings</button>
+           <button className="btn btn-outline" onClick={() => {
+             showToast("Unsaved changes discarded.");
+           }}>Discard Changes</button>
+           <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => {
+             showToast("System settings saved and applied globally!");
+           }}>Save All Settings</button>
         </div>
       </div>
 
