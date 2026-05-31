@@ -94,9 +94,100 @@ export default function OrderManagement() {
     showToast(`Initiating invoice generation for ${filteredAndSortedOrders.length} orders...`);
     
     try {
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      showToast(`Successfully generated and dispatched ${filteredAndSortedOrders.length} invoices.`);
+      const printWindow = window.open('', '_blank');
+      let invoicesHtml = '';
+      
+      filteredAndSortedOrders.forEach((order, index) => {
+        invoicesHtml += `
+          <div class="invoice-container" style="${index < filteredAndSortedOrders.length - 1 ? 'page-break-after: always; margin-bottom: 4rem;' : ''}">
+            <div class="header">
+              <div>
+                <h2>LUMINA JEWELS</h2>
+                <div style="font-size: 0.8rem; color: #555;">Tax Invoice / Bill of Supply</div>
+              </div>
+              <div style="text-align: right;">
+                <strong style="font-size: 1.2rem;">${order.id}</strong><br/>
+                <span style="font-size: 0.8rem; color: #555;">Date: ${order.date}</span>
+              </div>
+            </div>
+            
+            <div class="details">
+              <div>
+                <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Billed To:</strong><br/>
+                <strong>${order.customer}</strong><br/>
+                ${order.city}<br/>
+                India
+              </div>
+              <div>
+                <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Payment Status:</strong><br/>
+                <strong>${order.paymentMethod}</strong><br/>
+                ${order.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Item Description</th>
+                  <th style="text-align: center;">Qty</th>
+                  <th style="text-align: right;">Total (INR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>${order.product}</strong><br/><span style="color: #666; font-size: 0.75rem;">HSN Code: 7113</span></td>
+                  <td style="text-align: center;">1</td>
+                  <td style="text-align: right;">₹${(order.amount * 0.97).toLocaleString('en-IN')}</td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="text-align: right; color: #666;">GST (3%)</td>
+                  <td style="text-align: right;">₹${(order.amount * 0.03).toLocaleString('en-IN')}</td>
+                </tr>
+                <tr style="border-top: 2px solid #000;">
+                  <td colspan="2" style="text-align: right; font-weight: bold; padding: 0.75rem 0.5rem;">Grand Total</td>
+                  <td style="text-align: right; font-weight: bold; font-size: 1.1rem; padding: 0.75rem 0.5rem;">₹${order.amount?.toLocaleString('en-IN')}</td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <div class="footer">
+              This is a computer generated invoice and does not require a physical signature.<br/>
+              Lumina Jewels, Mumbai, Maharashtra 400001
+            </div>
+          </div>
+        `;
+      });
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Bulk Invoices - ${filteredAndSortedOrders.length} Orders</title>
+            <style>
+              body { font-family: monospace; color: #000; padding: 2rem; max-width: 600px; margin: 0 auto; }
+              h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.8rem; }
+              .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 2rem; }
+              .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; font-size: 0.85rem; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.85rem; }
+              th, td { padding: 0.5rem; text-align: left; }
+              th { background: #f5f5f5; border-bottom: 1px solid #ddd; }
+              td { border-bottom: 1px solid #eee; }
+              .footer { text-align: center; color: #888; font-size: 0.7rem; margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+            </style>
+          </head>
+          <body>
+            ${invoicesHtml}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Allow time for rendering before printing
+      setTimeout(() => {
+        printWindow.print();
+        showToast(\`Successfully generated and opened \${filteredAndSortedOrders.length} invoices.\`);
+      }, 500);
+      
     } catch (error) {
       showToast("Failed to generate invoices.");
     }
