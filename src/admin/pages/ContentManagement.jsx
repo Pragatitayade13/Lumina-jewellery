@@ -100,7 +100,7 @@ export default function ContentManagement() {
         </div>
         <div className="page-actions">
           <button className="btn btn-outline" onClick={() => setMediaLibraryOpen(true)}>Media Library</button>
-          <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => setPostModal({ isOpen: true, post: { title: '', author: user?.name || 'Admin', status: 'draft' }, isEditing: false })}>+ Create Post</button>
+          <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => setPostModal({ isOpen: true, post: { title: '', author: user?.name || 'Admin', status: 'draft' }, isEditing: false })}>+ Add Blog</button>
         </div>
       </div>
 
@@ -159,7 +159,7 @@ export default function ContentManagement() {
 
       <div className="admin-card">
         <div className="card-header">
-          <div className="card-title">Blog & Articles</div>
+          <div className="card-title">Manage Blogs & Articles</div>
           <div className="filter-search" style={{ margin: 0, width: '250px' }}>
             <Search size={14} />
             <input placeholder="Search articles..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
