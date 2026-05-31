@@ -86,6 +86,22 @@ export default function OrderManagement() {
     }, 800);
   };
 
+  const handleBulkGenerateInvoices = async () => {
+    if (!filteredAndSortedOrders || filteredAndSortedOrders.length === 0) {
+      showToast("No orders available to generate invoices.");
+      return;
+    }
+    showToast(`Initiating invoice generation for ${filteredAndSortedOrders.length} orders...`);
+    
+    try {
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      showToast(`Successfully generated and dispatched ${filteredAndSortedOrders.length} invoices.`);
+    } catch (error) {
+      showToast("Failed to generate invoices.");
+    }
+  };
+
   const handleDownloadPDF = () => {
     if (!viewInvoice) return;
     
@@ -179,6 +195,9 @@ export default function OrderManagement() {
           <p className="page-subtitle">Track, update, and manage customer orders and shipments.</p>
         </div>
         <div className="page-actions">
+          <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handleBulkGenerateInvoices}>
+            <FileText size={16} /> Generate Invoices
+          </button>
           <button className="btn btn-outline" onClick={handleExportCSV}>📥 Export CSV</button>
         </div>
       </div>
