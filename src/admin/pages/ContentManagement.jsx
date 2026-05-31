@@ -1,7 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { blogPosts } from '../data/mockData';
 import { Image, FileText, Mail, Edit2, Trash2, Search, X, Save } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+import img1 from '../../assets/product_1_1779901454806.png';
+import img2 from '../../assets/product_2_1779901470655.png';
+import img3 from '../../assets/product_3_1779901487427.png';
+import img4 from '../../assets/product_4_1779901505569.png';
+import img5 from '../../assets/product_5_1779901527769.png';
+import img6 from '../../assets/hero_bridal_1779901185653.png';
+import img7 from '../../assets/hero_festive_1779901227607.png';
+import img8 from '../../assets/hero_gold_promo_1779901152036.png';
 
 export default function ContentManagement() {
   const { showToast, user } = useApp();
@@ -11,6 +20,7 @@ export default function ContentManagement() {
   // Modals state
   const [templateModal, setTemplateModal] = useState({ isOpen: false, name: '', content: '' });
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState([img1, img2, img3, img4, img5, img6, img7, img8]);
   const [bannerModal, setBannerModal] = useState({ isOpen: false, title: '', subtitle: '' });
   const [legalModal, setLegalModal] = useState({ isOpen: false, pageName: '', content: '' });
   const [postModal, setPostModal] = useState({ isOpen: false, post: null, isEditing: false });
@@ -59,6 +69,25 @@ export default function ContentManagement() {
   const handleDeletePost = (id) => {
     setPosts(posts.filter(p => p.id !== id));
     showToast("Post moved to trash.");
+  };
+
+  const fileInputRef = useRef(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("File is too large. Max size is 5MB.", "error");
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      setMediaFiles([url, ...mediaFiles]);
+      showToast("File successfully uploaded to Media Library!");
+    }
   };
 
   const filteredPosts = posts.filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -220,16 +249,22 @@ export default function ContentManagement() {
               <button className="modal-close" onClick={() => setMediaLibraryOpen(false)}><X size={16} /></button>
             </div>
             <div className="modal-body">
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Supported formats: <strong style={{ color: 'var(--text-primary)' }}>JPG, PNG, WEBP</strong>. Max size: <strong style={{ color: 'var(--text-primary)' }}>5MB</strong> per file.</span>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
-                {[1,2,3,4,5,6,7,8].map(i => (
-                  <div key={i} style={{ aspectRatio: '1', background: 'linear-gradient(45deg, #111, #222)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                    <Image size={24} opacity={0.5} />
+                {mediaFiles.map((src, i) => (
+                  <div key={i} style={{ aspectRatio: '1', background: 'var(--surface-light)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <img src={src} alt={`media-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', alignItems: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>8 files (24.5 MB used)</div>
-                <button className="btn btn-gold" style={{ color: '#000', fontWeight: 'bold' }}>Upload New File</button>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{mediaFiles.length} files ({(mediaFiles.length * 3.2).toFixed(1)} MB used)</div>
+                <div>
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileChange} />
+                  <button className="btn btn-gold" onClick={handleUploadClick} style={{ color: '#000', fontWeight: 'bold' }}>Upload New File</button>
+                </div>
               </div>
             </div>
           </div>
