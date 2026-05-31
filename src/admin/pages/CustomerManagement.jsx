@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { Star, Search, X, Edit, Shield, Save } from 'lucide-react';
 import { useCustomers } from '../../hooks/useCustomers';
+import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
 
 export default function CustomerManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('Customer Type');
   const { customers, loading, updateCustomerStatus } = useCustomers();
+  const { orders } = useOrders();
   const { showToast } = useApp();
   
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editStatus, setEditStatus] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Loyalty Management State
+  const [loyaltyInput, setLoyaltyInput] = useState('');
 
   // Dynamic KPIs (Only count actual customers)
   const actualCustomers = customers.filter(c => c.role === 'customer');
@@ -55,6 +60,23 @@ export default function CustomerManagement() {
       showToast('Failed to update status', 'error');
     }
     setIsSaving(false);
+  };
+
+  const handleUpdateLoyalty = (action) => {
+    const amount = parseInt(loyaltyInput, 10);
+    if (!amount || amount <= 0) {
+      showToast("Please enter a valid amount.", "error");
+      return;
+    }
+    
+    // In a real app, we would call an API here. Simulating update:
+    const newPoints = action === 'add' 
+      ? (selectedCustomer.loyaltyPoints || 0) + amount 
+      : Math.max(0, (selectedCustomer.loyaltyPoints || 0) - amount);
+      
+    setSelectedCustomer(prev => ({...prev, loyaltyPoints: newPoints}));
+    showToast(`${amount} points ${action === 'add' ? 'added to' : 'deducted from'} ${selectedCustomer.name}'s account.`);
+    setLoyaltyInput('');
   };
 
   return (
@@ -197,6 +219,56 @@ export default function CustomerManagement() {
                   <div style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Star size={18} fill="var(--gold)" color="var(--gold)" /> {(selectedCustomer.loyaltyPoints || 0).toLocaleString()}
                   </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                  <Star size={16} color="var(--gold)" /> Manage Loyalty Program
+                </h4>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label>Points to Add/Deduct</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      placeholder="e.g. 500" 
+                      value={loyaltyInput}
+                      onChange={(e) => setLoyaltyInput(e.target.value)}
+                    />
+                  </div>
+                  <button className="btn btn-outline" style={{ height: '42px', borderColor: 'var(--status-green)', color: 'var(--status-green)' }} onClick={() => handleUpdateLoyalty('add')}>+ Add Points</button>
+                  <button className="btn btn-outline" style={{ height: '42px', borderColor: 'var(--status-red)', color: 'var(--status-red)' }} onClick={() => handleUpdateLoyalty('deduct')}>- Deduct Points</button>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Recent Purchase History</h4>
+                <div className="admin-table-wrap" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  <table className="admin-table" style={{ fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders && orders.filter(o => o.customer === selectedCustomer.name).length > 0 ? (
+                        orders.filter(o => o.customer === selectedCustomer.name).map((o, i) => (
+                          <tr key={i}>
+                            <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{o.id}</td>
+                            <td>{o.product}</td>
+                            <td>₹{(o.amount || 0).toLocaleString('en-IN')}</td>
+                            <td><span className={`badge badge-${o.status === 'delivered' ? 'active' : 'pending'}`}>{o.status.toUpperCase()}</span></td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>No recent purchases found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
