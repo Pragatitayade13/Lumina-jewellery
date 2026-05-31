@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { adminUsers } from '../data/mockData';
-import { Info, Edit, Eye, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock } from 'lucide-react';
+import { Info, Edit, Eye, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText } from 'lucide-react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useApp } from '../../context/AppContext';
@@ -111,6 +111,28 @@ export default function StaffManagement() {
     user.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleDownloadAttendance = () => {
+    let csv = 'Staff Name,Department,Date,Status,Check-In,Check-Out\n';
+    const dateStr = new Date().toLocaleDateString('en-GB');
+    
+    users.filter(u => u.role !== 'superadmin').forEach((u, i) => {
+      const statuses = ['Present', 'Present', 'Present', 'Late', 'Absent'];
+      const status = statuses[(u.name.length + i) % statuses.length];
+      const checkIn = status === 'Absent' ? '--' : (status === 'Late' ? '09:45 AM' : '08:55 AM');
+      const checkOut = status === 'Absent' ? '--' : (status === 'Late' ? '06:00 PM' : '05:00 PM');
+      
+      csv += `"${u.name}","${u.department}","${dateStr}","${status}","${checkIn}","${checkOut}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Staff_Attendance_Report_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast("Attendance report downloaded successfully.");
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -124,6 +146,7 @@ export default function StaffManagement() {
       <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflowX: 'auto' }}>
         {[
           { id: 'directory', label: 'Staff Directory', icon: <Search size={16} /> },
+          { id: 'attendance', label: 'Attendance Records', icon: <FileText size={16} /> },
           { id: 'tasks', label: 'Task Assignments', icon: <CheckSquare size={16} /> },
           { id: 'schedules', label: 'Schedules & Shifts', icon: <Calendar size={16} /> },
           { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> },
@@ -214,6 +237,55 @@ export default function StaffManagement() {
                     </tr>
                   ))
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Attendance */}
+      {activeTab === 'attendance' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Daily Attendance Records</div>
+            <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handleDownloadAttendance}>
+              <Download size={16} /> Download Report
+            </button>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Department</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Check-In</th>
+                  <th>Check-Out</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => u.role !== 'superadmin').map((u, i) => {
+                  const statuses = ['Present', 'Present', 'Present', 'Late', 'Absent'];
+                  const status = statuses[(u.name.length + i) % statuses.length];
+                  const checkIn = status === 'Absent' ? '--' : (status === 'Late' ? '09:45 AM' : '08:55 AM');
+                  const checkOut = status === 'Absent' ? '--' : (status === 'Late' ? '06:00 PM' : '05:00 PM');
+                  
+                  return (
+                    <tr key={u.id}>
+                      <td style={{ fontWeight: 600 }}>{u.name}</td>
+                      <td>{u.department}</td>
+                      <td>{new Date().toLocaleDateString('en-GB')}</td>
+                      <td>
+                        <span className={`badge ${status === 'Present' ? 'badge-active' : status === 'Late' ? 'badge-pending' : 'badge-danger'}`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td>{checkIn}</td>
+                      <td>{checkOut}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
