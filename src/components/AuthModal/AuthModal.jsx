@@ -97,7 +97,14 @@ export default function AuthModal() {
             });
             setUser({ uid: userCredential.user.uid, email, role: selectedOption.id, name: userCredential.user.displayName || 'User' });
           } else {
-            setUser({ uid: userCredential.user.uid, email, ...userDoc.data() });
+            const data = userDoc.data();
+            
+            // SECURITY CHECK: Prevent customers from logging into admin/staff portals
+            if (selectedOption.id !== 'customer' && data.role === 'customer') {
+              throw new Error("Access Denied. This account does not have administrative privileges.");
+            }
+            
+            setUser({ uid: userCredential.user.uid, email, ...data });
           }
         }
         

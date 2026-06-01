@@ -5,6 +5,12 @@ import p3 from '../assets/product_3_1779901487427.png';
 import p4 from '../assets/product_4_1779901505569.png';
 import p5 from '../assets/product_5_1779901527769.png';
 
+import m1 from '../assets/products/mens_platinum_band_1780299606035.png';
+import m2 from '../assets/products/mens_gold_chain_1780299628514.png';
+import m3 from '../assets/products/mens_cufflinks_1780299644045.png';
+import m4 from '../assets/products/mens_gold_kada_1780299659696.png';
+import m5 from '../assets/products/mens_om_pendant_1780299676039.png';
+
 export const products = [
   {
     id: 'prod-1',
@@ -269,6 +275,91 @@ export const products = [
     weight: '8g',
     material: 'Platinum, Diamond',
   },
+  {
+    id: 'prod-17',
+    name: 'Classic Men\'s Platinum Band',
+    category: 'Men\'s Jewellery',
+    subcategory: 'Wedding Bands',
+    price: 45000,
+    originalPrice: 50000,
+    rating: 4.9,
+    reviews: 120,
+    badge: 'Classic',
+    image: m1,
+    isNew: false,
+    isBestSeller: true,
+    description: 'A timeless platinum wedding band for men, offering unmatched durability and style.',
+    weight: '8g',
+    material: 'Platinum',
+  },
+  {
+    id: 'prod-18',
+    name: 'Gold Cuban Link Chain',
+    category: 'Men\'s Jewellery',
+    subcategory: 'Chains',
+    price: 155000,
+    originalPrice: 175000,
+    rating: 4.8,
+    reviews: 95,
+    badge: 'Trending',
+    image: m2,
+    isNew: false,
+    isBestSeller: true,
+    description: 'Heavy 22K gold Cuban link chain for a bold, statement look.',
+    weight: '45g',
+    material: '22K Gold',
+  },
+  {
+    id: 'prod-19',
+    name: 'Diamond Studded Cufflinks',
+    category: 'Men\'s Jewellery',
+    subcategory: 'Cufflinks',
+    price: 85000,
+    originalPrice: 95000,
+    rating: 5.0,
+    reviews: 34,
+    badge: 'Luxury',
+    image: m3,
+    isNew: true,
+    isBestSeller: false,
+    description: 'Elegant diamond-studded cufflinks set in 18K white gold.',
+    weight: '12g',
+    material: '18K White Gold, Diamond',
+  },
+  {
+    id: 'prod-20',
+    name: 'Traditional Gold Kada',
+    category: 'Men\'s Jewellery',
+    subcategory: 'Kada',
+    price: 120000,
+    originalPrice: 135000,
+    rating: 4.7,
+    reviews: 67,
+    badge: 'Bestseller',
+    image: m4,
+    isNew: false,
+    isBestSeller: true,
+    description: 'A solid gold traditional Punjabi Kada with intricate laser engraving.',
+    weight: '30g',
+    material: '22K Gold',
+  },
+  {
+    id: 'prod-21',
+    name: 'Om Religious Pendant',
+    category: 'Men\'s Jewellery',
+    subcategory: 'Religious Jewellery',
+    price: 25000,
+    originalPrice: 30000,
+    rating: 4.9,
+    reviews: 210,
+    badge: 'Popular',
+    image: m5,
+    isNew: false,
+    isBestSeller: true,
+    description: 'Divine Om pendant crafted in 18K gold with subtle diamond accents.',
+    weight: '5g',
+    material: '18K Gold, Diamond',
+  },
 ];
 
 export const categories = [
@@ -280,4 +371,5 @@ export const categories = [
   { id: 'cat-6', name: 'Earrings', icon: '◉', count: '920 pieces', gradient: 'linear-gradient(135deg, #FFD700, #C9A84C)' },
   { id: 'cat-7', name: 'Bangles', icon: '◌', count: '380 pieces', gradient: 'linear-gradient(135deg, #C9A84C, #1A4A2E)' },
   { id: 'cat-8', name: 'Bridal Jewellery', icon: '♛', count: '210 sets', gradient: 'linear-gradient(135deg, #C9A84C, #8B1A2E)' },
+  { id: 'cat-9', name: 'Men\'s Jewellery', icon: '♔', count: '150 pieces', gradient: 'linear-gradient(135deg, #2C3E50, #000000)' },
 ];

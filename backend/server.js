@@ -36,11 +36,19 @@ app.post('/api/subscribe', async (req, res) => {
     
     // Check if real SMTP credentials are provided in .env
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      require('dns').setDefaultResultOrder('ipv4first');
+      
       transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // Use STARTTLS
+        requireTLS: true,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
+        },
+        tls: {
+          rejectUnauthorized: false
         }
       });
     } else {

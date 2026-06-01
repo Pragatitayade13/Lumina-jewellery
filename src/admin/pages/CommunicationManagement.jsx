@@ -3,10 +3,12 @@ import { communications } from '../data/mockData';
 import {
   Mail, MessageSquare, Send, Bell, Search, X, Plus, Eye, Upload,
   RefreshCw, Calendar, Shield, FileText, CheckCircle, Clock,
-  Package, Star, ChevronDown, Download, Trash2
+  Package, Star, ChevronDown, Download, Trash2, Users
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-
+import { db } from '../../config/firebase';
+import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { useEffect } from 'react';
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 const mockCertificates = [
   { id: 'CERT-001', customer: 'Priya Sharma', product: 'Diamond Solitaire Ring', certNo: 'GIA-20240512', issueDate: '12 May 2024', status: 'verified', file: 'gia_ring.pdf' },
@@ -47,6 +49,7 @@ const TABS = [
   { id: 'appointments', label: 'Appointments', icon: Calendar },
   { id: 'schemes', label: 'Scheme Enrollments', icon: Star },
   { id: 'transparency', label: 'Transparency', icon: Eye },
+  { id: 'subscribers', label: 'Subscribers', icon: Users },
 ];
 
 export default function CommunicationManagement() {
@@ -81,6 +84,47 @@ export default function CommunicationManagement() {
   // Notification state
   const [notifModal, setNotifModal] = useState(false);
   const [notifForm, setNotifForm] = useState({ type: 'Order Confirmed', customer: '', orderId: '', message: '' });
+
+  // Subscribers state
+  const [subscribers, setSubscribers] = useState([]);
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'subscribers') {
+      fetchSubscribers();
+    }
+  }, [activeTab]);
+
+  const fetchSubscribers = async () => {
+    setLoadingSubscribers(true);
+    try {
+      const q = query(collection(db, 'newsletter_subscribers'), orderBy('subscribedAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const subs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().subscribedAt?.toDate().toLocaleDateString('en-GB') || 'Unknown'
+      }));
+      setSubscribers(subs);
+    } catch (err) {
+      console.error("Error fetching subscribers:", err);
+      // Fallback to empty if missing permissions or db
+    } finally {
+      setLoadingSubscribers(false);
+    }
+  };
+
+  const handleUnsubscribe = async (subId, email) => {
+    if (!window.confirm(`Are you sure you want to remove ${email} from the newsletter list?`)) return;
+    try {
+      await deleteDoc(doc(db, 'newsletter_subscribers', subId));
+      setSubscribers(subscribers.filter(s => s.id !== subId));
+      showToast(`${email} has been unsubscribed.`);
+    } catch (err) {
+      console.error("Error deleting subscriber:", err);
+      showToast("Failed to remove subscriber.");
+    }
+  };
 
   const notifTemplates = {
     'Order Confirmed': 'Dear {customer}, your order #{orderId} has been confirmed. Expected delivery in 5-7 business days.',
@@ -518,6 +562,52 @@ export default function CommunicationManagement() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ──── SUBSCRIBERS TAB ────────────────────────────────────────────────── */}
+      {activeTab === 'subscribers' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Newsletter Subscribers</div>
+            <div className="card-subtitle">Manage users who have opted in to receive promotional emails.</div>
+            <div className="filter-search" style={{ margin: 0, width: '250px' }}>
+              <Search size={14} />
+              <input placeholder="Search emails..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+          </div>
+          
+          <div className="admin-table-wrap">
+            {loadingSubscribers ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading subscribers...</div>
+            ) : subscribers.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No subscribers found.</div>
+            ) : (
+              <table className="admin-table">
+                <thead><tr><th>Email Address</th><th>Subscription Date</th><th>Source</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {subscribers.filter(s => s.email?.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Mail size={14} color="var(--gold)" />
+                          {s.email}
+                        </div>
+                      </td>
+                      <td>{s.date}</td>
+                      <td><span className="badge badge-info">{s.source || 'website'}</span></td>
+                      <td><span className="badge badge-active">SUBSCRIBED</span></td>
+                      <td>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleUnsubscribe(s.id, s.email)}>
+                          <Trash2 size={12} /> Unsubscribe
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

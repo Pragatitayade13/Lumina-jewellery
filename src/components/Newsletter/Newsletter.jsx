@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Mail, Send, CheckCircle, Sparkles } from 'lucide-react';
 import { db } from '../../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import './Newsletter.css';
 
@@ -21,13 +21,28 @@ export default function Newsletter() {
     setLoading(true);
     setError('');
     try {
-      await addDoc(collection(db, 'newsletter_subscribers'), {
-        email: email.toLowerCase().trim(),
-        subscribedAt: serverTimestamp(),
-        source: 'landing_page',
-      });
+      // 1. Try to save to Firebase Database
+      try {
+        const normalizedEmail = email.toLowerCase().trim();
+        const q = query(collection(db, 'newsletter_subscribers'), where('email', '==', normalizedEmail));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          setError('This email is already subscribed to our newsletter!');
+          setLoading(false);
+          return; // Stop execution, do not send email
+        }
+
+        await addDoc(collection(db, 'newsletter_subscribers'), {
+          email: normalizedEmail,
+          subscribedAt: serverTimestamp(),
+          source: 'landing_page',
+        });
+      } catch (dbErr) {
+        console.warn("Could not save to Firebase Database (ignoring):", dbErr);
+      }
       
-      // Trigger the welcome email via the backend
+      // 2. Trigger the welcome email via the backend
       try {
         const response = await fetch('http://localhost:5000/api/subscribe', {
           method: 'POST',
@@ -44,7 +59,6 @@ export default function Newsletter() {
 
       setSubmitted(true);
     } catch (err) {
-      // Firebase not configured: just show success for demo
       setSubmitted(true);
     } finally {
       setLoading(false);

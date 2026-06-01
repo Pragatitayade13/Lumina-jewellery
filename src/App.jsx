@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import SmoothScroll from './components/SmoothScroll/SmoothScroll';
@@ -28,6 +28,7 @@ import VirtualTryOn from './components/VirtualTryOn/VirtualTryOn';
 
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
+import MensJewellery from './pages/MensJewellery';
 import LegalPage from './pages/LegalPage';
 
 import AdminApp from './admin/AdminApp';
@@ -130,7 +131,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <BrowserRouter>
+        <HashRouter>
           <GlobalModals />
           <Routes>
             <Route path="/admin/*" element={<AdminApp />} />
@@ -139,6 +140,7 @@ export default function App() {
             <Route path="/*" element={<StoreLayout />}>
               <Route index element={<HomePage />} />
               <Route path="collections" element={<Catalog />} />
+              <Route path="mens" element={<MensJewellery />} />
               <Route path="product/:id" element={<ProductDetails />} />
               <Route path="privacy-policy" element={<LegalPage />} />
               <Route path="terms-of-service" element={<LegalPage />} />
@@ -148,7 +150,7 @@ export default function App() {
               <Route path="care-instructions" element={<LegalPage />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </AppProvider>
     </ErrorBoundary>
   );

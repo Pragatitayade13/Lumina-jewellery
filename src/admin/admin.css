@@ -22,6 +22,9 @@
   --status-red: #e74c3c;
   --status-blue: #3498db;
   --status-purple: #9b59b6;
+  --admin-overlay-3: rgba(255, 255, 255, 0.03);
+  --admin-overlay-6: rgba(255, 255, 255, 0.06);
+  --admin-overlay-8: rgba(255, 255, 255, 0.08);
   --sidebar-width: 280px;
   --sidebar-collapsed-width: 0px;
   --topbar-height: 68px;
@@ -34,6 +37,15 @@
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
   background: var(--admin-bg);
+}
+
+[data-theme="light"] .admin-root {
+  --admin-border: rgba(0, 0, 0, 0.08);
+  --admin-border-bright: rgba(0, 0, 0, 0.15);
+  --admin-overlay-3: rgba(0, 0, 0, 0.03);
+  --admin-overlay-6: rgba(0, 0, 0, 0.06);
+  --admin-overlay-8: rgba(0, 0, 0, 0.08);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
 }
 
 .admin-root *, .admin-root *::before, .admin-root *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -124,10 +136,10 @@
   padding: 0.875rem 0;
 }
 
-.sidebar-nav::-webkit-scrollbar { width: 4px; }
-.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(201, 168, 76, 0.3); border-radius: 999px; }
-.sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 76, 0.6); }
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-track { background: var(--admin-overlay-3); }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 999px; border: 1px solid var(--admin-sidebar); }
+.sidebar-nav::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
 
 .nav-section-label {
   font-size: 0.58rem;
@@ -466,7 +478,7 @@
 
 .btn-gold { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #0D0800; }
 .btn-gold:hover { background: linear-gradient(135deg, var(--gold-light), var(--gold)); transform: translateY(-1px); box-shadow: 0 4px 16px var(--gold-glow); }
-.btn-outline { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--admin-border-bright); color: var(--text-primary); }
+.btn-outline { background: var(--admin-overlay-3); border: 1px solid var(--admin-border-bright); color: var(--text-primary); }
 .btn-outline:hover { background: rgba(201, 168, 76, 0.1); border-color: var(--gold); color: var(--gold); }
 .btn-danger { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; }
 .btn-danger:hover { background: rgba(231,76,60,0.2); }
@@ -537,7 +549,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .toggle-slider {
   position: absolute;
   inset: 0;
-  background: rgba(255,255,255,0.08);
+  background: var(--admin-overlay-8);
   border-radius: 999px;
   cursor: pointer;
   transition: var(--transition);
@@ -665,7 +677,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .progress-label-row { display: flex; justify-content: space-between; align-items: center; }
 .progress-name { font-size: 0.78rem; font-weight: 500; color: var(--text-secondary); }
 .progress-val { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
-.progress-track { height: 5px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+.progress-track { height: 5px; background: var(--admin-overlay-6); border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 999px; transition: width 1.1s ease; }
 
 /* Donut */
@@ -792,7 +804,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
    ============================================================ */
 
 .stock-bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
-.stock-bar-track { height: 5px; width: 80px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; }
+.stock-bar-track { height: 5px; width: 80px; background: var(--admin-overlay-6); border-radius: 999px; overflow: hidden; }
 .stock-bar-fill { height: 100%; border-radius: 999px; }
 .stock-num { font-size: 0.78rem; font-weight: 700; min-width: 30px; }
 

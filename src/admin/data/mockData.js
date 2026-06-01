@@ -11,6 +11,12 @@ import imgSilverChoker from '../../assets/products/oxidised_silver_choker.png';
 import imgDiamondStuds from '../../assets/products/diamond_stud_earrings.png';
 import imgGoldBangles from '../../assets/products/gold_antique_bangles.png';
 
+import m1 from '../../assets/products/mens_platinum_band_1780299606035.png';
+import m2 from '../../assets/products/mens_gold_chain_1780299628514.png';
+import m3 from '../../assets/products/mens_cufflinks_1780299644045.png';
+import m4 from '../../assets/products/mens_gold_kada_1780299659696.png';
+import m5 from '../../assets/products/mens_om_pendant_1780299676039.png';
+
 export const adminUsers = [
   { id: 1, name: 'Priya Sharma', email: 'priya@luminajewels.com', phone: '+91 9876543211', role: 'superadmin', department: 'Management', status: 'active', lastLogin: '2 min ago', joinDate: '15 Jan 2021', avatar: 'PS', avatarColor: '#C9A84C' },
   { id: 2, name: 'Rahul Kumar', email: 'rahul@luminajewels.com', phone: '+91 8765432101', role: 'manager', department: 'Products', status: 'active', lastLogin: '1 hr ago', joinDate: '10 Jun 2021', avatar: 'RK', avatarColor: '#9b59b6' },
@@ -31,6 +37,11 @@ export const products = [
   { id: 6, name: 'Diamond Mangalsutra Modern', category: 'Gold Jewellery', subcategory: 'Gold Mangalsutra', price: 78000, mrp: 90000, stock: 15, status: 'active', sku: 'GM-2026-021', weight: '18g', purity: '18KT', badge: 'bestseller', image: imgDiamondMangalsutra },
   { id: 7, name: 'Platinum Solitaire Ring', category: 'Rings', subcategory: 'Platinum Rings', price: 145000, mrp: 168000, stock: 6, status: 'active', sku: 'PR-2026-003', weight: '5.8g', purity: 'PT950', badge: 'new', image: imgPlatinumRing },
   { id: 8, name: 'Bridal Maang Tikka Polki', category: 'Bridal Collections', subcategory: 'Bridal Maang Tikka', price: 55000, mrp: 65000, stock: 9, status: 'active', sku: 'BM-2026-011', weight: '35g', purity: '22KT', badge: null, image: imgMaangTikka },
+  { id: 9, name: 'Classic Men\'s Platinum Band', category: 'Men\'s Jewellery', subcategory: 'Wedding Bands', price: 45000, mrp: 50000, stock: 15, status: 'active', sku: 'MB-2026-001', weight: '8g', purity: 'PT950', badge: 'classic', image: m1 },
+  { id: 10, name: 'Gold Cuban Link Chain', category: 'Men\'s Jewellery', subcategory: 'Chains', price: 155000, mrp: 175000, stock: 4, status: 'active', sku: 'MC-2026-002', weight: '45g', purity: '22KT', badge: 'trending', image: m2 },
+  { id: 11, name: 'Diamond Studded Cufflinks', category: 'Men\'s Jewellery', subcategory: 'Cufflinks', price: 85000, mrp: 95000, stock: 6, status: 'active', sku: 'MCF-2026-003', weight: '12g', purity: '18KT', badge: 'luxury', image: m3 },
+  { id: 12, name: 'Traditional Gold Kada', category: 'Men\'s Jewellery', subcategory: 'Kada', price: 120000, mrp: 135000, stock: 10, status: 'active', sku: 'MK-2026-004', weight: '30g', purity: '22KT', badge: 'bestseller', image: m4 },
+  { id: 13, name: 'Om Religious Pendant', category: 'Men\'s Jewellery', subcategory: 'Religious Jewellery', price: 25000, mrp: 30000, stock: 20, status: 'active', sku: 'MP-2026-005', weight: '5g', purity: '18KT', badge: 'popular', image: m5 },
 ];
 
 export const orders = [
@@ -68,6 +79,11 @@ export const inventory = [
   { id: 9, sku: 'SJ-2026-042', name: 'Oxidised Silver Choker', category: 'Silver Jewellery', subcategory: 'Silver Chokers', stock: 15, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '1 hr ago', status: 'ok', image: imgSilverChoker },
   { id: 10, sku: 'ER-2026-018', name: 'Diamond Stud Earrings', category: 'Earrings', subcategory: 'Diamond Earrings', stock: 20, minStock: 10, warehouse: 'Delhi Vault', lastUpdated: '5 hr ago', status: 'ok', image: imgDiamondStuds },
   { id: 11, sku: 'BG-2026-005', name: '22K Gold Antique Bangles', category: 'Bangles', subcategory: 'Gold Bangles', stock: 4, minStock: 5, warehouse: 'Bangalore', lastUpdated: '2 hr ago', status: 'low', image: imgGoldBangles },
+  { id: 12, sku: 'MB-2026-001', name: 'Classic Men\'s Platinum Band', category: 'Men\'s Jewellery', subcategory: 'Wedding Bands', stock: 15, minStock: 5, warehouse: 'Mumbai HQ', lastUpdated: '1 hr ago', status: 'ok', image: m1 },
+  { id: 13, sku: 'MC-2026-002', name: 'Gold Cuban Link Chain', category: 'Men\'s Jewellery', subcategory: 'Chains', stock: 4, minStock: 5, warehouse: 'Delhi Vault', lastUpdated: '4 hr ago', status: 'low', image: m2 },
+  { id: 14, sku: 'MCF-2026-003', name: 'Diamond Studded Cufflinks', category: 'Men\'s Jewellery', subcategory: 'Cufflinks', stock: 6, minStock: 3, warehouse: 'Mumbai HQ', lastUpdated: '5 hr ago', status: 'ok', image: m3 },
+  { id: 15, sku: 'MK-2026-004', name: 'Traditional Gold Kada', category: 'Men\'s Jewellery', subcategory: 'Kada', stock: 10, minStock: 5, warehouse: 'Bangalore', lastUpdated: '2 hr ago', status: 'ok', image: m4 },
+  { id: 16, sku: 'MP-2026-005', name: 'Om Religious Pendant', category: 'Men\'s Jewellery', subcategory: 'Religious Jewellery', stock: 20, minStock: 10, warehouse: 'Mumbai HQ', lastUpdated: '10 min ago', status: 'ok', image: m5 },
 ];
 
 export const transactions = [
@@ -100,6 +116,7 @@ export const categoryRevenue = [
   { name: 'Diamond Jewellery', value: 38, color: '#3498db' },
   { name: 'Gold Jewellery', value: 29, color: '#C9A84C' },
   { name: 'Bridal Collections', value: 18, color: '#9b59b6' },
+  { name: 'Men\'s Jewellery', value: 12, color: '#2C3E50' },
   { name: 'Silver Jewellery', value: 8, color: '#95a5a6' },
   { name: 'Others', value: 7, color: '#e74c3c' },
 ];

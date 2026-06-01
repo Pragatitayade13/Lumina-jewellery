@@ -36,10 +36,16 @@ const footerLinks = {
   Company: ['About Us', 'Blog'],
 };
 
+const IconVisa = () => (
+  <svg viewBox="0 0 38 12" height="16" width="50" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14.931 0.435913L12.593 11.5549H9.378L11.716 0.435913H14.931ZM28.529 0.435913C28.529 0.435913 26.689 0.052913 24.819 0.052913C21.393 0.052913 18.91 1.83991 18.887 4.67391C18.865 6.76491 20.781 7.93591 22.254 8.65391C23.766 9.39091 24.276 9.85191 24.276 10.5179C24.254 11.5369 23.042 11.9969 21.908 11.9969C19.704 11.9969 18.528 11.3969 17.653 10.9759L17.067 10.6979L16.666 13.3159C17.756 13.8209 19.553 14.2299 21.417 14.2299C25.074 14.2299 27.502 12.4359 27.525 9.48991C27.546 7.84891 26.438 6.64391 24.629 5.78791C23.364 5.17691 22.613 4.78991 22.613 4.10391C22.613 3.44791 23.332 2.80291 24.896 2.80291C26.549 2.78191 27.601 3.16191 28.435 3.54191L28.847 3.73791L29.28 0.908913L28.529 0.435913ZM36.002 0.435913H33.522C32.617 0.435913 31.905 0.925913 31.542 1.76791L26.839 13.2559H30.222C30.222 13.2559 30.835 11.5649 30.985 11.1449C31.353 11.1449 34.618 11.1449 35.086 11.1449C35.215 11.7259 35.632 13.2549 35.632 13.2549H38.566L36.002 0.435913ZM31.869 8.70691C31.869 8.70691 32.846 6.00791 33.056 5.43891C33.242 4.93991 33.398 4.41291 33.522 3.86491C33.57 4.29891 33.896 5.86491 34.116 6.94291L34.788 8.70691H31.869ZM11.084 0.435913L8.031 9.38091L7.697 7.73491C7.294 5.37891 5.568 3.14991 3.141 2.05291L3.901 5.48591L6.786 13.2559H10.158L14.471 0.435913H11.084ZM0.00700003 0.435913H3.21C4.412 0.435913 5.419 0.814913 6.079 1.63791C5.031 1.95491 3.882 2.41791 2.923 3.09091C1.864 3.83491 1.139 4.76491 0.871 5.48591L0.00700003 0.435913Z" fill="#1434CB"/>
+  </svg>
+);
+
 const paymentMethods = [
   { name: 'UPI', icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg' },
   { name: 'Razorpay', icon: 'https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg' },
-  { name: 'Visa', icon: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg' },
+  { name: 'Visa', type: 'svg', component: IconVisa },
   { name: 'Mastercard', icon: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Mastercard_2019_logo.svg' }
 ];
 
@@ -177,7 +183,11 @@ export default function Footer() {
               <span className="footer-payment-label">We Accept:</span>
               {paymentMethods.map(p => (
                 <div key={p.name} className="footer-payment-icon-wrapper" style={{ background: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', minWidth: '45px' }}>
-                  <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
+                  {p.type === 'svg' ? (
+                    <p.component />
+                  ) : (
+                    <img src={p.icon} alt={p.name} title={p.name} style={{ height: 'auto', maxHeight: '16px', width: 'auto', maxWidth: '50px', objectFit: 'contain' }} />
+                  )}
                 </div>
               ))}
             </div>

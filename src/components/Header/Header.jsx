@@ -12,6 +12,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'Shop', href: '/collections' },
+  { label: 'Men\'s', href: '/mens' },
   { label: 'Collections', href: '/collections' },
   { label: 'New Arrivals', href: '/#new-arrivals' },
   { label: 'Best Sellers', href: '/#best-sellers' },
@@ -32,6 +33,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const navLinks = [
     { label: t('nav.home'), href: '/' },
     { label: t('nav.shop'), href: '/collections' },
+    { label: t('nav.mens', { defaultValue: 'Men\'s' }), href: '/mens' },
     { label: t('nav.collections'), href: '/collections' },
     { label: t('nav.newArrivals'), href: '/#new-arrivals' },
     { label: t('nav.bestSellers'), href: '/#best-sellers' },
