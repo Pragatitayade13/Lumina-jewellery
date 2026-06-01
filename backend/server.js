@@ -66,7 +66,7 @@ app.post('/api/subscribe', async (req, res) => {
     }
 
     const info = await transporter.sendMail({
-      from: '"Lumina Jewels" <hello@luminajewels.com>',
+      from: '"Lumina Jewels" <luminajewels.app@gmail.com>',
       to: email,
       subject: "Welcome to Lumina Jewels! ✨ Here is your ₹500 Voucher",
       text: "Thank you for subscribing to our newsletter! As promised, here is your ₹500 Welcome Voucher code: LUMINA500",

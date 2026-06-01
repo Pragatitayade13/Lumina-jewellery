@@ -79,7 +79,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
         <div className="header-container" style={{ height: 'auto', display: 'flex', justifyContent: 'space-between', width: '100%', borderBottom: 'none', background: 'transparent' }}>
           <div className="strip-left">
             <span className="strip-item"><Phone size={12} /><a href="tel:+91-9876543210">+91 98765 43210</a></span>
-            <span className="strip-item"><Mail size={12} /><a href="mailto:hello@luminajewels.com">hello@luminajewels.com</a></span>
+            <span className="strip-item"><Mail size={12} /><a href="mailto:luminajewels.app@gmail.com">luminajewels.app@gmail.com</a></span>
           </div>
           <div className="strip-right" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--gold)', fontWeight: '600', display: 'flex', alignItems: 'center' }}>

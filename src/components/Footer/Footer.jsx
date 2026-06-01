@@ -107,8 +107,8 @@ export default function Footer() {
                 <a href="tel:+91-9876543210" className="footer-contact-item">
                   <Phone size={14} /> +91 98765 43210
                 </a>
-                <a href="mailto:hello@luminajewels.com" className="footer-contact-item">
-                  <Mail size={14} /> hello@luminajewels.com
+                <a href="mailto:luminajewels.app@gmail.com" className="footer-contact-item">
+                  <Mail size={14} /> luminajewels.app@gmail.com
                 </a>
                 <span className="footer-contact-item">
                   <MapPin size={14} /> Mumbai, Maharashtra, India
