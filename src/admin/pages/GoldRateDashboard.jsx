@@ -311,7 +311,7 @@ export default function GoldRateDashboard() {
                     : 'Auto-recalculation is paused. Prices remain static until manually synced.'}
                 </p>
                 <button className={`btn ${isAutoPricingEnabled ? 'btn-outline' : 'btn-gold'}`} onClick={toggleAutoPricing}
-                  style={!isAutoPricingEnabled ? { color: '#000', fontWeight: 'bold' } : {}}>
+                  style={!isAutoPricingEnabled ? { color: '#FFFFFF', fontWeight: 'bold' } : {}}>
                   {isAutoPricingEnabled ? 'Pause Auto-Pricing' : 'Enable Auto-Pricing'}
                 </button>
               </div>

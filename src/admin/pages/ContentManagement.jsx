@@ -242,7 +242,7 @@ export default function ContentManagement() {
       )}
 
       {mediaLibraryOpen && (
-        <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setMediaLibraryOpen(false)}>
+        <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setMediaLibraryOpen(false)}>
           <div className="modal-box" style={{ maxWidth: '800px', background: 'var(--surface)' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Image size={18} color="var(--gold)" /> Media Library</h3>

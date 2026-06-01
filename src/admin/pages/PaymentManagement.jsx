@@ -236,7 +236,7 @@ export default function PaymentManagement() {
                      </td>
                      <td>
                        {v.status === 'pending' ? (
-                         <button className="btn btn-sm btn-gold" style={{ color: '#000', fontWeight: 700, padding: '0.4rem 0.8rem' }} onClick={() => handleReleasePayout(v.id)}>
+                         <button className="btn btn-sm btn-gold" style={{ color: '#FFFFFF', fontWeight: 700, padding: '0.4rem 0.8rem' }} onClick={() => handleReleasePayout(v.id)}>
                            Release
                          </button>
                        ) : (

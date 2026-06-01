@@ -22,6 +22,7 @@ export function AppProvider({ children }) {
     catch { return 'dark'; }
   });
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [vtoProduct, setVtoProduct] = useState(null);
 
   useEffect(() => {
     // Listen to Firebase Auth state
@@ -134,6 +135,7 @@ export function AppProvider({ children }) {
       isSupportOpen, setIsSupportOpen,
       theme, toggleTheme,
       quickViewProduct, setQuickViewProduct,
+      vtoProduct, setVtoProduct,
       addToCart, removeFromCart, updateQuantity, clearCart, toggleWishlist, isWishlisted,
       cartCount, wishlistCount, showToast
     }}>

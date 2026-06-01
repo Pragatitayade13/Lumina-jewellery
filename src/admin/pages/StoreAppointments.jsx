@@ -15,6 +15,16 @@ export default function StoreAppointments() {
     a.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleConfirm = (id) => {
+    setAppointmentsList(appointmentsList.map(a => a.id === id ? { ...a, status: 'confirmed' } : a));
+    showToast('Appointment confirmed successfully!');
+  };
+
+  const handleCancel = (id) => {
+    setAppointmentsList(appointmentsList.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
+    showToast('Appointment cancelled.', 'error');
+  };
+
   const handleBook = (e) => {
     e.preventDefault();
     const newApt = {
@@ -36,7 +46,7 @@ export default function StoreAppointments() {
           <p className="page-subtitle">Manage customer visits for consultations, trials, and custom designs.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setModalOpen(true)}>+ Schedule Visit</button>
+          <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => setModalOpen(true)}>+ Schedule Visit</button>
         </div>
       </div>
 
@@ -84,18 +94,22 @@ export default function StoreAppointments() {
                     </div>
                   </td>
                   <td>
-                    <span className={`badge badge-${apt.status === 'confirmed' ? 'active' : 'pending'}`}>
+                    <span className={`badge badge-${apt.status === 'confirmed' ? 'active' : apt.status === 'cancelled' ? 'danger' : 'pending'}`}>
                       {apt.status.toUpperCase()}
                     </span>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button className="btn btn-icon btn-outline" title="Confirm" style={{ color: 'var(--status-green)', borderColor: 'var(--status-green)' }}>
-                        <CheckCircle size={14} />
-                      </button>
-                      <button className="btn btn-icon btn-outline" title="Cancel" style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)' }}>
-                        <XCircle size={14} />
-                      </button>
+                      {apt.status !== 'confirmed' && apt.status !== 'cancelled' && (
+                        <button className="btn btn-icon btn-outline" title="Confirm" onClick={() => handleConfirm(apt.id)} style={{ color: 'var(--status-green)', borderColor: 'var(--status-green)' }}>
+                          <CheckCircle size={14} />
+                        </button>
+                      )}
+                      {apt.status !== 'cancelled' && (
+                        <button className="btn btn-icon btn-outline" title="Cancel" onClick={() => handleCancel(apt.id)} style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)' }}>
+                          <XCircle size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -152,7 +166,7 @@ export default function StoreAppointments() {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                 <button type="button" className="btn btn-outline" onClick={() => setModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
+                <button type="submit" className="btn btn-gold" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FFFFFF', fontWeight: 'bold' }}>
                   <Save size={14} /> Schedule Visit
                 </button>
               </div>

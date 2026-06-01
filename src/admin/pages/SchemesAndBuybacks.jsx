@@ -21,6 +21,9 @@ export default function SchemesAndBuybacks() {
     netWeight: '',
     deductionPerc: 2
   });
+  
+  const [newExchangeModal, setNewExchangeModal] = useState(false);
+  const [exchangeForm, setExchangeForm] = useState({ customer: '', item: '', approxWeight: '' });
 
   const [calculatedValue, setCalculatedValue] = useState(0);
 
@@ -97,6 +100,22 @@ export default function SchemesAndBuybacks() {
     setEvalModal({ isOpen: false, data: null });
   };
 
+  const handleExchangeSubmit = () => {
+    if (!exchangeForm.customer || !exchangeForm.item) return;
+    const newExc = {
+      id: `EXC-${Math.floor(1000 + Math.random() * 9000)}`,
+      customer: exchangeForm.customer,
+      item: exchangeForm.item,
+      approxWeight: exchangeForm.approxWeight + 'g',
+      requestedDate: new Date().toISOString().split('T')[0],
+      status: 'pending'
+    };
+    setExchanges([newExc, ...exchanges]);
+    showToast(`Exchange request submitted for ${exchangeForm.customer}!`);
+    setNewExchangeModal(false);
+    setExchangeForm({ customer: '', item: '', approxWeight: '' });
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -106,9 +125,9 @@ export default function SchemesAndBuybacks() {
         </div>
         <div className="page-actions">
            {activeTab === 'schemes' ? (
-             <button className="btn btn-gold" onClick={() => setEnrollModal(true)} style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, padding: '0.8rem 1.5rem', fontSize: '1rem', border: 'none', borderRadius: '8px' }}>+ New Scheme Enrollment</button>
+             <button className="btn btn-gold" onClick={() => setEnrollModal(true)} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, padding: '0.8rem 1.5rem', fontSize: '1rem', border: 'none', borderRadius: '8px' }}>+ New Scheme Enrollment</button>
            ) : activeTab === 'exchanges' ? (
-             <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, padding: '0.8rem 1.5rem', fontSize: '1rem', border: 'none', borderRadius: '8px' }}>+ New Exchange Request</button>
+             <button className="btn btn-gold" onClick={() => setNewExchangeModal(true)} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, padding: '0.8rem 1.5rem', fontSize: '1rem', border: 'none', borderRadius: '8px' }}>+ New Exchange Request</button>
            ) : null}
         </div>
       </div>
@@ -192,7 +211,7 @@ export default function SchemesAndBuybacks() {
                         </td>
                         <td>
                           {s.monthsPaid < 11 ? (
-                            <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none', fontSize: '0.78rem' }} onClick={() => handlePayInstallment(s.id)}>
+                            <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', fontSize: '0.78rem' }} onClick={() => handlePayInstallment(s.id)}>
                               Pay EMI
                             </button>
                           ) : (
@@ -223,7 +242,7 @@ export default function SchemesAndBuybacks() {
                       <div style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '1.05rem' }}>₹{s.installment.toLocaleString('en-IN')}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.plan}</div>
                     </div>
-                    <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handlePayInstallment(s.id)}>
+                    <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handlePayInstallment(s.id)}>
                       Collect EMI
                     </button>
                   </div>
@@ -344,7 +363,7 @@ export default function SchemesAndBuybacks() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-              <button className="btn btn-gold" onClick={handleEnrollSubmit} style={{ flex: 1, padding: '1rem', fontWeight: 800, color: '#000' }}>Confirm Enrollment &amp; Pay 1st</button>
+              <button className="btn btn-gold" onClick={handleEnrollSubmit} style={{ flex: 1, padding: '1rem', fontWeight: 800, color: '#FFFFFF' }}>Confirm Enrollment &amp; Pay 1st</button>
               <button className="btn btn-outline" onClick={() => setEnrollModal(false)} style={{ padding: '1rem 2rem', fontWeight: 600 }}>Cancel</button>
             </div>
           </div>
@@ -390,8 +409,39 @@ export default function SchemesAndBuybacks() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-              <button className="btn btn-gold" onClick={handleApproveBuyback} style={{ flex: 1, padding: '1rem', fontWeight: 700, fontSize: '1rem', color: '#000' }}>Approve &amp; Send Offer</button>
+              <button className="btn btn-gold" onClick={handleApproveBuyback} style={{ flex: 1, padding: '1rem', fontWeight: 700, fontSize: '1rem', color: '#FFFFFF' }}>Approve &amp; Send Offer</button>
               <button className="btn btn-outline" onClick={() => setEvalModal({ isOpen: false, data: null })} style={{ padding: '1rem 2rem', fontWeight: 600 }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {newExchangeModal && (
+        <div className="modal-overlay" onClick={() => setNewExchangeModal(false)}>
+          <div className="modal-box" style={{ maxWidth: '500px', padding: '2rem' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <RefreshCw size={20} color="var(--gold)" /> New Exchange Request
+              </h3>
+              <button className="modal-close" onClick={() => setNewExchangeModal(false)}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Customer Name</label>
+                <input type="text" className="form-input" style={{ background: '#111', color: '#fff', padding: '0.8rem' }} placeholder="Enter customer name..." value={exchangeForm.customer} onChange={e => setExchangeForm({...exchangeForm, customer: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label>Item Description</label>
+                <input type="text" className="form-input" style={{ background: '#111', color: '#fff', padding: '0.8rem' }} placeholder="e.g. 2 Gold Bangles" value={exchangeForm.item} onChange={e => setExchangeForm({...exchangeForm, item: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label>Approx. Weight (g)</label>
+                <input type="number" className="form-input" style={{ background: '#111', color: '#fff', padding: '0.8rem' }} placeholder="e.g. 45" value={exchangeForm.approxWeight} onChange={e => setExchangeForm({...exchangeForm, approxWeight: e.target.value})} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+              <button className="btn btn-gold" onClick={handleExchangeSubmit} style={{ flex: 1, padding: '1rem', fontWeight: 800, color: '#FFFFFF' }}>Submit Request</button>
+              <button className="btn btn-outline" onClick={() => setNewExchangeModal(false)} style={{ padding: '1rem 2rem', fontWeight: 600 }}>Cancel</button>
             </div>
           </div>
         </div>

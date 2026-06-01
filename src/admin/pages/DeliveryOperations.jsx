@@ -174,7 +174,7 @@ export default function DeliveryOperations() {
                      alert("Pickup confirmed! Package is now In Transit.");
                    }}>Confirm Pickup</button>
                 ) : (
-                   <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#000', fontWeight: 'bold' }} onClick={() => handleDeliveryClick(order)}>Verify & Deliver</button>
+                   <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => handleDeliveryClick(order)}>Verify & Deliver</button>
                 )}
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function DeliveryOperations() {
               ) : (
                 <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => setCameraModal({ isOpen: true, pickupId: pickup.id })}><Camera size={14} /> Photo Proof</button>
               )}
-              <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#000', fontWeight: 'bold' }} onClick={() => alert("Return sealed and custody transferred!")}>Seal & Collect</button>
+              <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => alert("Return sealed and custody transferred!")}>Seal & Collect</button>
             </div>
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function DeliveryOperations() {
              </div>
 
              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-               <button className="btn" style={{ width: '100%', padding: '0.8rem', background: '#c9a84c', color: '#000', fontWeight: 'bold' }} onClick={verifyOtp}>Verify & Mark Delivered</button>
+               <button className="btn" style={{ width: '100%', padding: '0.8rem', background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={verifyOtp}>Verify & Mark Delivered</button>
                <button className="btn btn-outline" style={{ width: '100%', padding: '0.8rem', border: 'none' }} onClick={() => setShowOtpModal(false)}>Cancel</button>
              </div>
           </div>
@@ -319,7 +319,7 @@ export default function DeliveryOperations() {
               Ensure the sealed package and barcode are clearly visible in the frame.
             </p>
             
-            <button className="btn" style={{ background: '#c9a84c', color: '#000', fontWeight: 'bold', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={capturePhoto}>
+            <button className="btn" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={capturePhoto}>
               <Camera size={20} /> Capture Image
             </button>
           </div>

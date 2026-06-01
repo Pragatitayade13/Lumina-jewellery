@@ -157,7 +157,11 @@ export default function AdminLayout({ children }) {
 
         <div className="sidebar-footer">
           <div className="sidebar-admin-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', flex: 1 }}
+              onClick={() => navigate('/admin/profile')}
+              title="View Profile"
+            >
               <div className="admin-avatar" title={user?.name || `${portalName} User`}>
                 {(user?.name || portalName).substring(0, 2).toUpperCase()}
               </div>
@@ -204,6 +208,9 @@ export default function AdminLayout({ children }) {
           <QuickActionsDropdown userRole={userRole} />
           <LanguageSwitcher variant="admin" />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
+          <button className="topbar-btn" title="Toggle Theme" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <ProfileDropdown userRole={userRole} userName={user?.name || `${portalName} User`} onLogout={handleLogout} isSuperAdmin={isSuperAdmin} />
         </div>
       </header>

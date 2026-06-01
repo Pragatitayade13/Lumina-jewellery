@@ -24,6 +24,7 @@ import CartModal from './components/CartModal/CartModal';
 import WishlistModal from './components/WishlistModal/WishlistModal';
 import SupportModal from './components/SupportModal/SupportModal';
 import QuickViewModal from './components/QuickViewModal/QuickViewModal';
+import VirtualTryOn from './components/VirtualTryOn/VirtualTryOn';
 
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
@@ -42,11 +43,12 @@ function Toast() {
 }
 
 function GlobalModals() {
-  const { isSupportOpen, setIsSupportOpen } = useApp();
+  const { isSupportOpen, setIsSupportOpen, vtoProduct, setVtoProduct } = useApp();
   return (
     <>
       <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
       <QuickViewModal />
+      <VirtualTryOn isOpen={!!vtoProduct} onClose={() => setVtoProduct(null)} product={vtoProduct} />
     </>
   );
 }

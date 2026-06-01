@@ -17,11 +17,11 @@ export function useScrollReveal() {
         {
           y: 0,
           opacity: 1,
-          duration: 1.2,
+          duration: 0.7,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 85%',
+            start: 'top 95%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -36,11 +36,11 @@ export function useScrollReveal() {
         {
           x: 0,
           opacity: 1,
-          duration: 1.2,
+          duration: 0.7,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 85%',
+            start: 'top 95%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -55,11 +55,11 @@ export function useScrollReveal() {
         {
           x: 0,
           opacity: 1,
-          duration: 1.2,
+          duration: 0.7,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 85%',
+            start: 'top 95%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -75,12 +75,12 @@ export function useScrollReveal() {
         {
           y: 0,
           opacity: 1,
-          duration: 1,
-          stagger: 0.15,
+          duration: 0.6,
+          stagger: 0.1,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: container,
-            start: 'top 80%',
+            start: 'top 95%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -94,11 +94,11 @@ export function useScrollReveal() {
         { clipPath: 'polygon(0 0, 0 0, 0 100%, 0% 100%)' },
         {
           clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)',
-          duration: 1.5,
+          duration: 0.9,
           ease: 'power4.inOut',
           scrollTrigger: {
             trigger: el,
-            start: 'top 85%',
+            start: 'top 95%',
             toggleActions: 'play none none none', // Only play once
           }
         }

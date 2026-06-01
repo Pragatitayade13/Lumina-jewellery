@@ -92,7 +92,7 @@ export default function VendorManagement() {
           <button className="btn btn-outline" onClick={handleDownloadReport} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Download size={14} /> Export Report
           </button>
-          <button className="btn btn-gold" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem' }}>
+          <button className="btn btn-gold" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem' }}>
             <Plus size={14} /> Add Vendor
           </button>
         </div>
@@ -186,7 +186,7 @@ export default function VendorManagement() {
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button className="btn btn-sm btn-outline" onClick={() => setDetailVendor(v)}>View</button>
                         {v.status !== 'paid' && (
-                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none' }} onClick={() => handleReleasePayout(v.id)}>
+                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none' }} onClick={() => handleReleasePayout(v.id)}>
                             Release
                           </button>
                         )}
@@ -266,7 +266,7 @@ export default function VendorManagement() {
           <div className="admin-card">
             <div className="card-header">
               <div className="card-title">Monthly Commission Report — 2026</div>
-              <button className="btn btn-gold btn-sm" onClick={handleDownloadReport} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none' }}>
+              <button className="btn btn-gold btn-sm" onClick={handleDownloadReport} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none' }}>
                 <Download size={14} /> Download PDF
               </button>
             </div>
@@ -322,7 +322,7 @@ export default function VendorManagement() {
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: statusColor[v.status] }}>₹{v.amountDue.toLocaleString('en-IN')}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{v.status.toUpperCase()}</div>
                   </div>
-                  <button className="btn btn-gold btn-sm" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handleReleasePayout(v.id)}>
+                  <button className="btn btn-gold btn-sm" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handleReleasePayout(v.id)}>
                     Release Payout
                   </button>
                 </div>
@@ -375,7 +375,7 @@ export default function VendorManagement() {
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
               <button className="btn btn-outline" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, border: 'none' }} onClick={handleAddVendor}>Add Vendor</button>
+              <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none' }} onClick={handleAddVendor}>Add Vendor</button>
             </div>
           </div>
         </div>
@@ -419,7 +419,7 @@ export default function VendorManagement() {
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
               <button className="btn btn-outline" onClick={() => setDetailVendor(null)}>Close</button>
               {detailVendor.status !== 'paid' && (
-                <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, border: 'none' }}
+                <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none' }}
                   onClick={() => { handleReleasePayout(detailVendor.id); setDetailVendor(null); }}>
                   Release Payout
                 </button>

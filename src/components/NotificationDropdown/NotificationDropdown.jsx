@@ -32,20 +32,19 @@ const getInitialNotifications = (userRole) => {
 
 export default function NotificationDropdown({ userRole }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
   const [notifications, setNotifications] = useState(() => getInitialNotifications(userRole));
   const dropdownRef = useRef(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownRef]);
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -59,86 +58,68 @@ export default function NotificationDropdown({ userRole }) {
 
   return (
     <>
-      <div className="notif-dropdown-container" ref={dropdownRef}>
-        <button className="topbar-btn" title="Notifications" onClick={() => setIsOpen(!isOpen)}>
+      <div className="notif-dropdown-container">
+        <button className="topbar-btn" title="Notifications" onClick={() => setIsOpen(true)}>
           {unreadCount > 0 && <span className="notif-dot">{unreadCount}</span>}
           <Bell size={18} />
         </button>
-
-        {isOpen && (
-          <div className="notif-dropdown-menu">
-            <div className="notif-header">
-              <h3>Notifications</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button className="btn-mark-read" onClick={markAllAsRead}>Mark all as read</button>
-                <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><X size={16} /></button>
-              </div>
-            </div>
-            <div className="notif-list">
-              {notifications.map(notif => (
-                <div 
-                  key={notif.id} 
-                  className={`notif-item ${notif.unread ? 'unread' : ''}`}
-                  onClick={() => markAsRead(notif.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="notif-icon">{notif.icon}</div>
-                  <div className="notif-content">
-                    <div className="notif-title">{notif.title}</div>
-                    <div className="notif-desc">{notif.desc}</div>
-                    <div className="notif-time">{notif.time}</div>
-                  </div>
-                  {notif.unread && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', alignSelf: 'center', marginLeft: 'auto' }} />}
-                </div>
-              ))}
-            </div>
-            <div className="notif-footer">
-              <button className="btn-view-all" onClick={() => { setIsOpen(false); setShowAll(true); }}>
-                View All Notifications
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {showAll && (
-        <div className="modal-overlay" onClick={() => setShowAll(false)} style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ background: 'rgba(15, 15, 15, 0.85)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(201, 168, 76, 0.1) inset', borderRadius: '16px', width: '100%', maxWidth: '800px', padding: '2rem' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
-              <h3 className="modal-title" style={{ color: 'var(--text-primary)', fontSize: '1.5rem', margin: 0, fontWeight: 600, letterSpacing: '0.01em' }}>All Notifications</h3>
-              <button className="modal-close" onClick={() => setShowAll(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color = '#fff'} onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}>×</button>
+      {isOpen && (
+        <div className="auth-modal-overlay" style={{ zIndex: 9999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsOpen(false)}>
+          <div className="auth-modal cart-modal-box" onClick={(e) => e.stopPropagation()} style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh', background: 'var(--bg-card)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
+              <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-primary)' }}>
+                <Bell size={20} color="var(--gold)" /> Notifications
+              </h2>
+              <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                <X size={20} />
+              </button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-                <button className="btn btn-outline" style={{ borderColor: 'var(--gold, #c9a84c)', color: 'var(--gold, #c9a84c)', background: 'transparent', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }} onClick={markAllAsRead}>Mark all as read</button>
-              </div>
-              <div className="notif-list-full" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {notifications.map(notif => (
-                  <div 
-                    key={notif.id} 
-                    className={`notif-item-full ${notif.unread ? 'unread' : ''}`} 
-                    onClick={() => markAsRead(notif.id)}
-                    style={{ 
-                      display: 'flex', gap: '1.5rem', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px',
-                      cursor: 'pointer', background: notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%)' : 'rgba(255,255,255,0.02)',
-                      borderLeft: notif.unread ? '3px solid var(--gold, #c9a84c)' : '1px solid rgba(255,255,255,0.05)',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.12) 0%, transparent 100%)' : 'rgba(255,255,255,0.05)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = notif.unread ? 'linear-gradient(90deg, rgba(201, 168, 76, 0.08) 0%, transparent 100%)' : 'rgba(255,255,255,0.02)'}
-                  >
-                    <div className="notif-icon" style={{ width: '48px', height: '48px', flexShrink: 0, background: 'linear-gradient(135deg, rgba(201, 168, 76, 0.15), rgba(201, 168, 76, 0.05))', border: '1px solid rgba(201,168,76,0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold, #c9a84c)' }}>
-                      {notif.icon}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderColor: 'var(--gold)', color: 'var(--gold)' }} onClick={markAllAsRead}>Mark all as read</button>
+              <button className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderColor: 'var(--status-red)', color: 'var(--status-red)' }} onClick={() => setNotifications([])}>Clear all</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {notifications.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
+                  <Bell size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />
+                  <p style={{ fontSize: '1.1rem' }}>You're all caught up!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {notifications.map(notif => (
+                    <div 
+                      key={notif.id} 
+                      onClick={() => markAsRead(notif.id)}
+                      style={{ 
+                        display: 'flex', gap: '1.25rem', padding: '1.25rem', 
+                        background: notif.unread ? 'var(--surface)' : 'var(--bg-card)',
+                        border: '1px solid',
+                        borderColor: notif.unread ? 'var(--border-bright)' : 'var(--border)',
+                        borderRadius: '10px', cursor: 'pointer', position: 'relative',
+                        borderLeft: notif.unread ? '3px solid var(--gold)' : '1px solid var(--border)',
+                        transition: 'transform 0.2s ease, border-color 0.2s ease'
+                      }}
+                      onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                      onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                      <div style={{ width: '48px', height: '48px', flexShrink: 0, borderRadius: '8px', background: 'rgba(201,168,76,0.1)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {notif.icon}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>{notif.title}</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4', marginBottom: '0.6rem' }}>{notif.desc}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{notif.time}</div>
+                      </div>
+                      {notif.unread && <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'linear-gradient(135deg, #ff4757, #ff6b81)', position: 'absolute', top: '1.25rem', right: '1.25rem', boxShadow: '0 0 8px rgba(255,71,87,0.5)' }} />}
                     </div>
-                    <div className="notif-content" style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '1.1rem', color: '#fff', marginBottom: '0.4rem', letterSpacing: '-0.01em' }}>{notif.title}</div>
-                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', lineHeight: '1.5' }}>{notif.desc}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.8rem', fontWeight: 500 }}>{notif.time}</div>
-                    </div>
-                    {notif.unread && <div style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #ff4757, #ff6b81)', boxShadow: '0 0 8px rgba(255,71,87,0.5)', alignSelf: 'center' }} />}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

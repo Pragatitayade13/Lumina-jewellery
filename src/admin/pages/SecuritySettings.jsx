@@ -7,7 +7,7 @@ export default function SecuritySettings() {
 
   const [policies, setPolicies] = useState({
     twoFactor: true,
-    ipWhitelist: false,
+    ipWhitelist: true,
     sessionTimeout: true
   });
 
@@ -68,7 +68,18 @@ export default function SecuritySettings() {
   };
 
   const handleRotateKey = (id) => {
-    setApiKeys(apiKeys.map(k => k.id === id ? { ...k, key: `${k.key.split('_')[0]}_live_••••••••••••${Math.floor(100 + Math.random() * 899)}` } : k));
+    setApiKeys(apiKeys.map(k => {
+      if (k.id === id) {
+        const prefix = k.key.split('_')[0] || k.id;
+        const envStr = k.env === 'Production' ? 'live' : 'test';
+        return { 
+          ...k, 
+          key: `${prefix}_${envStr}_••••••••••••${Math.floor(100 + Math.random() * 899)}`,
+          lastUsed: 'Never'
+        };
+      }
+      return k;
+    }));
     showToast("API Key rotated securely.");
   };
   return (

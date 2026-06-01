@@ -4,7 +4,7 @@ import { Globe } from 'lucide-react';
 
 const languages = [
   { code: 'en', label: 'English', short: 'EN' },
-  { code: 'hi', label: 'हिन्दी', short: 'हिं' },
+  { code: 'hi', label: 'हिंदी', short: 'हिं' },
   { code: 'mr', label: 'मराठी', short: 'मरा' },
 ];
 
@@ -25,7 +25,7 @@ export default function LanguageSwitcher({ variant = 'default' }) {
 
   const handleChange = (code) => {
     i18n.changeLanguage(code);
-    localStorage.setItem('app_ui_lang', code);
+    localStorage.setItem('jw_language', code);
     // Apply Devanagari font for hi/mr
     document.body.style.fontFamily = (code === 'hi' || code === 'mr')
       ? "'Noto Sans Devanagari', 'Inter', sans-serif"
@@ -69,7 +69,7 @@ export default function LanguageSwitcher({ variant = 'default' }) {
           position: 'absolute',
           top: '110%',
           right: 0,
-          background: isAdmin ? '#140E00' : 'var(--bg-card, #1A1000)',
+          background: 'var(--bg-card)',
           border: '1px solid rgba(201,168,76,0.3)',
           borderRadius: '10px',
           padding: '0.4rem',

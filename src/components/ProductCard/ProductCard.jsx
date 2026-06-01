@@ -1,4 +1,4 @@
-import { Heart, ShoppingBag, Eye, Star } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, Star, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import './ProductCard.css';
@@ -29,7 +29,7 @@ function getDiscount(price, original) {
 }
 
 export default function ProductCard({ product }) {
-  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct } = useApp();
+  const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct, setVtoProduct } = useApp();
   const wishlisted = isWishlisted(product.id);
   const original = product.originalPrice || product.mrp || product.price || 0;
   const current = product.price || 0;
@@ -89,6 +89,13 @@ export default function ProductCard({ product }) {
                 aria-label="Quick view"
               >
                 <Eye size={14} />
+              </button>
+              <button
+                className="product-action-btn-small"
+                onClick={(e) => { e.stopPropagation(); setVtoProduct(product); }}
+                aria-label="Virtual Try On"
+              >
+                <Camera size={14} />
               </button>
             </div>
             <button

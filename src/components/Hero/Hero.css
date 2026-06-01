@@ -7,6 +7,14 @@
   overflow: hidden;
 }
 
+/* Light Theme Hero Adjustments - Distinct font colors & readable overlay */
+[data-theme="light"] .hero {
+  /* Use distinct but readable light colors for the dark background */
+  --text-primary: #FFFFFF;
+  --text-secondary: #FCEBE9;
+  --text-muted: #F2C5C2;
+}
+
 /* ─── Slides ─── */
 .hero-slide {
   position: absolute;

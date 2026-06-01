@@ -188,7 +188,7 @@ export default function InvoiceBilling() {
           <button className="btn btn-outline" onClick={() => { setNewInvType('credit_note'); setShowNewModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <RefreshCw size={14} /> New Credit Note
           </button>
-          <button className="btn btn-gold" onClick={() => { setNewInvType('invoice'); setShowNewModal(true); }} style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <button className="btn btn-gold" onClick={() => { setNewInvType('invoice'); setShowNewModal(true); }} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Plus size={14} /> Generate Invoice
           </button>
         </div>
@@ -283,7 +283,7 @@ export default function InvoiceBilling() {
                           <Download size={13} />
                         </button>
                         {inv.status === 'pending' || inv.status === 'overdue' ? (
-                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 700, border: 'none', fontSize: '0.75rem' }} onClick={() => handleMarkPaid(inv.id)}>
+                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', fontSize: '0.75rem' }} onClick={() => handleMarkPaid(inv.id)}>
                             Mark Paid
                           </button>
                         ) : null}
@@ -476,7 +476,7 @@ export default function InvoiceBilling() {
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
               <button className="btn btn-outline" onClick={() => setShowNewModal(false)}>Cancel</button>
-              <button className="btn btn-gold" onClick={handleGenerateInvoice} style={{ backgroundColor: 'var(--gold)', color: '#000', fontWeight: 800, border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button className="btn btn-gold" onClick={handleGenerateInvoice} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <FileText size={14} /> {newInvType === 'credit_note' ? 'Issue Credit Note' : 'Generate & Download'}
               </button>
             </div>

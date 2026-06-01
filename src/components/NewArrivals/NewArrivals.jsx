@@ -14,7 +14,9 @@ export default function NewArrivals() {
   const navigate = useNavigate();
   
   const displayProducts = fbProducts.length > 0 ? fbProducts : staticProducts;
-  const newProducts = displayProducts.filter(p => p.isNew).concat(displayProducts.slice(0, 8)).slice(0, 8);
+  const filteredNew = displayProducts.filter(p => p.isNew === true || p.isNew === 'true' || (p.badge && p.badge.toLowerCase() === 'new'));
+  // Ensure the items added at the end (newest) show up first
+  const newProducts = [...filteredNew].reverse().concat(displayProducts).slice(0, 8);
 
   return (
     <section className="new-arrivals-section" id="new-arrivals">
@@ -30,7 +32,7 @@ export default function NewArrivals() {
 
         <div className="products-grid">
           {newProducts.map((product, i) => (
-            <div key={product.id} className="reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
+            <div key={product.id} style={{ opacity: 0, animation: `fadeInUp 0.6s ease forwards ${i * 0.1}s` }}>
               <ProductCard product={product} />
             </div>
           ))}

@@ -164,7 +164,7 @@ export default function TaxManagement() {
         <div className="admin-card" style={{ gridColumn: 'span 2' }}>
            <div className="card-header">
             <h3 className="card-title" style={{ fontSize: '1rem' }}>Monthly Tax Summary (May 2026)</h3>
-            <button className="btn btn-gold btn-sm" onClick={handleGSTR3B} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={14} /> GSTR-3B Report</button>
+            <button className="btn btn-gold btn-sm" onClick={handleGSTR3B} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFFFFF', fontWeight: 'bold' }}><FileText size={14} /> GSTR-3B Report</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
@@ -234,7 +234,7 @@ export default function TaxManagement() {
               );
             })()}
           </div>
-          <button className="btn btn-gold" onClick={handleAddTransaction} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={16} /> Log Transaction</button>
+          <button className="btn btn-gold" onClick={handleAddTransaction} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FFFFFF', fontWeight: 'bold' }}><Plus size={16} /> Log Transaction</button>
         </div>
       </div>
 
@@ -316,7 +316,7 @@ export default function TaxManagement() {
                 <input type="number" className="form-control" style={{ color: '#000', background: '#fff', border: '1px solid #ccc', padding: '0.6rem', borderRadius: '4px' }} value={tempRates.making} onChange={e => setTempRates({...tempRates, making: parseFloat(e.target.value) || 0})} />
               </div>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button className="btn btn-gold" onClick={handleUpdateBrackets} style={{ flex: 1, padding: '0.8rem', fontWeight: 700, fontSize: '1rem', color: '#000' }}>Save Updates</button>
+                <button className="btn btn-gold" onClick={handleUpdateBrackets} style={{ flex: 1, padding: '0.8rem', fontWeight: 700, fontSize: '1rem', color: '#FFFFFF' }}>Save Updates</button>
                 <button className="btn btn-outline" onClick={() => setShowUpdateModal(false)} style={{ flex: 1, padding: '0.8rem', fontWeight: 600, fontSize: '1rem' }}>Cancel</button>
               </div>
             </div>
