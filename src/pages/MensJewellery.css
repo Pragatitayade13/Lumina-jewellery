@@ -98,9 +98,24 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
 }
 
-.style-icon {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+.style-image-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  background: var(--background);
+}
+
+.style-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.mens-style-card:hover .style-image {
+  transform: scale(1.05);
 }
 
 .mens-style-card h3 {

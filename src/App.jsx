@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import SmoothScroll from './components/SmoothScroll/SmoothScroll';
@@ -131,7 +131,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <HashRouter>
+        <BrowserRouter>
           <GlobalModals />
           <Routes>
             <Route path="/admin/*" element={<AdminApp />} />
@@ -150,7 +150,7 @@ export default function App() {
               <Route path="care-instructions" element={<LegalPage />} />
             </Route>
           </Routes>
-        </HashRouter>
+        </BrowserRouter>
       </AppProvider>
     </ErrorBoundary>
   );

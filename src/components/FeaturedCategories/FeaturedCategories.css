@@ -142,6 +142,7 @@
 .cat-earrings { background: linear-gradient(135deg, #1a1600, #0d0800); }
 .cat-bangles { background: linear-gradient(135deg, #1a2a10, #0d1500); }
 .cat-bridal { background: linear-gradient(135deg, #2a0a10, #1a0500); }
+.cat-mens { background: linear-gradient(135deg, #16222A, #3A6073); }
 
 @media (max-width: 1024px) {
   .categories-grid { grid-template-columns: repeat(3, 1fr); }

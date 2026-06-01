@@ -5,6 +5,11 @@ import { useInventory } from '../hooks/useInventory';
 import ProductCard from '../components/ProductCard/ProductCard';
 import './MensJewellery.css';
 import { Gem, ArrowRight } from 'lucide-react';
+import m1 from '../assets/products/mens_platinum_band_1780299606035.png';
+import m2 from '../assets/products/mens_gold_chain_1780299628514.png';
+import m3 from '../assets/products/mens_cufflinks_1780299644045.png';
+import m4 from '../assets/products/mens_gold_kada_1780299659696.png';
+import m5 from '../assets/products/mens_om_pendant_1780299676039.png';
 
 export default function MensJewellery() {
   const { inventory, loading } = useInventory();
@@ -19,11 +24,11 @@ export default function MensJewellery() {
   const trending = mensProducts.slice(4, 8);
 
   const styles = [
-    { name: 'Chains', icon: '⛓️' },
-    { name: 'Rings', icon: '💍' },
-    { name: 'Kada', icon: '⭕' },
-    { name: 'Cufflinks', icon: '👔' },
-    { name: 'Religious Jewellery', icon: '🕉️' }
+    { name: 'Chains', image: m2 },
+    { name: 'Rings', image: m1 },
+    { name: 'Kada', image: m4 },
+    { name: 'Cufflinks', image: m3 },
+    { name: 'Religious Jewellery', image: m5 }
   ];
 
   const handleStyleClick = (style) => {
@@ -54,7 +59,9 @@ export default function MensJewellery() {
         <div className="mens-style-grid">
           {styles.map(style => (
             <div key={style.name} className="mens-style-card" onClick={() => handleStyleClick(style.name)}>
-              <div className="style-icon">{style.icon}</div>
+              <div className="style-image-wrap">
+                <img src={style.image} alt={style.name} className="style-image" loading="lazy" />
+              </div>
               <h3>{style.name}</h3>
               <span className="style-link">View Collection <ArrowRight size={14} /></span>
             </div>

@@ -9,10 +9,11 @@ import catNecklaces from '../../assets/category_necklaces_1779901360570.png';
 import catEarrings from '../../assets/category_earrings_1779901376432.png';
 import catBangles from '../../assets/category_bangles_1779901402606.png';
 import catBridal from '../../assets/category_bridal_1779901298512.png';
+import catMens from '../../assets/products/mens_platinum_band_1780299606035.png';
 import './FeaturedCategories.css';
 
-const categoryImages = [catGold, catSilver, catDiamond, catRings, catNecklaces, catEarrings, catBangles, catBridal];
-const categoryBgs = ['cat-gold','cat-silver','cat-diamond','cat-rings','cat-necklaces','cat-earrings','cat-bangles','cat-bridal'];
+const categoryImages = [catGold, catSilver, catDiamond, catRings, catNecklaces, catEarrings, catBangles, catBridal, catMens];
+const categoryBgs = ['cat-gold','cat-silver','cat-diamond','cat-rings','cat-necklaces','cat-earrings','cat-bangles','cat-bridal', 'cat-mens'];
 
 export default function FeaturedCategories() {
   const [selectedCategory, setSelectedCategory] = useState(null);
