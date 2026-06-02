@@ -41,7 +41,7 @@
   --font-accent: 'Cormorant Garamond', serif;
 }
 
-[data-theme="light"] {
+[data-theme="light"] .admin-root {
   --gold: #E0A9A5;
   --gold-light: #F2C5C2;
   --gold-dark: #B87B77;
@@ -72,9 +72,14 @@
   padding: 0;
 }
 
-html, body {
+html, body, #root {
   width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 html {

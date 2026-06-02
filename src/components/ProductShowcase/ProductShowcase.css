@@ -51,8 +51,7 @@
 
 /* ─── Showcase Slider Marquee ─── */
 .showcase-slider-container {
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
+  width: 100%;
   overflow: hidden;
   position: relative;
   margin-bottom: 4rem;
