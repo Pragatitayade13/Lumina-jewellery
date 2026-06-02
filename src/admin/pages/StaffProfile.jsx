@@ -1,10 +1,44 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { User, Mail, Phone, MapPin, Award, CheckCircle, Package, ShieldCheck, X, Camera, Edit3, HeartPulse, Building, Bell, Eye, EyeOff } from 'lucide-react';
+import { Mail, Phone, MapPin, Award, CheckCircle, Package, ShieldCheck, X, Camera, Edit3, HeartPulse, Building, Bell, Eye, EyeOff, Clock, LogIn, LogOut, AlertCircle, Calendar } from 'lucide-react';
+import { useAttendance } from '../../hooks/useAttendance';
+import { useCustomers } from '../../hooks/useCustomers';
 
 export default function StaffProfile() {
   const { user, showToast } = useApp();
   const [activeModal, setActiveModal] = useState(null); // 'password', 'editProfile', 'notifications'
+
+  const { customers } = useCustomers();
+  const currentUserData = customers.find(c => c.id === user?.uid);
+  const mySchedule = currentUserData?.schedule;
+
+  // Live clock
+  const [liveClock, setLiveClock] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setLiveClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Attendance
+  const { isClockedIn, checkInTime, checkOutTime, loading: attendanceLoading, clockIn, clockOut } = useAttendance(user?.uid);
+  const [attendanceBusy, setAttendanceBusy] = useState(false);
+
+  const handleAttendance = async () => {
+    setAttendanceBusy(true);
+    try {
+      if (isClockedIn) {
+        await clockOut();
+        showToast('✅ Clocked out successfully!');
+      } else {
+        await clockIn();
+        showToast('✅ Clocked in successfully!');
+      }
+    } catch (err) {
+      showToast('❌ Failed to update attendance. Try again.');
+    } finally {
+      setAttendanceBusy(false);
+    }
+  };
   
   // Local state for edits
   const [profilePic, setProfilePic] = useState(null);
@@ -132,6 +166,105 @@ export default function StaffProfile() {
 
         {/* Right Column: Stats & Settings */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+          {/* ── Today's Attendance Card ── */}
+          <div className="admin-card" style={{ padding: '2rem', background: 'var(--bg-card)', border: isClockedIn ? '1px solid rgba(46,204,113,0.4)' : '1px solid var(--border)' }}>
+            <h3 style={{ margin: '0 0 1.5rem', color: 'var(--text-primary)', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Clock size={20} color="var(--gold)" /> Today's Attendance
+            </h3>
+
+            {/* Live Clock */}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                {liveClock.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                {liveClock.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.5rem 1.25rem', borderRadius: '30px', fontWeight: 600, fontSize: '0.9rem',
+                background: isClockedIn ? 'rgba(46,204,113,0.15)' : 'rgba(255,255,255,0.05)',
+                color: isClockedIn ? '#2ecc71' : 'var(--text-muted)',
+                border: isClockedIn ? '1px solid rgba(46,204,113,0.4)' : '1px solid var(--border)',
+              }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isClockedIn ? '#2ecc71' : '#666', display: 'inline-block', boxShadow: isClockedIn ? '0 0 6px #2ecc71' : 'none' }} />
+                {attendanceLoading ? 'Checking status...' : isClockedIn ? 'Currently Clocked In' : 'Not Clocked In'}
+              </div>
+            </div>
+
+            {/* Check-in / Check-out Times */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                  <LogIn size={12} /> Check-In
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: checkInTime ? '#2ecc71' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {checkInTime || '--:--'}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                  <LogOut size={12} /> Check-Out
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: checkOutTime ? '#e74c3c' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {checkOutTime || '--:--'}
+                </div>
+              </div>
+            </div>
+
+            {/* Clock In / Clock Out Button */}
+            {checkOutTime && !isClockedIn ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                <AlertCircle size={16} color="var(--gold)" />
+                You have completed your shift for today.
+              </div>
+            ) : (
+              <button
+                onClick={handleAttendance}
+                disabled={attendanceBusy || attendanceLoading}
+                style={{
+                  width: '100%', padding: '1rem', borderRadius: '10px', border: 'none',
+                  fontWeight: 700, fontSize: '1rem', cursor: attendanceBusy ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  transition: 'all 0.2s',
+                  background: isClockedIn
+                    ? 'linear-gradient(135deg, #e74c3c, #c0392b)'
+                    : 'linear-gradient(135deg, var(--gold), #b8860b)',
+                  color: isClockedIn ? '#fff' : '#000',
+                  opacity: attendanceBusy ? 0.6 : 1,
+                  boxShadow: isClockedIn ? '0 4px 20px rgba(231,76,60,0.3)' : '0 4px 20px rgba(201,168,76,0.3)',
+                }}
+                onMouseOver={e => { if (!attendanceBusy) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                {isClockedIn ? <LogOut size={18} /> : <LogIn size={18} />}
+                {attendanceBusy ? 'Saving...' : isClockedIn ? 'Clock Out' : 'Clock In'}
+              </button>
+            )}
+          </div>
+          
+          {mySchedule && (
+            <div className="admin-card" style={{ padding: '2rem', background: 'var(--bg-card)', marginBottom: '2rem' }}>
+              <h3 style={{ margin: '0 0 1.5rem', color: 'var(--text-primary)', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Calendar size={20} color="var(--gold)" /> Your Weekly Schedule
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Weekend'].map(day => (
+                  <div key={day} style={{ padding: '1rem', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{day}</div>
+                    <div style={{ fontWeight: 600, color: mySchedule[day] === 'Off' ? 'var(--status-red)' : 'var(--text-primary)' }}>
+                      {mySchedule[day] || 'Pending'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="admin-card" style={{ padding: '2rem', background: 'var(--bg-card)' }}>
             <h3 style={{ margin: '0 0 1.5rem', color: 'var(--text-primary)', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

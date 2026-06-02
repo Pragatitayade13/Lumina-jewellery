@@ -148,9 +148,18 @@ export default function SupportManagement() {
                   <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--gold)' }}>#{tkt.id.substring(0,6).toUpperCase()}</td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{tkt.customer}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tkt.email}</div>
+                    <div style={{ fontSize: '0.75rem' }}>
+                      <a href={`mailto:${tkt.email}`} style={{ color: 'var(--gold)', textDecoration: 'none' }} title={`Send email to ${tkt.email}`}>
+                        {tkt.email}
+                      </a>
+                    </div>
                   </td>
-                  <td>{tkt.subject}</td>
+                  <td>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{tkt.subject}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {tkt.message || 'No message content provided.'}
+                    </div>
+                  </td>
                   <td>
                     <span className={`badge badge-${tkt.priority === 'urgent' ? 'danger' : tkt.priority === 'high' ? 'warning' : 'superadmin'}`}>
                       {tkt.priority?.toUpperCase() || 'LOW'}
@@ -167,9 +176,8 @@ export default function SupportManagement() {
                       className="btn btn-sm btn-outline" 
                       style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--admin-border-bright)', color: 'var(--text-primary)' }}
                       onClick={() => setRespondModal({ isOpen: true, ticket: tkt, message: '' })}
-                      disabled={tkt.status === 'resolved'}
                     >
-                      <Reply size={12} /> {tkt.status === 'resolved' ? 'Responded' : 'Respond'}
+                      <Reply size={12} /> {tkt.status === 'resolved' ? 'View Thread' : 'Respond'}
                     </button>
                   </td>
                 </tr>
@@ -326,7 +334,7 @@ export default function SupportManagement() {
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-box" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">Respond to Ticket #{respondModal.ticket.id.substring(0,6).toUpperCase()}</h3>
+              <h3 className="modal-title">{respondModal.ticket.status === 'resolved' ? 'Ticket Thread' : 'Respond to Ticket'} #{respondModal.ticket.id.substring(0,6).toUpperCase()}</h3>
               <button className="modal-close" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}><X size={16} /></button>
             </div>
             
@@ -342,29 +350,46 @@ export default function SupportManagement() {
                   {respondModal.ticket.message}
                 </div>
               </div>
-              
-              <form onSubmit={handleRespond}>
-                <div className="form-group">
-                  <label>Email Reply</label>
-                  <textarea 
-                    className="form-input" 
-                    rows="6" 
-                    placeholder="Type your response to the customer..."
-                    required
-                    value={respondModal.message}
-                    onChange={(e) => setRespondModal(prev => ({ ...prev, message: e.target.value }))}
-                  />
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                    Note: Submitting this will simulate dispatching an email to {respondModal.ticket.email} and automatically mark the ticket as Resolved.
+
+              {respondModal.ticket.adminResponse && (
+                <div style={{ background: 'rgba(201,168,76,0.05)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(201,168,76,0.2)', borderLeft: '4px solid var(--gold)' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--gold)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Support Response (Sent to {respondModal.ticket.email})
+                  </div>
+                  <div style={{ marginTop: '0.5rem', color: 'var(--text-primary)', lineHeight: 1.5, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>
+                    {respondModal.ticket.adminResponse}
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}>Cancel</button>
-                  <button type="submit" className="btn btn-gold" disabled={isSending} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
-                    <Send size={14} /> {isSending ? 'Sending...' : 'Send Response & Resolve'}
-                  </button>
+              )}
+              
+              {respondModal.ticket.status !== 'resolved' ? (
+                <form onSubmit={handleRespond}>
+                  <div className="form-group">
+                    <label>Email Reply</label>
+                    <textarea 
+                      className="form-input" 
+                      rows="6" 
+                      placeholder="Type your response to the customer..."
+                      required
+                      value={respondModal.message}
+                      onChange={(e) => setRespondModal(prev => ({ ...prev, message: e.target.value }))}
+                    />
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                      Note: Submitting this will simulate dispatching an email to {respondModal.ticket.email} and automatically mark the ticket as Resolved.
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                    <button type="button" className="btn btn-outline" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}>Cancel</button>
+                    <button type="submit" className="btn btn-gold" disabled={isSending} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
+                      <Send size={14} /> {isSending ? 'Sending...' : 'Send Response & Resolve'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}>Close Window</button>
                 </div>
-              </form>
+              )}
             </div>
           </div>
         </div>

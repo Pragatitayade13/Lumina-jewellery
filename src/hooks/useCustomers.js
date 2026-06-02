@@ -42,6 +42,7 @@ export function useCustomers() {
             joinDate: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (typeof data.createdAt === 'string' ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'),
             lastCheckIn: formatTime(data.lastCheckIn),
             lastCheckOut: formatTime(data.lastCheckOut),
+            schedule: data.schedule || null,
             avatarColor: ['#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f'][Math.floor(Math.random() * 5)],
             avatar: safeName.charAt(0).toUpperCase()
           });
@@ -71,5 +72,31 @@ export function useCustomers() {
     }
   };
 
-  return { customers, loading, error, updateCustomerStatus };
+  const updateUserSchedule = async (userId, scheduleData) => {
+    if (!db) throw new Error("Firebase not initialized");
+    try {
+      const docRef = doc(db, 'users', userId);
+      await updateDoc(docRef, { schedule: scheduleData });
+    } catch (err) {
+      console.error("Error updating schedule:", err);
+      throw err;
+    }
+  };
+
+  const updateUserPermissions = async (userId, data) => {
+    if (!db) throw new Error("Firebase not initialized");
+    try {
+      const docRef = doc(db, 'users', userId);
+      await updateDoc(docRef, { 
+        name: data.name,
+        role: data.role,
+        department: data.department
+      });
+    } catch (err) {
+      console.error("Error updating user permissions:", err);
+      throw err;
+    }
+  };
+
+  return { customers, loading, error, updateCustomerStatus, updateUserSchedule, updateUserPermissions };
 }

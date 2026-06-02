@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Gem, Package, UsersRound, 
   Store, CreditCard, BarChart3, BarChart2, FileText, Shield, 
-  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin
+  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin, User, ChevronUp
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
@@ -77,6 +77,19 @@ export default function AdminLayout({ children }) {
   const navigate = useNavigate();
   const { user, setUser, theme, toggleTheme } = useApp();
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+  const [isSidebarMenuOpen, setIsSidebarMenuOpen] = useState(false);
+  const sidebarAvatarRef = useRef(null);
+
+  // Close sidebar avatar dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (sidebarAvatarRef.current && !sidebarAvatarRef.current.contains(e.target)) {
+        setIsSidebarMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   const userRole = user?.role || 'superadmin'; 
   const isSuperAdmin = userRole === 'superadmin';
@@ -171,26 +184,101 @@ export default function AdminLayout({ children }) {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-admin-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div 
-              style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', flex: 1 }}
-              onClick={() => navigate('/admin/profile')}
-              title="View Profile"
+          <div ref={sidebarAvatarRef} style={{ position: 'relative' }}>
+
+            {/* ── Profile / Signout Popup ── */}
+            {isSidebarMenuOpen && (
+              <div style={{
+                position: 'absolute', bottom: 'calc(100% + 10px)', left: 0, right: 0,
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: '12px', overflow: 'hidden',
+                boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
+                animation: 'adm-scale 0.2s ease',
+                zIndex: 200,
+              }}>
+                {/* User info header */}
+                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', background: 'rgba(201,168,76,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className="admin-avatar" style={{ width: 38, height: 38, flexShrink: 0 }}>
+                      {(user?.name || portalName).substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{user?.name || `${portalName} User`}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--gold)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{badgeName}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Menu items */}
+                <div style={{ padding: '0.5rem' }}>
+                  <button
+                    onClick={() => { setIsSidebarMenuOpen(false); navigate('/admin/profile'); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
+                      color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 500,
+                      cursor: 'pointer', transition: 'background 0.15s',
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(201,168,76,0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <User size={16} color="var(--gold)" /> My Profile
+                  </button>
+
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => { setIsSidebarMenuOpen(false); navigate('/admin/settings'); }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
+                        color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 500,
+                        cursor: 'pointer', transition: 'background 0.15s',
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = 'rgba(201,168,76,0.1)'}
+                      onMouseOut={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <Settings size={16} color="var(--gold)" /> System Settings
+                    </button>
+                  )}
+
+                  <div style={{ height: '1px', background: 'var(--border)', margin: '0.3rem 0' }} />
+
+                  <button
+                    onClick={() => { setIsSidebarMenuOpen(false); handleLogout(); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
+                      color: '#e74c3c', fontSize: '0.85rem', fontWeight: 600,
+                      cursor: 'pointer', transition: 'background 0.15s',
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(231,76,60,0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={16} color="#e74c3c" /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Avatar Card ── */}
+            <div
+              className="sidebar-admin-card"
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setIsSidebarMenuOpen(prev => !prev)}
+              title="Account Menu"
             >
               <div className="admin-avatar" title={user?.name || `${portalName} User`}>
                 {(user?.name || portalName).substring(0, 2).toUpperCase()}
               </div>
-              <div>
-                <div className="admin-name">{user?.name || `${portalName} User`}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="admin-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || `${portalName} User`}</div>
                 <div className="admin-role-badge" style={{ display: 'flex', alignItems: 'center' }}>
-                  <Diamond size={10} style={{ marginRight: 4 }} /> 
+                  <Diamond size={10} style={{ marginRight: 4 }} />
                   {badgeName}
                 </div>
               </div>
+              <ChevronUp size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: isSidebarMenuOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
             </div>
-            <button onClick={handleLogout} className="btn btn-icon btn-outline" style={{ border: 'none' }} title="Logout">
-              <LogOut size={16} />
-            </button>
           </div>
         </div>
       </aside>
@@ -221,7 +309,6 @@ export default function AdminLayout({ children }) {
         <div className="topbar-actions">
           <NotificationDropdown userRole={userRole} />
           <QuickActionsDropdown userRole={userRole} />
-          <LanguageSwitcher variant="admin" />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
           <button className="topbar-btn" title="Toggle Theme" onClick={toggleTheme}>
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}

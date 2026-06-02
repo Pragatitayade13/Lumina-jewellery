@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminUsers } from '../data/mockData';
-import { Info, Edit, Eye, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText } from 'lucide-react';
+import { Info, Edit, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText, RefreshCw } from 'lucide-react';
 import { db } from '../../config/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useApp } from '../../context/AppContext';
@@ -9,12 +9,22 @@ import { useMessages } from '../../hooks/useMessages';
 
 export default function StaffManagement() {
   const { user, showToast } = useApp();
-  const [activeTab, setActiveTab] = useState('directory'); // 'directory', 'tasks', 'schedules', 'performance', 'communication'
+  const [activeTab, setActiveTab] = useState('directory');
+  const [attendanceFilter, setAttendanceFilter] = useState('today'); // 'today' | 'week' | 'month'
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshAttendance = useCallback(() => {
+    setIsRefreshing(true);
+    setAttendanceRefreshKey(k => k + 1);
+    setTimeout(() => setIsRefreshing(false), 800);
+    showToast('Attendance data refreshed.');
+  }, [showToast]);
 
   // Directory State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { customers: firebaseUsers, loading: usersLoading } = useCustomers();
+  const { customers: firebaseUsers, loading: usersLoading, updateUserSchedule, updateUserPermissions } = useCustomers();
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
@@ -33,6 +43,46 @@ export default function StaffManagement() {
     { id: 2, title: 'Call Customer #1092', assignee: 'Michael Doe', status: 'Pending', deadline: 'Tomorrow, 10:00 AM' },
     { id: 3, title: 'Audit Weekly Inventory', assignee: 'Sarah Admin', status: 'Completed', deadline: 'Yesterday' },
   ]);
+
+  // Schedules State
+  const [staffSchedules, setStaffSchedules] = useState({});
+
+  useEffect(() => {
+    if (users.length > 0 && Object.keys(staffSchedules).length === 0) {
+      const initial = {};
+      const shifts = ['Morning (9A-5P)', 'Evening (1P-9P)', 'Off'];
+      users.forEach((u, i) => {
+        initial[u.id] = u.schedule || {
+          Monday: i%3===0 ? 'Off' : 'Morning (9A-5P)',
+          Tuesday: shifts[Math.floor(Math.random() * shifts.length)],
+          Wednesday: shifts[Math.floor(Math.random() * shifts.length)],
+          Thursday: shifts[Math.floor(Math.random() * shifts.length)],
+          Friday: shifts[Math.floor(Math.random() * shifts.length)],
+          Weekend: 'Off'
+        };
+      });
+      setStaffSchedules(initial);
+    }
+  }, [users, staffSchedules]);
+
+  const handleScheduleChange = (userId, day, newValue) => {
+    setStaffSchedules(prev => ({
+      ...prev,
+      [userId]: { ...prev[userId], [day]: newValue }
+    }));
+  };
+
+  const handleSaveSchedules = async () => {
+    try {
+      showToast("Saving schedules...");
+      await Promise.all(Object.keys(staffSchedules).map(userId => 
+        updateUserSchedule(userId, staffSchedules[userId])
+      ));
+      showToast("Schedules saved successfully!");
+    } catch (e) {
+      showToast("Failed to save schedules", "error");
+    }
+  };
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', assignee: '', deadline: '' });
 
@@ -51,11 +101,20 @@ export default function StaffManagement() {
     }));
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
-    setEditingUser(null);
-    showToast("User permissions updated successfully.");
+    try {
+      await updateUserPermissions(editingUser.id, {
+        name: editingUser.name,
+        role: editingUser.role,
+        department: editingUser.department
+      });
+      // The local state will be automatically updated via the useCustomers snapshot listener
+      setEditingUser(null);
+      showToast("User permissions updated successfully.");
+    } catch (err) {
+      showToast("Failed to update user permissions.");
+    }
   };
 
   const handleAddUser = async (e) => {
@@ -99,6 +158,13 @@ export default function StaffManagement() {
     if (!chatMessage.trim() || !selectedChatUser) return;
     try {
       await sendMessage(user?.uid, user?.name || 'Manager', chatMessage);
+      
+      if (selectedChatUser.phone) {
+        showToast(`SMS Dispatched to ${selectedChatUser.name} at ${selectedChatUser.phone}`);
+      } else {
+        showToast("Message sent internally.");
+      }
+      
       setChatMessage('');
     } catch (err) {
       showToast("Failed to send message. Please try again.");
@@ -148,8 +214,7 @@ export default function StaffManagement() {
           { id: 'attendance', label: 'Attendance Records', icon: <FileText size={16} /> },
           { id: 'tasks', label: 'Task Assignments', icon: <CheckSquare size={16} /> },
           { id: 'schedules', label: 'Schedules & Shifts', icon: <Calendar size={16} /> },
-          { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> },
-          { id: 'communication', label: 'Internal Comms', icon: <MessageSquare size={16} /> }
+          { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> }
         ].map(tab => (
           <button 
             key={tab.id}
@@ -246,11 +311,66 @@ export default function StaffManagement() {
       {activeTab === 'attendance' && (
         <div className="admin-card">
           <div className="card-header">
-            <div className="card-title">Daily Attendance Records</div>
-            <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handleDownloadAttendance}>
-              <Download size={16} /> Download Report
-            </button>
+            <div className="card-title">Attendance & Time Logs</div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {/* Filter Pills */}
+              <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--surface)', borderRadius: '8px', padding: '3px', border: '1px solid var(--border)' }}>
+                {['today', 'week', 'month'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setAttendanceFilter(f)}
+                    style={{
+                      padding: '0.35rem 0.85rem', borderRadius: '6px', border: 'none',
+                      fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+                      background: attendanceFilter === f ? 'var(--gold)' : 'transparent',
+                      color: attendanceFilter === f ? '#000' : 'var(--text-muted)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {f === 'today' ? 'Today' : f === 'week' ? 'This Week' : 'This Month'}
+                  </button>
+                ))}
+              </div>
+              {/* Refresh Button */}
+              <button
+                className="btn btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={handleRefreshAttendance}
+                title="Refresh attendance data"
+              >
+                <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+                Refresh
+              </button>
+              {/* Download */}
+              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handleDownloadAttendance}>
+                <Download size={16} /> Export CSV
+              </button>
+            </div>
           </div>
+
+          {/* Summary Stat Chips */}
+          {(() => {
+            const staffList = users.filter(u => u.role !== 'superadmin');
+            const active = staffList.filter(u => u.status === 'online').length;
+            const checkedIn = staffList.filter(u => u.lastCheckIn && u.lastCheckIn !== '--').length;
+            const absent = staffList.length - checkedIn;
+            return (
+              <div style={{ display: 'flex', gap: '1rem', padding: '0 0 1rem 0', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Currently Active', value: active, color: '#2ecc71' },
+                  { label: 'Checked In Today', value: checkedIn, color: 'var(--gold)' },
+                  { label: 'Absent / Not Logged', value: absent, color: '#e74c3c' },
+                  { label: 'Total Staff', value: staffList.length, color: 'var(--text-muted)' },
+                ].map(chip => (
+                  <div key={chip.label} style={{ padding: '0.75rem 1.25rem', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '1.5rem', fontWeight: 700, color: chip.color }}>{chip.value}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{chip.label}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -261,38 +381,72 @@ export default function StaffManagement() {
                   <th>Status</th>
                   <th>Check-In</th>
                   <th>Check-Out</th>
+                  <th>Hours Worked</th>
                 </tr>
               </thead>
               <tbody>
-                {users.filter(u => u.role !== 'superadmin').map((u, i) => {
-                  const checkIn = u.lastCheckIn || '--';
-                  const checkOut = u.lastCheckOut || '--';
-                  let status = 'Absent';
-                  let badgeClass = 'badge-danger';
-                  
-                  if (u.status === 'online') {
-                    status = 'Active';
-                    badgeClass = 'badge-active';
-                  } else if (u.lastCheckIn) {
-                    status = 'Offline';
-                    badgeClass = 'badge-pending';
-                  }
-                  
-                  return (
-                    <tr key={u.id}>
-                      <td style={{ fontWeight: 600 }}>{u.name}</td>
-                      <td>{u.department}</td>
-                      <td>{new Date().toLocaleDateString('en-GB')}</td>
-                      <td>
-                        <span className={`badge ${badgeClass}`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td>{checkIn}</td>
-                      <td>{checkOut}</td>
-                    </tr>
-                  )
-                })}
+                {users.filter(u => u.role !== 'superadmin').length === 0 ? (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                    <Clock size={32} style={{ opacity: 0.2, display: 'block', margin: '0 auto 1rem' }} />
+                    No staff members found. Ask staff to clock in from their Profile page.
+                  </td></tr>
+                ) : (
+                  users.filter(u => u.role !== 'superadmin').map((u) => {
+                    const checkIn = u.lastCheckIn || '--';
+                    const checkOut = u.lastCheckOut || '--';
+                    let status = 'Absent';
+                    let badgeClass = 'badge-danger';
+
+                    if (u.status === 'online') {
+                      status = 'Active';
+                      badgeClass = 'badge-active';
+                    } else if (u.lastCheckIn && u.lastCheckIn !== '--') {
+                      status = 'Offline';
+                      badgeClass = 'badge-pending';
+                    }
+
+                    // Calculate hours worked
+                    let hoursWorked = '--';
+                    if (checkIn !== '--' && checkOut !== '--') {
+                      try {
+                        const today = new Date().toLocaleDateString('en-US');
+                        const inDate = new Date(`${today} ${checkIn}`);
+                        const outDate = new Date(`${today} ${checkOut}`);
+                        const diffMs = outDate - inDate;
+                        if (diffMs > 0) {
+                          const hrs = Math.floor(diffMs / 3600000);
+                          const mins = Math.floor((diffMs % 3600000) / 60000);
+                          hoursWorked = `${hrs}h ${mins}m`;
+                        }
+                      } catch {}
+                    } else if (checkIn !== '--' && u.status === 'online') {
+                      hoursWorked = 'In progress...';
+                    }
+
+                    return (
+                      <tr key={u.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div className="user-avatar" style={{ width: 28, height: 28, fontSize: '0.75rem', background: `linear-gradient(135deg, ${u.avatarColor}, #2c3e50)`, color: 'white', flexShrink: 0 }}>{u.avatar}</div>
+                            <span style={{ fontWeight: 600 }}>{u.name}</span>
+                          </div>
+                        </td>
+                        <td>{u.department}</td>
+                        <td>{new Date().toLocaleDateString('en-GB')}</td>
+                        <td><span className={`badge ${badgeClass}`}>{status}</span></td>
+                        <td style={{ color: checkIn !== '--' ? '#2ecc71' : 'var(--text-muted)', fontWeight: 600 }}>{checkIn}</td>
+                        <td style={{ color: checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>{checkOut}</td>
+                        <td style={{ color: hoursWorked === 'In progress...' ? 'var(--gold)' : 'var(--text-primary)', fontSize: '0.875rem' }}>
+                          {hoursWorked === 'In progress...' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock size={12} style={{ color: 'var(--gold)' }} /> In progress
+                            </span>
+                          ) : hoursWorked}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -349,7 +503,12 @@ export default function StaffManagement() {
       {/* Tab: Schedules */}
       {activeTab === 'schedules' && (
         <div className="admin-card">
-          <div className="card-header"><div className="card-title">Weekly Staff Schedules</div></div>
+          <div className="card-header">
+            <div className="card-title">Weekly Staff Schedules</div>
+            <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={handleSaveSchedules}>
+              <Check size={16} style={{ marginRight: '4px' }}/> Save Schedules
+            </button>
+          </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -364,18 +523,38 @@ export default function StaffManagement() {
                 </tr>
               </thead>
               <tbody>
-                {users.filter(u => u.role !== 'superadmin').map((u, i) => {
+                {users.filter(u => u.role !== 'superadmin').map((u) => {
+                  const sched = staffSchedules[u.id];
+                  if (!sched) return null;
                   const shifts = ['Morning (9A-5P)', 'Evening (1P-9P)', 'Off'];
-                  const r = () => shifts[Math.floor(Math.random() * shifts.length)];
+                  
+                  const renderSelect = (day) => (
+                    <select 
+                      value={sched[day]} 
+                      onChange={(e) => handleScheduleChange(u.id, day, e.target.value)}
+                      style={{ 
+                        background: 'transparent', 
+                        color: sched[day] === 'Off' ? 'var(--status-red)' : 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        width: '100%',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      {shifts.map(s => <option key={s} value={s} style={{background: 'var(--bg-card)', color: s === 'Off' ? 'var(--status-red)' : '#fff'}}>{s}</option>)}
+                    </select>
+                  );
+
                   return (
                     <tr key={u.id}>
                       <td style={{ fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ color: i%3===0 ? 'var(--status-red)' : 'var(--text-primary)' }}>{i%3===0 ? 'Off' : 'Morning (9A-5P)'}</td>
-                      <td>{r()}</td>
-                      <td>{r()}</td>
-                      <td>{r()}</td>
-                      <td>{r()}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>Off</td>
+                      <td>{renderSelect('Monday')}</td>
+                      <td>{renderSelect('Tuesday')}</td>
+                      <td>{renderSelect('Wednesday')}</td>
+                      <td>{renderSelect('Thursday')}</td>
+                      <td>{renderSelect('Friday')}</td>
+                      <td>{renderSelect('Weekend')}</td>
                     </tr>
                   )
                 })}
@@ -428,64 +607,6 @@ export default function StaffManagement() {
         </div>
       )}
 
-      {/* Tab: Communication */}
-      {activeTab === 'communication' && (
-        <div style={{ display: 'flex', height: '500px', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--surface)' }}>
-          <div style={{ width: '250px', borderRight: '1px solid var(--border)', background: 'var(--bg-sidebar)', overflowY: 'auto' }}>
-            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Direct Messages</div>
-            {users.filter(u => u.role !== 'superadmin').map(u => (
-              <div 
-                key={u.id} 
-                onClick={() => setSelectedChatUser(u)}
-                style={{ 
-                  padding: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  background: selectedChatUser?.id === u.id ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)'
-                }}
-              >
-                <div className="user-avatar" style={{ width: 32, height: 32, fontSize: '0.8rem', background: `linear-gradient(135deg, ${u.avatarColor}, #2c3e50)` }}>{u.avatar}</div>
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{u.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{u.role}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {selectedChatUser ? (
-              <>
-                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div className="user-avatar" style={{ width: 32, height: 32, fontSize: '0.8rem', background: `linear-gradient(135deg, ${selectedChatUser.avatarColor}, #2c3e50)` }}>{selectedChatUser.avatar}</div>
-                  Chat with {selectedChatUser.name}
-                </div>
-                <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {messages.map(m => {
-                    const isMine = m.senderId === user?.uid;
-                    return (
-                      <div key={m.id} style={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem', textAlign: isMine ? 'right' : 'left' }}>{m.senderName} • {m.time}</div>
-                        <div style={{ background: isMine ? 'var(--gold)' : '#333', color: isMine ? '#000' : '#fff', padding: '0.75rem 1rem', borderRadius: '12px' }}>
-                          {m.text}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <form onSubmit={handleSendMessage} style={{ padding: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
-                  <input type="text" className="form-input" style={{ flex: 1 }} placeholder="Type a message..." value={chatMessage} onChange={e => setChatMessage(e.target.value)} />
-                  <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', padding: '0 1rem' }}><Send size={16}/></button>
-                </form>
-              </>
-            ) : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column', gap: '1rem' }}>
-                <MessageSquare size={48} opacity={0.2} />
-                Select a staff member to start communicating.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Modals */}
       {isAddUserModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAddUserModalOpen(false)}>
@@ -525,7 +646,7 @@ export default function StaffManagement() {
                       <option value="Sales">Sales</option>
                       <option value="Customer Support">Customer Support</option>
                       <option value="Finance">Finance</option>
-                      <option value="Logistics">Logistics</option>
+                      <option value="Delivery Partner">Delivery Partner</option>
                     </select>
                   </div>
                 </div>
@@ -559,6 +680,19 @@ export default function StaffManagement() {
                       {editingUser.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
                       <option value="staff">Staff</option>
                       <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                      <option value="finance">Finance</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Department</label>
+                    <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})}>
+                      <option value="" disabled>Select Department</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Customer Support">Customer Support</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Delivery Partner">Delivery Partner</option>
                     </select>
                   </div>
                 </div>
