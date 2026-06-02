@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment } from 'firebase/firestore';
-import { inventory as mockInventory } from '../admin/data/mockData';
+import { inventory as mockInventory, products as mockProducts } from '../admin/data/mockData';
 
 export function useInventory() {
   const [inventory, setInventory] = useState([]);
@@ -10,8 +10,17 @@ export function useInventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const getFallbackData = () => {
+    if (!mockInventory || !mockProducts) return [];
+    return mockInventory.map(item => {
+      const prod = mockProducts.find(p => p.sku === item.sku);
+      return { ...item, price: prod?.price || 50000, mrp: prod?.mrp || 60000 };
+    });
+  };
+
   useEffect(() => {
     if (!db) {
+      setInventory(getFallbackData());
       setLoading(false);
       return;
     }
@@ -19,19 +28,24 @@ export function useInventory() {
     const q = query(collection(db, 'inventory'));
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // If the inventory is empty in Firebase, we can seed it from mock data
-      if (snapshot.empty && mockInventory) {
+      // Ensure all mock items exist in Firebase (seed missing items)
+      if (mockInventory) {
         try {
-          console.log("Seeding inventory from mock data...");
-          for (const item of mockInventory) {
-            await setDoc(doc(db, 'inventory', item.sku), {
-              ...item,
-              price: Math.floor(Math.random() * 50000) + 10000, // mock price for value calculation
-              updatedAt: serverTimestamp()
-            });
+          const existingSkus = new Set(snapshot.docs.map(doc => doc.id));
+          const missingItems = mockInventory.filter(item => !existingSkus.has(item.sku));
+          
+          if (missingItems.length > 0) {
+            console.log("Seeding missing items...", missingItems.length);
+            for (const item of missingItems) {
+              await setDoc(doc(db, 'inventory', item.sku), {
+                ...item,
+                price: item.price || Math.floor(Math.random() * 50000) + 10000,
+                updatedAt: serverTimestamp()
+              });
+            }
           }
         } catch (e) {
-          console.error("Error seeding inventory:", e);
+          console.error("Error seeding missing inventory:", e);
         }
       }
 
@@ -86,6 +100,12 @@ export function useInventory() {
       });
       setInventory(inventoryData);
       setLoading(false);
+    }, (err) => {
+      console.error("Error fetching inventory (likely permissions):", err);
+      // Fallback to mock inventory so the store isn't empty!
+      setInventory(getFallbackData());
+      setLoading(false);
+      setError(err);
     });
 
     const poQuery = query(collection(db, 'purchase_orders'));

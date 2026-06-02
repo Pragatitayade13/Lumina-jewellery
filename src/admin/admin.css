@@ -921,14 +921,85 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 @media (max-width: 1280px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
-  .grid-2-1 { grid-template-columns: 1fr; }
-  .grid-3-1 { grid-template-columns: 1fr; }
+  .grid-2-1, .grid-3-1, .grid-1-2 { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
+  /* Tablet / Smaller Desktop */
   .admin-sidebar { transform: translateX(-100%); }
-  .admin-main { margin-left: 0; }
-  .admin-topbar { left: 0; }
-  .stat-grid { grid-template-columns: 1fr 1fr; }
-  .grid-2, .grid-3, .grid-4, .grid-1-2 { grid-template-columns: 1fr; }
+  .admin-wrapper.sidebar-hidden .admin-sidebar { transform: translateX(0); }
+  .admin-main { margin-left: 0; width: 100%; max-width: 100%; overflow-x: hidden; }
+  .admin-topbar { left: 0; width: 100%; padding: 0 1.25rem; }
+  .stat-grid, .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .admin-content { padding: 1.25rem; }
+}
+
+@media (max-width: 767px) {
+  /* Mobile Landscape & Portrait */
+  .stat-grid, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  
+  .admin-topbar {
+    height: auto;
+    min-height: var(--topbar-height);
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .topbar-search { 
+    order: 3; 
+    width: 100%; 
+    margin-left: 0; 
+  }
+  
+  .topbar-actions {
+    margin-left: auto;
+  }
+  
+  .admin-main { 
+    margin-top: calc(var(--topbar-height) + 50px); 
+    padding-bottom: 2rem;
+  }
+  
+  .admin-content { padding: 1rem; }
+  
+  .card-header, .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .page-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .page-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-search {
+    width: 100%;
+  }
+  
+  .admin-table-wrap {
+    margin: 0 -1.375rem;
+    padding: 0 1.375rem;
+    width: calc(100% + 2.75rem);
+  }
+}
+
+@media (max-width: 480px) {
+  /* Small Mobile */
+  .stat-value { font-size: 1.5rem; }
+  .topbar-page-title { font-size: 1rem; }
+  .admin-sidebar { width: 260px; }
+  .admin-card { padding: 1rem; }
+  .admin-table-wrap { margin: 0 -1rem; padding: 0 1rem; width: calc(100% + 2rem); }
 }

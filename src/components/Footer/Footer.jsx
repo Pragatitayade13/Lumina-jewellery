@@ -64,7 +64,7 @@ const getLinkRoute = (link) => {
   if (link === 'Privacy Policy') return '/privacy-policy';
   if (link === 'Terms of Service') return '/terms-of-service';
   if (link === 'Cookie Policy' || link === 'Cookies') return '/cookies';
-  if (link === 'Blog') return 'https://youtube.com';
+  if (link === 'Blog') return 'https://youtu.be/bWR1t-l1Bf8?si=b9LJZdf23ZiA8TIn';
   return '/';
 };
 
@@ -117,7 +117,7 @@ export default function Footer() {
               <div className="footer-socials">
                 <a href="https://instagram.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
                 <a href="https://facebook.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
-                <a href="https://youtube.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
+                <a href="https://youtu.be/bWR1t-l1Bf8?si=b9LJZdf23ZiA8TIn" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
               </div>
             </div>
 

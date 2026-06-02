@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
@@ -74,6 +74,11 @@ export default function Hero() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const { scrollY } = useScroll();
+  const bgY = useTransform(scrollY, [0, 800], ['0%', '30%']);
+  const contentY = useTransform(scrollY, [0, 800], ['0%', '40%']);
+  const contentOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+
   return (
     <section className="hero" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
       {/* Background Slides */}
@@ -86,9 +91,9 @@ export default function Hero() {
           exit={{ opacity: 0 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
         >
-          <div
+          <motion.div
             className="hero-slide-bg zoom-in"
-            style={{ backgroundImage: `url(${slides[active].bg})` }}
+            style={{ backgroundImage: `url(${slides[active].bg})`, y: bgY }}
           />
           <div className="hero-overlay" />
           <FloatingParticles count={40} />
@@ -96,7 +101,7 @@ export default function Hero() {
       </AnimatePresence>
 
       {/* Content */}
-      <div className="hero-content-wrap">
+      <motion.div className="hero-content-wrap" style={{ y: contentY, opacity: contentOpacity }}>
         <div className="hero-container">
           <AnimatePresence mode="wait">
             <motion.div 
@@ -162,7 +167,7 @@ export default function Hero() {
             </motion.div>
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
 
       {/* Arrows */}
       <button className="hero-arrow hero-arrow-prev" onClick={prev} id="hero-prev-btn" aria-label="Previous slide">

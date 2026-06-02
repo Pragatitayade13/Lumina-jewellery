@@ -116,10 +116,9 @@ export default function StaffManagement() {
     const dateStr = new Date().toLocaleDateString('en-GB');
     
     users.filter(u => u.role !== 'superadmin').forEach((u, i) => {
-      const statuses = ['Present', 'Present', 'Present', 'Late', 'Absent'];
-      const status = statuses[(u.name.length + i) % statuses.length];
-      const checkIn = status === 'Absent' ? '--' : (status === 'Late' ? '09:45 AM' : '08:55 AM');
-      const checkOut = status === 'Absent' ? '--' : (status === 'Late' ? '06:00 PM' : '05:00 PM');
+      const checkIn = u.lastCheckIn || '--';
+      const checkOut = u.lastCheckOut || '--';
+      const status = u.status === 'online' ? 'Active' : (u.lastCheckIn ? 'Offline' : 'Absent');
       
       csv += `"${u.name}","${u.department}","${dateStr}","${status}","${checkIn}","${checkOut}"\n`;
     });
@@ -266,10 +265,18 @@ export default function StaffManagement() {
               </thead>
               <tbody>
                 {users.filter(u => u.role !== 'superadmin').map((u, i) => {
-                  const statuses = ['Present', 'Present', 'Present', 'Late', 'Absent'];
-                  const status = statuses[(u.name.length + i) % statuses.length];
-                  const checkIn = status === 'Absent' ? '--' : (status === 'Late' ? '09:45 AM' : '08:55 AM');
-                  const checkOut = status === 'Absent' ? '--' : (status === 'Late' ? '06:00 PM' : '05:00 PM');
+                  const checkIn = u.lastCheckIn || '--';
+                  const checkOut = u.lastCheckOut || '--';
+                  let status = 'Absent';
+                  let badgeClass = 'badge-danger';
+                  
+                  if (u.status === 'online') {
+                    status = 'Active';
+                    badgeClass = 'badge-active';
+                  } else if (u.lastCheckIn) {
+                    status = 'Offline';
+                    badgeClass = 'badge-pending';
+                  }
                   
                   return (
                     <tr key={u.id}>
@@ -277,7 +284,7 @@ export default function StaffManagement() {
                       <td>{u.department}</td>
                       <td>{new Date().toLocaleDateString('en-GB')}</td>
                       <td>
-                        <span className={`badge ${status === 'Present' ? 'badge-active' : status === 'Late' ? 'badge-pending' : 'badge-danger'}`}>
+                        <span className={`badge ${badgeClass}`}>
                           {status}
                         </span>
                       </td>

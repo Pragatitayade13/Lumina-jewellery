@@ -92,12 +92,47 @@ export default function Catalog() {
     toggleWishlist(item);
   };
 
+  const getCategoryHeader = () => {
+    switch (category) {
+      case "Men's Jewellery":
+      case "Mens Jewellery":
+        return {
+          title: "Men's Jewellery Collection",
+          desc: "Define your legacy with our exclusive range of men's rings, chains, kadas, and accessories.",
+          image: "https://images.unsplash.com/photo-1614949430268-c131498b98eb?auto=format&fit=crop&q=80"
+        };
+      case "Bridal":
+        return {
+          title: "Bridal Collections",
+          desc: "Exquisite bridal sets crafted for your special day.",
+          image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&q=80"
+        };
+      case "Diamond Jewellery":
+        return {
+          title: "Diamond Jewellery",
+          desc: "Brilliant diamonds crafted to perfection.",
+          image: "https://images.unsplash.com/photo-1599643478524-fb66f7090098?auto=format&fit=crop&q=80"
+        };
+      default:
+        return {
+          title: "Fine Jewellery Collections",
+          desc: "Discover our exclusive range of handcrafted masterpieces, designed to illuminate your every moment.",
+          image: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&q=80"
+        };
+    }
+  };
+  
+  const headerInfo = getCategoryHeader();
+
   return (
     <div className="catalog-page">
-      <div className="catalog-header">
+      <div 
+        className="catalog-header"
+        style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), url('${headerInfo.image}')` }}
+      >
         <div className="catalog-header-content">
-          <h1>Fine Jewellery Collections</h1>
-          <p>Discover our exclusive range of handcrafted masterpieces, designed to illuminate your every moment.</p>
+          <h1>{headerInfo.title}</h1>
+          <p>{headerInfo.desc}</p>
         </div>
       </div>
 

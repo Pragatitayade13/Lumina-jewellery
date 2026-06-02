@@ -5,6 +5,7 @@
   height: 100vh;
   min-height: 680px;
   overflow: hidden;
+  margin-top: -115px;
 }
 
 /* Light Theme Hero Adjustments - Distinct font colors & readable overlay */
@@ -58,7 +59,7 @@
   inset: 0;
   display: flex;
   align-items: center;
-  padding: 0 2rem;
+  padding: 20px 2rem 0 2rem;
 }
 
 .hero-container {

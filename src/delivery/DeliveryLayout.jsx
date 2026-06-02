@@ -1,8 +1,32 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Package, Truck, LayoutDashboard, LogOut, Bell, RotateCcw } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 import './DeliveryLayout.css';
 
 export default function DeliveryLayout() {
+  const { user, setUser } = useApp();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    if (user?.uid) {
+      try {
+        const { auth, db } = await import('../config/firebase');
+        const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+        const { signOut } = await import('firebase/auth');
+        
+        if (db) {
+           await updateDoc(doc(db, 'users', user.uid), {
+             lastCheckOut: serverTimestamp(),
+             status: 'offline'
+           });
+        }
+        if (auth) await signOut(auth);
+      } catch (e) { console.error("Logout error", e); }
+    }
+    setUser(null);
+    navigate('/');
+  };
+
   return (
     <div className="delivery-layout">
       {/* Mobile-friendly Sidebar */}
@@ -29,13 +53,13 @@ export default function DeliveryLayout() {
 
         <div className="delivery-user-section">
           <div className="del-user-info">
-            <div className="del-avatar">RK</div>
+            <div className="del-avatar">{(user?.name || 'Driver').substring(0, 2).toUpperCase()}</div>
             <div>
-              <div className="del-name">Rahul Kumar</div>
-              <div className="del-role">Senior Partner</div>
+              <div className="del-name">{user?.name || 'Rahul Kumar'}</div>
+              <div className="del-role">{user?.role === 'delivery' ? 'Delivery Partner' : 'Senior Partner'}</div>
             </div>
           </div>
-          <button className="del-logout">
+          <button className="del-logout" onClick={handleLogout}>
             <LogOut size={18} /> Logout
           </button>
         </div>

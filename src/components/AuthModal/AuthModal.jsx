@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, ClipboardList } from 'lucide-react';
+import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, ClipboardList, Diamond, Key, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../config/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import bgImage from '../../assets/login_bg.png';
 import './AuthModal.css';
 
 export default function AuthModal() {
@@ -21,6 +22,7 @@ export default function AuthModal() {
   const [customJoinDate, setCustomJoinDate] = useState('');
   const [error, setError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function AuthModal() {
       setPhone('');
       setAddress('');
       setConfirmPassword('');
+      setShowPassword(false);
     }
   }, [isAuthOpen]);
 
@@ -82,7 +85,9 @@ export default function AuthModal() {
             }] : [],
             role: selectedOption.id,
             joinDate: formattedJoinDate,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            lastCheckIn: serverTimestamp(),
+            status: 'online'
           });
           setUser({ uid: userCredential.user.uid, email, role: selectedOption.id, name: fullName, phone, joinDate: formattedJoinDate });
         } else {
@@ -93,7 +98,9 @@ export default function AuthModal() {
               name: userCredential.user.displayName || 'User',
               email: email,
               role: selectedOption.id,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              lastCheckIn: serverTimestamp(),
+              status: 'online'
             });
             setUser({ uid: userCredential.user.uid, email, role: selectedOption.id, name: userCredential.user.displayName || 'User' });
           } else {
@@ -104,7 +111,12 @@ export default function AuthModal() {
               throw new Error("Access Denied. This account does not have administrative privileges.");
             }
             
-            setUser({ uid: userCredential.user.uid, email, ...data });
+            await updateDoc(doc(db, 'users', userCredential.user.uid), {
+              lastCheckIn: serverTimestamp(),
+              status: 'online'
+            });
+            
+            setUser({ uid: userCredential.user.uid, email, ...data, status: 'online' });
           }
         }
         
@@ -217,41 +229,39 @@ export default function AuthModal() {
   ];
 
   return (
-    <div className="auth-modal-overlay" onClick={() => setIsAuthOpen(false)}>
-      <div className="auth-modal" onClick={e => e.stopPropagation()}>
-        <button className="auth-modal-close" onClick={() => setIsAuthOpen(false)}>
+    <div className="auth-page-container" style={{ backgroundImage: `url(${bgImage})` }}>
+      <div className="auth-glass-modal" onClick={e => e.stopPropagation()}>
+        <button className="auth-glass-close" onClick={() => setIsAuthOpen(false)}>
           <X size={20} />
         </button>
+        {selectedOption || selectedGroup === 'admin' ? (
+          <button 
+            onClick={() => {
+              if (selectedOption) {
+                setSelectedOption(null);
+              } else if (selectedGroup === 'admin') {
+                setSelectedGroup(null);
+              }
+            }} 
+            className="auth-glass-back"
+          >
+            <ArrowLeft size={14} /> Back
+          </button>
+        ) : null}
         
-        <div className="auth-modal-header">
-          {selectedOption || selectedGroup === 'admin' ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <button 
-                onClick={() => {
-                  if (selectedOption) {
-                    setSelectedOption(null);
-                  } else if (selectedGroup === 'admin') {
-                    setSelectedGroup(null);
-                  }
-                }} 
-                className="auth-modal-back"
-                title="Back"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <h2 className="auth-modal-title" style={{ margin: 0 }}>
-                {selectedOption ? (isSignUp ? 'Create Account' : selectedOption.title) : 'Select Role'}
-              </h2>
-            </div>
-          ) : (
-            <>
-              <h2 className="auth-modal-title">Welcome Back</h2>
-              <p className="auth-modal-subtitle">Select your account type to continue</p>
-            </>
-          )}
+        <div className="auth-glass-header">
+          <div className="auth-logo-brand">
+            <Diamond size={32} className="auth-logo-icon" />
+            <h1 className="auth-brand-name">LUMINA</h1>
+            <p className="auth-brand-sub">JEWELS</p>
+          </div>
+          
+          <h2 className="auth-glass-title">
+            {selectedOption ? (isSignUp ? 'CREATE ACCOUNT' : `SIGN IN TO ${selectedOption.title.toUpperCase()}`) : 'SIGN IN TO YOUR ACCOUNT'}
+          </h2>
         </div>
         
-        <div className="auth-modal-body">
+        <div className="auth-modal-body" data-lenis-prevent>
           {!selectedOption && !selectedGroup && (
             <div className="login-options-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
               <div 
@@ -302,117 +312,129 @@ export default function AuthModal() {
           )}
 
           {selectedOption && (
-            <form className="auth-form" onSubmit={handleAuthSubmit}>
+            <form className="auth-glass-form" onSubmit={handleAuthSubmit}>
                {isSignUp && (
                  <>
-                   <div className="form-group">
-                     <label>Full Name</label>
+                   <div className="glass-form-group">
+                     <User className="glass-input-icon" size={18} />
                      <input 
                        type="text" 
                        required 
-                       placeholder="Enter your full name"
+                       placeholder="Full Name"
                        value={fullName}
                        onChange={e => setFullName(e.target.value)}
+                       className="glass-input"
                      />
                    </div>
                    
-                   <div className="form-group">
-                     <label>Contact Number (Mobile)</label>
+                   <div className="glass-form-group">
+                     <Mail className="glass-input-icon" size={18} />
                      <input 
                        type="tel" 
                        required 
-                       placeholder="Enter your contact number"
+                       placeholder="Contact Number"
                        value={phone}
                        onChange={e => setPhone(e.target.value)}
+                       className="glass-input"
                      />
                    </div>
 
-                   <div className="form-group">
-                     <label>Date of Joining / Registration</label>
+                   <div className="glass-form-group">
+                     <Key className="glass-input-icon" size={18} />
                      <input 
                        type="date" 
                        required 
                        value={customJoinDate}
                        onChange={e => setCustomJoinDate(e.target.value)}
+                       className="glass-input"
                      />
                    </div>
                    
                    {selectedOption.id === 'customer' && (
-                     <div className="form-group">
-                       <label>Shipping Address</label>
+                     <div className="glass-form-group">
+                       <Truck className="glass-input-icon" size={18} />
                        <input 
                          type="text" 
                          required 
-                         placeholder="Enter your shipping address"
+                         placeholder="Shipping Address"
                          value={address}
                          onChange={e => setAddress(e.target.value)}
+                         className="glass-input"
                        />
                      </div>
                    )}
                  </>
                )}
                
-               <div className="form-group">
-                 <label>Email Address</label>
+               <div className="glass-form-group">
+                 <User className="glass-input-icon" size={18} />
                  <input 
                    type="text" 
                    required 
-                   placeholder={`Enter your ${selectedOption.id} email`}
+                   placeholder="Username or Email Address"
                    value={email}
                    onChange={e => setEmail(e.target.value)}
+                   className="glass-input"
                  />
                </div>
                
-               <div className="form-group">
-                 <label>Password</label>
+               <div className="glass-form-group">
+                 <Key className="glass-input-icon" size={18} />
                  <input 
-                   type="password" 
+                   type={showPassword ? "text" : "password"} 
                    required 
-                   placeholder="Enter your password"
+                   placeholder="Password"
                    value={password}
                    onChange={e => setPassword(e.target.value)}
+                   className="glass-input"
                  />
+                 <button type="button" className="glass-input-action" onClick={() => setShowPassword(!showPassword)}>
+                   {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                 </button>
                </div>
 
                {isSignUp && (
-                 <div className="form-group">
-                   <label>Confirm Password</label>
+                 <div className="glass-form-group">
+                   <Key className="glass-input-icon" size={18} />
                    <input 
-                     type="password" 
+                     type={showPassword ? "text" : "password"} 
                      required 
-                     placeholder="Confirm your password"
+                     placeholder="Confirm Password"
                      value={confirmPassword}
                      onChange={e => setConfirmPassword(e.target.value)}
+                     className="glass-input"
                    />
                  </div>
                )}
 
                {!isSignUp && (
-                 <div className="form-actions">
-                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                     <input type="checkbox" /> Remember me
+                 <div className="glass-form-actions">
+                   <label className="glass-checkbox">
+                     <input type="checkbox" />
+                     <span className="checkmark"></span>
+                     Remember Me
                    </label>
-                   <a href="#" className="forgot-password">Forgot password?</a>
+                   <a href="#" className="glass-forgot-link">Forgot Password?</a>
                  </div>
                )}
 
-               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.8rem' }}>
-                 {isSignUp ? 'Sign Up Securely' : 'Sign In Securely'}
+               <button type="submit" className="btn-glass-submit">
+                 {isSignUp ? 'CREATE ACCOUNT' : 'ACCESS ACCOUNT'}
                </button>
 
                {selectedOption?.id !== 'superadmin' && (
-                 <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                 <div className="glass-auth-toggle">
                    {isSignUp ? (
                      <>
                        Already have an account?{' '}
-                       <span className="auth-toggle-link" onClick={() => setIsSignUp(false)}>
+                       <span className="glass-toggle-btn" onClick={() => setIsSignUp(false)}>
                          Sign In
                        </span>
                      </>
                    ) : (
                      <>
                        Don't have an account?{' '}
-                       <span className="auth-toggle-link" onClick={() => setIsSignUp(true)}>
+                       <span className="glass-toggle-btn" onClick={() => setIsSignUp(true)}>
                          Sign Up
                        </span>
                      </>

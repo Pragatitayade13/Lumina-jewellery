@@ -12,11 +12,9 @@ import NewArrivals from './components/NewArrivals/NewArrivals';
 import BestSellers from './components/BestSellers/BestSellers';
 import ExclusiveOffers from './components/ExclusiveOffers/ExclusiveOffers';
 import BrandStory from './components/BrandStory/BrandStory';
-import PromoBanner from './components/PromoBanner/PromoBanner';
 import ProductShowcase from './components/ProductShowcase/ProductShowcase';
 import Testimonials from './components/Testimonials/Testimonials';
 import WhyChooseUs from './components/WhyChooseUs/WhyChooseUs';
-import Newsletter from './components/Newsletter/Newsletter';
 import SocialGallery from './components/SocialGallery/SocialGallery';
 import Footer from './components/Footer/Footer';
 import AuthModal from './components/AuthModal/AuthModal';
@@ -82,12 +80,10 @@ function HomePage() {
       <NewArrivals />
       <BestSellers />
       <ExclusiveOffers />
-      <PromoBanner />
       <BrandStory />
       <ProductShowcase />
       <Testimonials />
       <WhyChooseUs />
-      <Newsletter />
       <SocialGallery />
     </>
   );

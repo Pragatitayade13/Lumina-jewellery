@@ -37,27 +37,92 @@ import catGold from '../../assets/category_gold_1779901256829.png';
 import catDiamond from '../../assets/category_diamond_1779901278017.png';
 import catBridal from '../../assets/category_bridal_1779901298512.png';
 import catRings from '../../assets/category_rings_1779901339180.png';
+import mensChain from '../../assets/mens_gold_chain_1780299165278.png';
+import mensBand from '../../assets/mens_platinum_band_1780299148559.png';
+import womensEarrings from '../../assets/category_earrings_1779901376432.png';
+
+function IconPinterest({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.688 0 1.029-.653 2.568-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.163 0 7.398 2.967 7.398 6.923 0 4.136-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/>
+    </svg>
+  );
+}
 
 const galleryItems = [
-  { id: 1, img: p1, likes: 1247, tag: '#LuminaJewels' },
-  { id: 2, img: catGold, likes: 893, tag: '#GoldJewellery' },
-  { id: 3, img: p2, likes: 2145, tag: '#DiamondRings' },
-  { id: 4, img: catBridal, likes: 3210, tag: '#BridalJewellery' },
-  { id: 5, img: p3, likes: 780, tag: '#GoldEarrings' },
-  { id: 6, img: catDiamond, likes: 1560, tag: '#DiamondJewellery' },
-  { id: 7, img: catRings, likes: 945, tag: '#RingCollection' },
-  { id: 8, img: p4, likes: 1089, tag: '#GoldBangles' },
-  { id: 9, img: p5, likes: 2340, tag: '#PolkiChoker' },
+  { id: 13, img: p4, likes: 8520, tag: 'snoel.de', postUrl: 'https://pinterest.com/luminajewels', platform: 'pinterest' },
+  { id: 1, img: p1, likes: 1247, tag: '#LuminaJewels', postUrl: 'https://instagram.com/p/Cwq1' },
+  { id: 2, img: catGold, likes: 893, tag: '#GoldJewellery', postUrl: 'https://instagram.com/p/Cwq2' },
+  { id: 3, img: p2, likes: 2145, tag: '#DiamondRings', postUrl: 'https://instagram.com/p/Cwq3' },
+  { id: 4, img: catBridal, likes: 3210, tag: '#BridalJewellery', postUrl: 'https://instagram.com/p/Cwq4' },
+  { id: 5, img: p3, likes: 780, tag: '#GoldEarrings', postUrl: 'https://instagram.com/p/Cwq5' },
+  { id: 6, img: catDiamond, likes: 1560, tag: '#DiamondJewellery', postUrl: 'https://instagram.com/p/Cwq6' },
+  { id: 7, img: catRings, likes: 945, tag: '#RingCollection', postUrl: 'https://instagram.com/p/Cwq7' },
+  { id: 8, img: p4, likes: 1089, tag: '#GoldBangles', postUrl: 'https://instagram.com/p/Cwq8' },
+  { id: 9, img: p5, likes: 2340, tag: '#PolkiChoker', postUrl: 'https://instagram.com/p/Cwq9' },
+  { id: 10, img: mensChain, likes: 890, tag: '#MensJewellery', postUrl: 'https://instagram.com/p/mens1' },
+  { id: 11, img: mensBand, likes: 1120, tag: '#MensPlatinum', postUrl: 'https://instagram.com/p/mens2' },
+  { id: 12, img: womensEarrings, likes: 4500, tag: '#BridalElegance', postUrl: 'https://instagram.com/p/bridal1' },
 ];
 
 const socialLinks = [
   { icon: <IconInstagram size={20} />, label: 'Instagram', handle: '@luminajewels', color: '#E1306C', href: 'https://instagram.com/luminajewels' },
   { icon: <IconFacebook size={20} />, label: 'Facebook', handle: 'Lumina Jewels', color: '#1877F2', href: 'https://facebook.com/luminajewels' },
   { icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.688 0 1.029-.653 2.568-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.163 0 7.398 2.967 7.398 6.923 0 4.136-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/></svg>, label: 'Pinterest', handle: 'Lumina Jewels', color: '#E60023', href: 'https://pinterest.com/luminajewels' },
-  { icon: <IconYoutube size={20} />, label: 'YouTube', handle: 'Lumina Jewels TV', color: '#FF0000', href: 'https://youtube.com/luminajewels' },
+  { icon: <IconYoutube size={20} />, label: 'YouTube', handle: 'Lumina Jewels TV', color: '#FF0000', href: 'https://youtu.be/bWR1t-l1Bf8?si=b9LJZdf23ZiA8TIn' },
 ];
 
+import { useState, useEffect } from 'react';
+import SocialPostModal from './SocialPostModal';
+import { fetchSocialPosts, seedSocialPosts } from '../../services/socialPosts';
+
 export default function SocialGallery() {
+  const [posts, setPosts] = useState(galleryItems);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const fetchedPosts = await fetchSocialPosts();
+        const existingTags = new Set(fetchedPosts.map(p => p.tag || p.title));
+        const missingItems = galleryItems.filter(g => !existingTags.has(g.tag));
+
+        if (missingItems.length > 0) {
+          // Seed any missing data
+          await seedSocialPosts(missingItems.map(item => ({
+            image: item.img,
+            title: item.tag,
+            description: "Discover the elegance of our latest collection. Each piece is crafted with precision and passion.",
+            likes: item.likes,
+            tag: item.tag,
+            postUrl: item.postUrl
+          })));
+          const newPosts = await fetchSocialPosts();
+          setPosts(newPosts.map(post => {
+            const match = galleryItems.find(g => g.tag === post.title || g.tag === post.tag || g.likes === post.likes);
+            return { ...post, image: match ? match.img : post.image };
+          }));
+        } else {
+          // Map to fresh Vite imports to avoid broken images from stale hashes in DB
+          setPosts(fetchedPosts.map(post => {
+            const match = galleryItems.find(g => g.tag === post.title || g.tag === post.tag || g.likes === post.likes);
+            return { ...post, image: match ? match.img : post.image };
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading social posts:", error);
+      }
+    };
+    loadPosts();
+  }, []);
+
+  const openModal = (post, e) => {
+    e.preventDefault();
+    setSelectedPost(post);
+    setIsModalOpen(true);
+  };
+
   return (
     <section className="social-section" id="social-gallery">
       <div className="container">
@@ -72,26 +137,34 @@ export default function SocialGallery() {
 
         {/* Instagram Grid */}
         <div className="social-grid reveal">
-          {galleryItems.map((item, i) => (
-            <a
+          {posts.map((item, i) => (
+            <div
               key={item.id}
-              href="https://instagram.com/luminajewels"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="social-item"
+              onClick={(e) => openModal(item, e)}
+              className="social-item cursor-pointer"
               id={`social-item-${item.id}`}
               style={{ animationDelay: `${i * 0.05}s` }}
             >
-              <img src={item.img} alt={item.tag} className="social-img" loading="lazy" />
+              <img 
+                src={item.image || item.img} 
+                alt={item.tag || item.title} 
+                className="social-img" 
+                loading="lazy"
+                onError={(e) => { e.target.onerror = null; e.target.src = p1; }}
+              />
               <div className="social-overlay">
                 <div className="social-likes">
                   <Heart size={16} fill="white" />
-                  <span>{item.likes.toLocaleString()}</span>
+                  <span>{(item.likes || 0).toLocaleString()}</span>
                 </div>
-                <div className="social-tag">{item.tag}</div>
-                <IconInstagram size={28} className="social-insta-icon" />
+                <div className="social-tag">{item.tag || item.title}</div>
+                <div className="social-insta-icon-link">
+                  {item.platform === 'pinterest' 
+                    ? <IconPinterest size={28} className="social-insta-icon" /> 
+                    : <IconInstagram size={28} className="social-insta-icon" />}
+                </div>
               </div>
-            </a>
+            </div>
           ))}
         </div>
 
@@ -120,6 +193,11 @@ export default function SocialGallery() {
           </div>
         </div>
       </div>
+      <SocialPostModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        post={selectedPost} 
+      />
     </section>
   );
 }

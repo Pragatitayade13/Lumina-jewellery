@@ -5,7 +5,6 @@ import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { products } from '../../data/products';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../LanguageSwitcher/LanguageSwitcher';
 import './Header.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -200,17 +199,6 @@ export default function Header({ onCartClick, onWishlistClick }) {
                 <User size={14} />
                 <span>{t('nav.login')}</span>
               </button>
-
-              <button
-                className="icon-btn"
-                id="theme-toggle-btn"
-                aria-label="Toggle Theme"
-                onClick={toggleTheme}
-              >
-                {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-              </button>
-
-              <LanguageSwitcher variant="storefront" />
 
               <button
                 className={`hamburger${menuOpen ? ' open' : ''}`}

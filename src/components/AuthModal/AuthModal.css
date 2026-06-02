@@ -75,7 +75,10 @@
 }
 
 .auth-modal-body {
-  padding: 2rem;
+  padding: 0 0.5rem 1rem 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
 .login-options-grid {
@@ -224,3 +227,395 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   GLASSMORPHISM FULL PAGE LOGIN DESIGN
+   ========================================================= */
+
+.auth-page-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.auth-page-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.auth-glass-modal {
+  position: relative;
+  z-index: 2;
+  width: 90%;
+  max-width: 650px;
+  max-height: 90vh;
+  overflow: hidden;
+  background: rgba(20, 20, 20, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  padding: 2rem 2rem;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Hide scrollbar for modal body but keep it scrollable */
+.auth-modal-body::-webkit-scrollbar {
+  display: none;
+}
+.auth-modal-body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.auth-glass-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.auth-glass-close:hover {
+  color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  transform: rotate(90deg);
+}
+
+.auth-glass-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.auth-logo-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.auth-logo-icon {
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+
+.auth-brand-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: #fff;
+  margin: 0 0 0.25rem 0;
+  text-transform: uppercase;
+}
+
+.auth-brand-sub {
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.auth-glass-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  color: #fff;
+  letter-spacing: 1px;
+  font-weight: 400;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.auth-glass-back {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0.5rem;
+  transition: color 0.3s ease;
+  font-family: 'Inter', sans-serif;
+  z-index: 10;
+}
+
+.auth-glass-back:hover {
+  color: var(--gold);
+}
+
+.auth-glass-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.glass-form-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.glass-input-icon {
+  position: absolute;
+  left: 1.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.glass-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.85rem 1rem 0.85rem 3rem;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.glass-input:focus {
+  border-color: var(--gold);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.3);
+}
+
+.glass-input-action {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.glass-input-action:hover {
+  color: var(--gold);
+}
+
+.glass-form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.glass-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  user-select: none;
+}
+
+.glass-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.glass-checkbox .checkmark {
+  height: 16px;
+  width: 16px;
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.glass-checkbox:hover input ~ .checkmark {
+  border-color: var(--gold);
+}
+
+.glass-checkbox input:checked ~ .checkmark {
+  background-color: transparent;
+  border-color: var(--gold);
+}
+
+.glass-checkbox .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.glass-checkbox input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.glass-checkbox .checkmark:after {
+  width: 4px;
+  height: 8px;
+  border: solid var(--gold);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.glass-forgot-link {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.glass-forgot-link:hover {
+  color: var(--gold);
+}
+
+.btn-glass-submit {
+  background: linear-gradient(135deg, #e6c57a 0%, #b38728 100%);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.btn-glass-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+  background: linear-gradient(135deg, #f5d68d 0%, #c4993a 100%);
+}
+
+.glass-auth-toggle {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.glass-toggle-btn {
+  color: #fff;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  margin-left: 0.25rem;
+}
+
+.glass-toggle-btn:hover {
+  color: var(--gold);
+}
+
+/* Admin/Options Grid Styles mapped to glassmorphism */
+.auth-glass-modal .login-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.auth-glass-modal .login-option-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.auth-glass-modal .login-option-card:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(212, 175, 55, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.auth-glass-modal .icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  transition: all 0.3s ease;
+}
+
+.auth-glass-modal .login-option-card:hover .icon-wrapper {
+  background: var(--gold);
+  color: #000;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+.auth-glass-modal .login-option-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+.auth-glass-modal .login-option-desc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .auth-glass-modal .login-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

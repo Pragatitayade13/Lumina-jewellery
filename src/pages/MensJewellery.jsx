@@ -15,12 +15,18 @@ export default function MensJewellery() {
   const { inventory, loading } = useInventory();
   const navigate = useNavigate();
 
+  const [selectedType, setSelectedType] = useState('All');
+
   // Filter Men's products
   const mensProducts = useMemo(() => {
     return inventory.filter(item => item.category === 'Men\'s Jewellery' || item.category === "Men's Jewellery");
   }, [inventory]);
 
-  const featured = mensProducts.slice(0, 4);
+  const filteredProducts = useMemo(() => {
+    if (selectedType === 'All') return mensProducts;
+    return mensProducts.filter(item => item.subcategory === selectedType);
+  }, [mensProducts, selectedType]);
+
   const trending = mensProducts.slice(4, 8);
 
   const styles = [
@@ -69,34 +75,44 @@ export default function MensJewellery() {
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="mens-section bg-light">
+      {/* Products Grid */}
+      <section className="mens-section bg-light" id="collection-grid">
         <div className="section-header">
-          <h2>Featured for Him</h2>
+          <h2>Our Collection</h2>
           <div className="title-accent"><Gem size={14} /></div>
         </div>
         
+        <div className="mens-filter-tabs" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
+          <button 
+            className={`btn ${selectedType === 'All' ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setSelectedType('All')}
+          >
+            All
+          </button>
+          {styles.map(style => (
+            <button 
+              key={style.name}
+              className={`btn ${selectedType === style.name ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setSelectedType(style.name)}
+            >
+              {style.name}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div className="loading-state">Loading collections...</div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="empty-state">No products found for this category.</div>
         ) : (
           <div className="product-grid">
-            {featured.map(product => (
+            {filteredProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
         )}
       </section>
 
-      {/* Banner */}
-      <section className="mens-promo">
-        <div className="mens-promo-content">
-          <h2>The Platinum Wedding Band Collection</h2>
-          <p>Unmatched durability and timeless style for your special day.</p>
-          <button className="btn btn-outline" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => navigate('/collections?category=Men\'s Jewellery&subcategory=Wedding Bands')}>
-            Shop Wedding Bands
-          </button>
-        </div>
-      </section>
 
       {/* Trending */}
       {trending.length > 0 && (

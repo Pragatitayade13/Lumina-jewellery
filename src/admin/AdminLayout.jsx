@@ -114,7 +114,22 @@ export default function AdminLayout({ children }) {
     return true;
   });
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user?.uid) {
+      try {
+        const { auth, db } = await import('../config/firebase');
+        const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+        const { signOut } = await import('firebase/auth');
+        
+        if (db) {
+           await updateDoc(doc(db, 'users', user.uid), {
+             lastCheckOut: serverTimestamp(),
+             status: 'offline'
+           });
+        }
+        if (auth) await signOut(auth);
+      } catch (e) { console.error("Logout error", e); }
+    }
     setUser(null);
     navigate('/');
   };

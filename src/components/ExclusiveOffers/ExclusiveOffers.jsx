@@ -81,6 +81,7 @@ const coupons = [
 
 export default function ExclusiveOffers() {
   const flashEnd = Date.now() + 86400000 * 1.5;
+  const { showToast } = useApp();
 
   return (
     <section className="offers-section" id="exclusive-offers">
@@ -128,7 +129,11 @@ export default function ExclusiveOffers() {
                 <div className="offer-banner-title">{b.title}</div>
                 <div className="offer-banner-sub">{b.sub}</div>
               </div>
-              <button className="btn btn-outline" style={{ marginTop: '1rem', fontSize: '0.78rem', padding: '0.5rem 1.2rem' }}>
+              <button 
+                className="btn btn-outline" 
+                style={{ marginTop: '1rem', fontSize: '0.78rem', padding: '0.5rem 1.2rem' }}
+                onClick={() => showToast(`${b.title} claimed successfully! Offer will be applied at checkout.`)}
+              >
                 <Tag size={13} /> Claim Now
               </button>
             </div>

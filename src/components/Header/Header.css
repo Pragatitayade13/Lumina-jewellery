@@ -2,6 +2,8 @@
 
 /* ─── Contact Strip ─── */
 .contact-strip {
+  position: relative;
+  z-index: 1001;
   background: linear-gradient(135deg, var(--bg-secondary), var(--surface));
   border-bottom: 1px solid var(--border);
   padding: 0.8rem 2rem;

@@ -21,6 +21,13 @@ export function useCustomers() {
         try {
           const data = doc.data();
           const safeName = typeof data.name === 'string' ? data.name : String(data.name || 'Anonymous User');
+          
+          const formatTime = (ts) => {
+            if (!ts) return '--';
+            const date = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          };
+          
           customersData.push({
             id: doc.id,
             name: safeName,
@@ -33,6 +40,8 @@ export function useCustomers() {
             totalSpent: data.totalSpent || 0,
             totalOrders: data.totalOrders || 0,
             joinDate: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (typeof data.createdAt === 'string' ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'),
+            lastCheckIn: formatTime(data.lastCheckIn),
+            lastCheckOut: formatTime(data.lastCheckOut),
             avatarColor: ['#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f'][Math.floor(Math.random() * 5)],
             avatar: safeName.charAt(0).toUpperCase()
           });

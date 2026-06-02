@@ -24,7 +24,30 @@ export default function SupportModal({ isOpen, onClose }) {
     setError('');
     
     try {
-      await addTicket(formData);
+      // Send email automatically via FormSubmit API
+      const ownerEmail = 'luminajewels.app@gmail.com';
+      await fetch(`https://formsubmit.co/ajax/${ownerEmail}`, {
+        method: "POST",
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.customer,
+          email: formData.email,
+          _subject: `New Support Ticket: ${formData.subject}`,
+          priority: formData.priority,
+          message: formData.message
+        })
+      });
+
+      // Try to save to database, but don't fail if it doesn't work (e.g. Firebase rules)
+      try {
+        await addTicket(formData);
+      } catch (dbErr) {
+        console.warn("Failed to save ticket to database.", dbErr);
+      }
+      
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -32,7 +55,7 @@ export default function SupportModal({ isOpen, onClose }) {
         onClose();
       }, 3000);
     } catch (err) {
-      setError('Failed to submit ticket. Please try again.');
+      setError('An unexpected error occurred while sending the email. Please try again.');
     }
     setIsSubmitting(false);
   };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import { categories, products } from '../../data/products';
 import catGold from '../../assets/category_gold_1779901256829.png';
@@ -17,6 +17,17 @@ const categoryBgs = ['cat-gold','cat-silver','cat-diamond','cat-rings','cat-neck
 
 export default function FeaturedCategories() {
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedCategory]);
 
   const categoryProducts = selectedCategory 
     ? products.filter(p => p.category === selectedCategory.name || (selectedCategory.name.includes('Jewellery') && p.material.includes(selectedCategory.name.split(' ')[0])))
@@ -65,8 +76,8 @@ export default function FeaturedCategories() {
         </div>
 
         {selectedCategory && (
-          <div className="auth-modal-overlay" style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="auth-modal" style={{ width: '80%', maxWidth: '1000px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem', position: 'relative' }}>
+          <div className="auth-modal-overlay" onClick={() => setSelectedCategory(null)} style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="auth-modal" onClick={e => e.stopPropagation()} data-lenis-prevent style={{ width: '80%', maxWidth: '1000px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem', position: 'relative' }}>
               <button 
                 onClick={() => setSelectedCategory(null)}
                 style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}
