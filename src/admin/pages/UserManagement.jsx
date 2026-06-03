@@ -9,7 +9,8 @@ import { useMessages } from '../../hooks/useMessages';
 
 export default function StaffManagement() {
   const { user, showToast } = useApp();
-  const canManageStaff = user?.role === 'superadmin' || user?.role === 'manager';
+  const userRole = user?.role?.toLowerCase() || '';
+  const canManageStaff = ['superadmin', 'admin', 'manager', 'super admin'].includes(userRole);
   const [activeTab, setActiveTab] = useState('directory');
   const [attendanceFilter, setAttendanceFilter] = useState('today'); // 'today' | 'week' | 'month'
   const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
