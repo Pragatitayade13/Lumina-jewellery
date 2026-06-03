@@ -304,8 +304,8 @@ export default function InvoiceBilling() {
         const accentColor = isCN ? 'var(--status-red)' : 'var(--gold)';
         return (
           <div className="modal-overlay" onClick={() => setPreviewInv(null)}>
-            <div className="modal-box" style={{ maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header" style={{ borderBottom: `3px solid ${accentColor}`, paddingBottom: '1rem' }}>
+            <div className="modal-box" style={{ maxWidth: '680px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header" style={{ borderBottom: `3px solid ${accentColor}`, paddingBottom: '1rem', flexShrink: 0 }}>
                 <div>
                   <h3 className="modal-title" style={{ color: accentColor }}>{isCN ? '📋 Credit Note' : '🧾 Tax Invoice'}: {previewInv.id}</h3>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Order: {previewInv.orderId} · Date: {previewInv.date}</div>
@@ -318,7 +318,7 @@ export default function InvoiceBilling() {
                 </div>
               </div>
 
-              <div className="modal-body">
+              <div className="modal-body" style={{ overflowY: 'auto', flex: 1, paddingRight: '0.5rem', paddingTop: '1.5rem' }}>
                 {/* Company Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface)', borderRadius: '8px' }}>
                   <div>
@@ -398,12 +398,12 @@ export default function InvoiceBilling() {
       {/* GENERATE INVOICE / CREDIT NOTE MODAL */}
       {showNewModal && (
         <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal-box" style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+          <div className="modal-box" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">{newInvType === 'credit_note' ? '📋 New Credit Note' : '🧾 Generate New Invoice'}</h3>
               <button className="modal-close" onClick={() => setShowNewModal(false)}>×</button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label>Customer Name *</label>
@@ -474,7 +474,7 @@ export default function InvoiceBilling() {
                 })()}
               </div>
             </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem', flexShrink: 0, borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
               <button className="btn btn-outline" onClick={() => setShowNewModal(false)}>Cancel</button>
               <button className="btn btn-gold" onClick={handleGenerateInvoice} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <FileText size={14} /> {newInvType === 'credit_note' ? 'Issue Credit Note' : 'Generate & Download'}

@@ -9,9 +9,11 @@ export default function WishlistModal({ isOpen, onClose }) {
 
   return (
     <div className="auth-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="auth-modal" style={{ width: '400px', maxWidth: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+        
+        {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Heart size={20} /> Your Wishlist
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)' }}>
@@ -19,31 +21,39 @@ export default function WishlistModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', maxHeight: '60vh', marginBottom: '1.5rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', paddingRight: '0.5rem' }}>
           {wishlist.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-              <Heart size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p>Your wishlist is empty.</p>
+            <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
+              <Heart size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />
+              <p style={{ fontSize: '1.1rem' }}>Your wishlist is empty.</p>
+              <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={onClose}>Continue Shopping</button>
             </div>
           ) : (
             wishlist.map(item => (
-              <div key={item.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: '8px' }}>
-                <img src={item.image} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
+              <div key={item.id} className="cart-item-card">
+                <div className="cart-item-image-wrapper">
+                  <img src={item.image} alt={item.name} className="cart-item-image" />
+                </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
-                  <div style={{ fontWeight: 700, color: 'var(--gold)', marginTop: '0.25rem' }}>₹{item.price.toLocaleString('en-IN')}</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', color: '#fff' }}>{item.name}</div>
+                  <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>₹{item.price.toLocaleString('en-IN')}</div>
                   <button 
-                    onClick={() => addToCart(item)}
-                    style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', padding: '0.5rem 0', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'underline' }}
+                    onClick={() => {
+                      addToCart(item);
+                      toggleWishlist(item); // Optional: Remove from wishlist when adding to cart
+                    }}
+                    className="btn btn-sm btn-outline"
+                    style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
                   >
                     Move to Cart
                   </button>
                 </div>
                 <button 
+                  className="cart-remove-btn"
                   onClick={() => toggleWishlist(item)}
-                  style={{ background: 'none', border: 'none', color: 'var(--status-red)', cursor: 'pointer', padding: '0.5rem' }}
+                  title="Remove item"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))
