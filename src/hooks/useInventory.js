@@ -68,11 +68,17 @@ export function useInventory() {
           return `${diffMins || 1} min ago`;
         };
 
-        // Inject image from mockInventory if missing in DB
+        // Inject image from mockInventory if missing in DB, or replace local dev artifacts
         let image = data.image || '';
         let subcategory = data.subcategory || '';
+        const mockItem = mockInventory?.find(m => m.sku === (data.sku || doc.id));
+        
+        // Fix for Vercel: Local DB might contain /src/assets paths. Override with bundled imports.
+        if (image && image.includes('/src/assets') && mockItem) {
+          image = mockItem.image;
+        }
+
         if (!image || !subcategory) {
-          const mockItem = mockInventory?.find(m => m.sku === (data.sku || doc.id));
           if (mockItem) {
             if (!image) image = mockItem.image || '';
             if (!subcategory) subcategory = mockItem.subcategory || '';

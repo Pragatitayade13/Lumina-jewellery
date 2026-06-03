@@ -19,10 +19,15 @@ export function useProducts() {
       const productsData = snapshot.docs.map(doc => {
         const data = doc.data();
         const mockMatch = mockProducts.find(mp => mp.sku === data.sku || mp.name === data.name);
+        let img = data.image;
+        if (img && img.includes('/src/assets') && mockMatch) {
+            img = mockMatch.image;
+        }
+
         return {
           id: doc.id,
           ...data,
-          image: data.image || (mockMatch ? mockMatch.image : null)
+          image: img || (mockMatch ? mockMatch.image : null)
         };
       });
       setProducts(productsData);
