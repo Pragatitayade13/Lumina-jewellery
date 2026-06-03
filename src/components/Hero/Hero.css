@@ -52,7 +52,7 @@
   inset: 0;
   display: flex;
   align-items: center;
-  padding: 140px 2rem 0 2rem;
+  padding: 90px 2rem 0 2rem;
 }
 
 .hero-container {
@@ -92,9 +92,9 @@
 
 .hero-title {
   font-family: var(--font-heading);
-  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.1;
   color: var(--text-primary);
   margin-bottom: 1rem;
   padding-top: 0.2rem;
