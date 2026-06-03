@@ -21,7 +21,8 @@ export function useSupportTickets() {
         try {
           const data = doc.data();
           ticketsData.push({
-            id: doc.id,
+            firebaseId: doc.id, // The actual Firebase document ID
+            id: data.id || doc.id, // Fallback to doc.id if no display ID
             ...data,
             date: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (typeof data.createdAt === 'string' ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'),
             sortTime: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate().getTime() : (typeof data.createdAt === 'string' ? new Date(data.createdAt).getTime() : Date.now())
@@ -61,6 +62,7 @@ export function useSupportTickets() {
   const updateTicket = async (ticketId, updateData) => {
     if (!db) throw new Error("Firebase not initialized");
     try {
+      // ticketId here should be the firebaseId
       const docRef = doc(db, 'support_tickets', ticketId);
       await updateDoc(docRef, {
         ...updateData,

@@ -9,7 +9,7 @@ export default function CustomerManagement() {
   const [typeFilter, setTypeFilter] = useState('Customer Type');
   const { customers, loading, updateCustomerStatus } = useCustomers();
   const { orders } = useOrders();
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
   
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editStatus, setEditStatus] = useState('');
@@ -272,38 +272,40 @@ export default function CustomerManagement() {
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                  <Shield size={16} color="var(--gold)" /> Owner Access: Manage Customer Type
-                </h4>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                    <label>Account Status / Tier</label>
-                    <select 
-                      className="form-input" 
-                      value={editStatus} 
-                      onChange={(e) => setEditStatus(e.target.value)}
+              {user?.role !== 'staff' && (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                    <Shield size={16} color="var(--gold)" /> Owner Access: Manage Customer Type
+                  </h4>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                      <label>Account Status / Tier</label>
+                      <select 
+                        className="form-input" 
+                        value={editStatus} 
+                        onChange={(e) => setEditStatus(e.target.value)}
+                      >
+                        <option value="active">Active (Standard)</option>
+                        <option value="vip">VIP Member</option>
+                        <option value="inactive">Inactive / Suspended</option>
+                      </select>
+                    </div>
+                    <button 
+                      className="btn btn-gold" 
+                      disabled={isSaving || editStatus === selectedCustomer.status}
+                      onClick={handleSaveStatus}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', color: '#000', fontWeight: 'bold' }}
                     >
-                      <option value="active">Active (Standard)</option>
-                      <option value="vip">VIP Member</option>
-                      <option value="inactive">Inactive / Suspended</option>
-                    </select>
+                      <Save size={16} /> {isSaving ? 'Saving...' : 'Update Status'}
+                    </button>
                   </div>
-                  <button 
-                    className="btn btn-gold" 
-                    disabled={isSaving || editStatus === selectedCustomer.status}
-                    onClick={handleSaveStatus}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '42px', color: '#000', fontWeight: 'bold' }}
-                  >
-                    <Save size={16} /> {isSaving ? 'Saving...' : 'Update Status'}
-                  </button>
+                  {editStatus === 'vip' && editStatus !== selectedCustomer.status && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--status-green)', marginTop: '0.5rem' }}>
+                      * Upgrading to VIP will grant this customer exclusive early access to new collections.
+                    </div>
+                  )}
                 </div>
-                {editStatus === 'vip' && editStatus !== selectedCustomer.status && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--status-green)', marginTop: '0.5rem' }}>
-                    * Upgrading to VIP will grant this customer exclusive early access to new collections.
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>

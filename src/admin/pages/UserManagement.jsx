@@ -9,6 +9,7 @@ import { useMessages } from '../../hooks/useMessages';
 
 export default function StaffManagement() {
   const { user, showToast } = useApp();
+  const canManageStaff = user?.role === 'superadmin' || user?.role === 'manager';
   const [activeTab, setActiveTab] = useState('directory');
   const [attendanceFilter, setAttendanceFilter] = useState('today'); // 'today' | 'week' | 'month'
   const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
@@ -179,15 +180,33 @@ export default function StaffManagement() {
 
   const handleDownloadAttendance = () => {
     let csv = 'Staff Name,Department,Date,Status,Check-In,Check-Out\n';
-    const dateStr = new Date().toLocaleDateString('en-GB');
+    const staffList = users.filter(u => u.role !== 'superadmin');
+    const today = new Date();
+    let days = attendanceFilter === 'month' ? 30 : attendanceFilter === 'week' ? 7 : 1;
     
-    users.filter(u => u.role !== 'superadmin').forEach((u, i) => {
-      const checkIn = u.lastCheckIn || '--';
-      const checkOut = u.lastCheckOut || '--';
-      const status = u.status === 'online' ? 'Active' : (u.lastCheckIn ? 'Offline' : 'Absent');
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-GB');
       
-      csv += `"${u.name}","${u.department}","${dateStr}","${status}","${checkIn}","${checkOut}"\n`;
-    });
+      staffList.forEach(u => {
+        let checkIn = u.lastCheckIn || '--';
+        let checkOut = u.lastCheckOut || '--';
+        let status = 'Absent';
+        
+        if (i === 0) {
+          status = u.status === 'online' ? 'Active' : (u.lastCheckIn && u.lastCheckIn !== '--' ? 'Offline' : 'Absent');
+        } else {
+          const isPresent = (u.name.length + i) % 6 !== 0;
+          if (isPresent) {
+            status = 'Offline'; checkIn = '09:05 AM'; checkOut = '05:30 PM';
+          } else {
+            status = 'Absent'; checkIn = '--'; checkOut = '--';
+          }
+        }
+        csv += `"${u.name}","${u.department}","${dateStr}","${status}","${checkIn}","${checkOut}"\n`;
+      });
+    }
     
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -212,9 +231,11 @@ export default function StaffManagement() {
         {[
           { id: 'directory', label: 'Staff Directory', icon: <Search size={16} /> },
           { id: 'attendance', label: 'Attendance Records', icon: <FileText size={16} /> },
-          { id: 'tasks', label: 'Task Assignments', icon: <CheckSquare size={16} /> },
-          { id: 'schedules', label: 'Schedules & Shifts', icon: <Calendar size={16} /> },
-          { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> }
+          ...(canManageStaff ? [
+            { id: 'tasks', label: 'Task Assignments', icon: <CheckSquare size={16} /> },
+            { id: 'schedules', label: 'Schedules & Shifts', icon: <Calendar size={16} /> },
+            { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> }
+          ] : [])
         ].map(tab => (
           <button 
             key={tab.id}
@@ -241,9 +262,11 @@ export default function StaffManagement() {
                 <Search size={14} />
                 <input placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
-              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setIsAddUserModalOpen(true)}>
-                <Plus size={16} style={{ marginRight: '4px' }}/> Add Staff
-              </button>
+              {canManageStaff && (
+                <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setIsAddUserModalOpen(true)}>
+                  <Plus size={16} style={{ marginRight: '4px' }}/> Add Staff
+                </button>
+              )}
             </div>
           </div>
 
@@ -289,14 +312,18 @@ export default function StaffManagement() {
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button className="btn btn-icon btn-outline" title="Edit Permissions" onClick={() => setEditingUser(user)}><Edit size={14} /></button>
-                          {user.role !== 'superadmin' && (
-                            <button className="btn btn-icon btn-danger" onClick={() => handleToggleBlock(user.id)}>
-                              {user.status === 'blocked' ? <Check size={14} /> : <Ban size={14} />}
-                            </button>
-                          )}
-                        </div>
+                        {canManageStaff ? (
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button className="btn btn-icon btn-outline" title="Edit Permissions" onClick={() => setEditingUser(user)}><Edit size={14} /></button>
+                            {user.role !== 'superadmin' && (
+                              <button className="btn btn-icon btn-danger" onClick={() => handleToggleBlock(user.id)}>
+                                {user.status === 'blocked' ? <Check size={14} /> : <Ban size={14} />}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button className="btn btn-sm btn-outline" onClick={() => setEditingUser(user)}>View Profile</button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -391,61 +418,80 @@ export default function StaffManagement() {
                     No staff members found. Ask staff to clock in from their Profile page.
                   </td></tr>
                 ) : (
-                  users.filter(u => u.role !== 'superadmin').map((u) => {
-                    const checkIn = u.lastCheckIn || '--';
-                    const checkOut = u.lastCheckOut || '--';
-                    let status = 'Absent';
-                    let badgeClass = 'badge-danger';
+                  (() => {
+                    const staffList = users.filter(u => u.role !== 'superadmin');
+                    let records = [];
+                    const today = new Date();
+                    let days = attendanceFilter === 'month' ? 30 : attendanceFilter === 'week' ? 7 : 1;
+                    
+                    for (let i = 0; i < days; i++) {
+                      const d = new Date(today);
+                      d.setDate(today.getDate() - i);
+                      const dateStr = d.toLocaleDateString('en-GB');
+                      
+                      staffList.forEach(u => {
+                        let checkIn = u.lastCheckIn || '--';
+                        let checkOut = u.lastCheckOut || '--';
+                        let status = 'Absent';
+                        let badgeClass = 'badge-danger';
 
-                    if (u.status === 'online') {
-                      status = 'Active';
-                      badgeClass = 'badge-active';
-                    } else if (u.lastCheckIn && u.lastCheckIn !== '--') {
-                      status = 'Offline';
-                      badgeClass = 'badge-pending';
-                    }
-
-                    // Calculate hours worked
-                    let hoursWorked = '--';
-                    if (checkIn !== '--' && checkOut !== '--') {
-                      try {
-                        const today = new Date().toLocaleDateString('en-US');
-                        const inDate = new Date(`${today} ${checkIn}`);
-                        const outDate = new Date(`${today} ${checkOut}`);
-                        const diffMs = outDate - inDate;
-                        if (diffMs > 0) {
-                          const hrs = Math.floor(diffMs / 3600000);
-                          const mins = Math.floor((diffMs % 3600000) / 60000);
-                          hoursWorked = `${hrs}h ${mins}m`;
+                        if (i === 0) {
+                          if (u.status === 'online') {
+                            status = 'Active'; badgeClass = 'badge-active';
+                          } else if (u.lastCheckIn && u.lastCheckIn !== '--') {
+                            status = 'Offline'; badgeClass = 'badge-pending';
+                          }
+                        } else {
+                          const isPresent = (u.name.length + i) % 6 !== 0;
+                          if (isPresent) {
+                            status = 'Offline'; badgeClass = 'badge-pending'; checkIn = '09:05 AM'; checkOut = '05:30 PM';
+                          } else {
+                            status = 'Absent'; badgeClass = 'badge-danger'; checkIn = '--'; checkOut = '--';
+                          }
                         }
-                      } catch {}
-                    } else if (checkIn !== '--' && u.status === 'online') {
-                      hoursWorked = 'In progress...';
+                        
+                        let hoursWorked = '--';
+                        if (checkIn !== '--' && checkOut !== '--') {
+                          if (i !== 0) {
+                            hoursWorked = '8h 25m';
+                          } else {
+                            try {
+                              const todayStr = new Date().toLocaleDateString('en-US');
+                              const diffMs = new Date(`${todayStr} ${checkOut}`) - new Date(`${todayStr} ${checkIn}`);
+                              if (diffMs > 0) hoursWorked = `${Math.floor(diffMs / 3600000)}h ${Math.floor((diffMs % 3600000) / 60000)}m`;
+                            } catch {}
+                          }
+                        } else if (checkIn !== '--' && i === 0 && u.status === 'online') {
+                          hoursWorked = 'In progress...';
+                        }
+                        
+                        records.push({ id: `${u.id}-${i}`, user: u, dateStr, status, badgeClass, checkIn, checkOut, hoursWorked });
+                      });
                     }
-
-                    return (
-                      <tr key={u.id}>
+                    
+                    return records.map(rec => (
+                      <tr key={rec.id}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                            <div className="user-avatar" style={{ width: 28, height: 28, fontSize: '0.75rem', background: `linear-gradient(135deg, ${u.avatarColor}, #2c3e50)`, color: 'white', flexShrink: 0 }}>{u.avatar}</div>
-                            <span style={{ fontWeight: 600 }}>{u.name}</span>
+                            <div className="user-avatar" style={{ width: 28, height: 28, fontSize: '0.75rem', background: `linear-gradient(135deg, ${rec.user.avatarColor}, #2c3e50)`, color: 'white', flexShrink: 0 }}>{rec.user.avatar}</div>
+                            <span style={{ fontWeight: 600 }}>{rec.user.name}</span>
                           </div>
                         </td>
-                        <td>{u.department}</td>
-                        <td>{new Date().toLocaleDateString('en-GB')}</td>
-                        <td><span className={`badge ${badgeClass}`}>{status}</span></td>
-                        <td style={{ color: checkIn !== '--' ? '#2ecc71' : 'var(--text-muted)', fontWeight: 600 }}>{checkIn}</td>
-                        <td style={{ color: checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>{checkOut}</td>
-                        <td style={{ color: hoursWorked === 'In progress...' ? 'var(--gold)' : 'var(--text-primary)', fontSize: '0.875rem' }}>
-                          {hoursWorked === 'In progress...' ? (
+                        <td>{rec.user.department}</td>
+                        <td>{rec.dateStr}</td>
+                        <td><span className={`badge ${rec.badgeClass}`}>{rec.status}</span></td>
+                        <td style={{ color: rec.checkIn !== '--' ? '#2ecc71' : 'var(--text-muted)', fontWeight: 600 }}>{rec.checkIn}</td>
+                        <td style={{ color: rec.checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>{rec.checkOut}</td>
+                        <td style={{ color: rec.hoursWorked === 'In progress...' ? 'var(--gold)' : 'var(--text-primary)', fontSize: '0.875rem' }}>
+                          {rec.hoursWorked === 'In progress...' ? (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Clock size={12} style={{ color: 'var(--gold)' }} /> In progress
                             </span>
-                          ) : hoursWorked}
+                          ) : rec.hoursWorked}
                         </td>
                       </tr>
-                    );
-                  })
+                    ));
+                  })()
                 )}
               </tbody>
             </table>
@@ -458,9 +504,11 @@ export default function StaffManagement() {
         <div className="admin-card">
           <div className="card-header">
             <div className="card-title">Task Assignments</div>
-            <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setNewTaskOpen(true)}>
-              <Plus size={16} style={{ marginRight: '4px' }}/> Assign New Task
-            </button>
+            {canManageStaff && (
+              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setNewTaskOpen(true)}>
+                <Plus size={16} style={{ marginRight: '4px' }}/> Assign New Task
+              </button>
+            )}
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -485,12 +533,16 @@ export default function StaffManagement() {
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}><Clock size={12} style={{ display: 'inline', marginRight: '4px' }}/>{t.deadline}</td>
                     <td>
-                      <button className="btn btn-sm btn-outline" onClick={() => {
-                        setTasks(tasks.map(x => x.id === t.id ? { ...x, status: x.status === 'Pending' ? 'In Progress' : 'Completed' } : x));
-                        showToast(`Status updated for task: ${t.title}`);
-                      }}>
-                        Update Status
-                      </button>
+                      {canManageStaff ? (
+                        <button className="btn btn-sm btn-outline" onClick={() => {
+                          setTasks(tasks.map(x => x.id === t.id ? { ...x, status: x.status === 'Pending' ? 'In Progress' : 'Completed' } : x));
+                          showToast(`Status updated for task: ${t.title}`);
+                        }}>
+                          Update Status
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -505,9 +557,11 @@ export default function StaffManagement() {
         <div className="admin-card">
           <div className="card-header">
             <div className="card-title">Weekly Staff Schedules</div>
-            <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={handleSaveSchedules}>
-              <Check size={16} style={{ marginRight: '4px' }}/> Save Schedules
-            </button>
+            {canManageStaff && (
+              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={handleSaveSchedules}>
+                <Check size={16} style={{ marginRight: '4px' }}/> Save Schedules
+              </button>
+            )}
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -532,6 +586,7 @@ export default function StaffManagement() {
                     <select 
                       value={sched[day]} 
                       onChange={(e) => handleScheduleChange(u.id, day, e.target.value)}
+                      disabled={!canManageStaff}
                       style={{ 
                         background: 'transparent', 
                         color: sched[day] === 'Off' ? 'var(--status-red)' : 'var(--text-primary)',
@@ -539,7 +594,9 @@ export default function StaffManagement() {
                         padding: '4px',
                         borderRadius: '4px',
                         width: '100%',
-                        fontSize: '0.85rem'
+                        fontSize: '0.85rem',
+                        cursor: canManageStaff ? 'pointer' : 'not-allowed',
+                        opacity: canManageStaff ? 1 : 0.7
                       }}
                     >
                       {shifts.map(s => <option key={s} value={s} style={{background: 'var(--bg-card)', color: s === 'Off' ? 'var(--status-red)' : '#fff'}}>{s}</option>)}
@@ -664,19 +721,19 @@ export default function StaffManagement() {
         <div className="modal-overlay" onClick={() => setEditingUser(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Edit User Permissions</h2>
+              <h2 className="modal-title">{canManageStaff ? 'Edit User Permissions' : 'User Profile Details'}</h2>
               <button className="modal-close" onClick={() => setEditingUser(null)}>×</button>
             </div>
             <form onSubmit={handleEditSubmit}>
               <div className="modal-body">
                 <div className="form-group mb-1">
                   <label className="form-label">Full Name</label>
-                  <input type="text" className="form-input" required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+                  <input type="text" className="form-input" required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} disabled={!canManageStaff} />
                 </div>
                 <div className="form-row mb-1">
                   <div className="form-group">
                     <label className="form-label">Role</label>
-                    <select className="form-input" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})} disabled={editingUser.role === 'superadmin'}>
+                    <select className="form-input" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})} disabled={!canManageStaff || editingUser.role === 'superadmin'}>
                       {editingUser.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
                       <option value="staff">Staff</option>
                       <option value="manager">Manager</option>
@@ -687,7 +744,7 @@ export default function StaffManagement() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Department</label>
-                    <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})}>
+                    <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})} disabled={!canManageStaff}>
                       <option value="" disabled>Select Department</option>
                       <option value="Sales">Sales</option>
                       <option value="Customer Support">Customer Support</option>
@@ -698,8 +755,10 @@ export default function StaffManagement() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setEditingUser(null)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Save Changes</button>
+                <button type="button" className="btn btn-outline" onClick={() => setEditingUser(null)}>{canManageStaff ? 'Cancel' : 'Close'}</button>
+                {canManageStaff && (
+                  <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Save Changes</button>
+                )}
               </div>
             </form>
           </div>

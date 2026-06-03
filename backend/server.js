@@ -97,6 +97,150 @@ app.post('/api/subscribe', async (req, res) => {
   }
 });
 
+// Support Ticket Reply Endpoint
+app.post('/api/support/reply', async (req, res) => {
+  const { email, customer, subject, message, originalMessage } = req.body;
+  if (!email || !message) return res.status(400).json({ error: 'Email and message are required' });
+
+  try {
+    let transporter;
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      require('dns').setDefaultResultOrder('ipv4first');
+      transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // Use STARTTLS
+        requireTLS: true,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        },
+        tls: { rejectUnauthorized: false }
+      });
+    } else {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+    }
+
+    const mailOptions = {
+      from: '"Lumina Jewels Support" <support@luminajewels.com>',
+      to: email,
+      subject: `Re: ${subject || 'Your Support Ticket'}`,
+      text: message,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Hello ${customer || 'Customer'},</h2>
+          <p style="white-space: pre-wrap;">${message}</p>
+          <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;" />
+          <p style="color: #666; font-size: 12px;">Original Message:</p>
+          <blockquote style="margin: 0; padding-left: 10px; border-left: 3px solid #ccc; color: #666;">
+            ${originalMessage || ''}
+          </blockquote>
+        </div>
+      `
+    };
+
+    let info;
+    try {
+      info = await transporter.sendMail(mailOptions);
+    } catch (sendErr) {
+      console.warn("SMTP sending failed, falling back to Ethereal Mail.", sendErr.message);
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: { user: testAccount.user, pass: testAccount.pass }
+      });
+      info = await transporter.sendMail(mailOptions);
+      
+      // Force it to act like Ethereal so frontend gets preview URL
+      process.env.SMTP_USER = ''; 
+    }
+
+    let previewUrl = null;
+    if (!process.env.SMTP_USER) {
+      previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log("Support Email Preview URL: %s", previewUrl);
+    }
+
+    res.json({ success: true, message: 'Email sent successfully', previewUrl });
+  } catch (err) {
+    console.error("Support Email Error:", err);
+    res.status(500).json({ error: 'Failed to send support email' });
+  }
+// Email Notification Endpoint
+app.post('/api/notifications/send', async (req, res) => {
+  const { email, customer, subject, message } = req.body;
+  if (!email || !message) return res.status(400).json({ error: 'Email and message are required' });
+
+  try {
+    let transporter;
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      require('dns').setDefaultResultOrder('ipv4first');
+      transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com', port: 587, secure: false, requireTLS: true,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        tls: { rejectUnauthorized: false }
+      });
+    } else {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email', port: 587, secure: false,
+        auth: { user: testAccount.user, pass: testAccount.pass }
+      });
+    }
+
+    const mailOptions = {
+      from: '"Lumina Jewels Updates" <updates@luminajewels.com>',
+      to: email,
+      subject: subject || 'New Notification from Lumina Jewels',
+      text: message,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Hello ${customer || 'Customer'},</h2>
+          <p style="white-space: pre-wrap;">${message}</p>
+          <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;" />
+          <p style="color: #666; font-size: 12px; text-align: center;">You are receiving this because you are subscribed to Lumina Jewels notifications.</p>
+        </div>
+      `
+    };
+
+    let info;
+    try {
+      info = await transporter.sendMail(mailOptions);
+    } catch (sendErr) {
+      console.warn("SMTP sending failed, falling back to Ethereal Mail.", sendErr.message);
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email', port: 587, secure: false,
+        auth: { user: testAccount.user, pass: testAccount.pass }
+      });
+      info = await transporter.sendMail(mailOptions);
+      process.env.SMTP_USER = ''; 
+    }
+
+    let previewUrl = null;
+    if (!process.env.SMTP_USER) {
+      previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log("Notification Preview URL: %s", previewUrl);
+    }
+
+    res.json({ success: true, message: 'Notification sent successfully', previewUrl });
+  } catch (err) {
+    console.error("Notification Email Error:", err);
+    res.status(500).json({ error: 'Failed to send notification email' });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

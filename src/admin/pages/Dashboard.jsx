@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell } from 'lucide-react';
+import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
@@ -141,6 +141,17 @@ export default function Dashboard() {
   const actualOrdersCount = firebaseOrders?.length || 0;
   const actualCustomersCount = firebaseCustomers?.length || 0;
   const actualProductsCount = firebaseProducts?.length || 0;
+  const pendingOrdersCount = firebaseOrders?.filter(o => o.status === 'pending').length || 0;
+  
+  // Inventory Alerts
+  const lowStockProducts = firebaseProducts?.filter(p => (p.stock || 0) <= (p.minStock || 5)) || [];
+  
+  // Mock Assigned Tasks for Staff
+  const assignedTasks = [
+    { id: 'TSK-092', title: 'Quality Check: Polki Necklaces', time: 'Today, 2:30 PM', priority: 'High', status: 'Pending' },
+    { id: 'TSK-093', title: 'Update Diamond Pricing', time: 'Today, 5:00 PM', priority: 'Medium', status: 'Pending' },
+    { id: 'TSK-094', title: 'Follow up with packaging vendor', time: 'Tomorrow, 10:00 AM', priority: 'Low', status: 'In Progress' }
+  ];
   
   const calculateRealRevenueCr = () => {
      if (!firebaseOrders || firebaseOrders.length === 0) return 0;
@@ -284,9 +295,9 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div className="stat-grid mb-15">
-        <StatCard icon={<IndianRupee size={20} />} iconClass="gold" label="Actual Revenue" value={`₹${realRevenueCr} Cr`} trend="Real-Time" trendUp={true} trendNote="from live orders" accentColor="var(--gold)" />
-        <StatCard icon={<Package size={20} />} iconClass="blue" label="Total Orders" value={actualOrdersCount} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#3498db" />
-        <StatCard icon={<Users size={20} />} iconClass="green" label="Active Customers" value={actualCustomersCount.toLocaleString()} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#2ecc71" />
+        <StatCard icon={<IndianRupee size={20} />} iconClass="gold" label="Daily Sales Summary" value={`₹${realRevenueCr} Cr`} trend="Real-Time" trendUp={true} trendNote="from live orders" accentColor="var(--gold)" />
+        <StatCard icon={<Users size={20} />} iconClass="green" label="New Customer Reg." value={actualCustomersCount.toLocaleString()} trend="Live" trendUp={true} trendNote="active users" accentColor="#2ecc71" />
+        <StatCard icon={<Package size={20} />} iconClass="blue" label="Pending Orders" value={pendingOrdersCount} trend="Action Req." trendUp={false} trendNote="awaiting fulfillment" accentColor="#3498db" />
         <StatCard icon={<Gem size={20} />} iconClass="purple" label="Total Products" value={actualProductsCount} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#9b59b6" />
       </div>
 
@@ -436,6 +447,66 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Staff Features: Assigned Tasks & Inventory Alerts */}
+      <div className="grid-2 mb-15">
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CheckSquare size={18} color="var(--gold)" /> Assigned Tasks
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{assignedTasks.length} Pending</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+            {assignedTasks.map(task => (
+              <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: '20px', height: '20px', border: '2px solid var(--gold)', borderRadius: '4px', cursor: 'pointer' }} />
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{task.title}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <span>{task.id}</span> • <span>{task.time}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <span className={`badge ${task.priority === 'High' ? 'badge-cancelled' : 'badge-pending'}`}>{task.priority}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <AlertCircle size={18} color="#e74c3c" /> Inventory Alerts
+            </div>
+            <a href="/admin/inventory" style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>View Inventory →</a>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+            {lowStockProducts.length > 0 ? (
+              lowStockProducts.slice(0, 4).map(item => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SKU: {item.sku || item.id}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: '#e74c3c', fontWeight: 700, fontSize: '0.9rem' }}>{item.stock} Left</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Min: {item.minStock || 5}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>All inventory levels are optimal.</div>
+            )}
           </div>
         </div>
       </div>

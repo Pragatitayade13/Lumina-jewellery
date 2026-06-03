@@ -1,22 +1,290 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Map, Package, CheckCircle, ShieldAlert, Phone, MapPin, RefreshCcw, Camera } from 'lucide-react';
+import { Map, Package, CheckCircle, ShieldAlert, Phone, MapPin, RefreshCcw, Camera, Truck, XCircle, IndianRupee, Navigation, Navigation2, Radio, Clock } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useOrders } from '../../hooks/useOrders';
+import { useDeliveryLocation } from '../../hooks/useDeliveryLocation';
+import { useApp } from '../../context/AppContext';
+
+function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, accentColor }) {
+  return (
+    <div className="stat-card" style={{ '--card-accent': accentColor, background: 'var(--surface)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <div className={iconClass} style={{ color: accentColor }}>{icon}</div>
+        <div className={`stat-trend ${trendUp ? 'up' : 'down'}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: trendUp ? 'var(--status-green)' : 'var(--status-red)' }}>
+          {trendUp ? '↑' : '↓'} {trend}
+        </div>
+      </div>
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0.2rem 0' }}>{value}</div>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{trendNote}</div>
+    </div>
+  );
+}
+
+
+// ─── Load Leaflet dynamically (no bundler issues) ─────────────────────────
+function usLeaflet(mapRef, center) {
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const trailRef = useRef(null);
+  const partnersRef = useRef({});
+
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return;
+
+    // Inject Leaflet CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => {
+      const L = window.L;
+      const map = L.map(mapRef.current).setView(center, 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      mapInstanceRef.current = map;
+    };
+    document.head.appendChild(script);
+    return () => { /* keep map alive */ };
+  }, []);
+
+  return { mapInstanceRef, markerRef, trailRef, partnersRef };
+}
+
+function LiveMapTab({ isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations }) {
+  const mapRef = useRef(null);
+  const center = [19.076, 72.877]; // Mumbai default
+  const { mapInstanceRef, markerRef, trailRef, partnersRef } = usLeaflet(mapRef, center);
+
+  // Update MY marker + trail when position changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const L = window.L;
+    if (!map || !L || !myPosition) return;
+
+    const { lat, lng } = myPosition;
+
+    // My pulsing marker
+    if (!markerRef.current) {
+      const myIcon = L.divIcon({
+        className: '',
+        html: `<div style="
+          width:18px;height:18px;
+          background:var(--gold, #c9a84c);
+          border-radius:50%;
+          border:3px solid #fff;
+          box-shadow:0 0 0 0 rgba(201,168,76,0.6);
+          animation:live-pulse 1.5s infinite;
+        "></div>
+        <style>@keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(201,168,76,0.6)}70%{box-shadow:0 0 0 12px rgba(201,168,76,0)}100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}}</style>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      markerRef.current = L.marker([lat, lng], { icon: myIcon })
+        .addTo(map)
+        .bindPopup('<b>📍 You are here</b>');
+    } else {
+      markerRef.current.setLatLng([lat, lng]);
+    }
+    map.setView([lat, lng], map.getZoom() < 14 ? 14 : map.getZoom());
+
+    // Breadcrumb trail polyline
+    if (myTrail.length > 1) {
+      const coords = myTrail.map(p => [p.lat, p.lng]);
+      if (trailRef.current) {
+        trailRef.current.setLatLngs(coords);
+      } else {
+        trailRef.current = L.polyline(coords, {
+          color: '#c9a84c',
+          weight: 3,
+          opacity: 0.8,
+          dashArray: '6, 6'
+        }).addTo(map);
+      }
+    }
+  }, [myPosition, myTrail]);
+
+  // Update other partner markers
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const L = window.L;
+    if (!map || !L) return;
+
+    const current = new Set();
+    partnerLocations.forEach(p => {
+      if (!p.lat || !p.lng) return;
+      current.add(p.id);
+      if (!partnersRef.current[p.id]) {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:#3498db;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+        });
+        partnersRef.current[p.id] = L.marker([p.lat, p.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<b>🚚 ${p.partnerName || 'Partner'}</b>`);
+      } else {
+        partnersRef.current[p.id].setLatLng([p.lat, p.lng]);
+      }
+    });
+
+    // Remove stale markers
+    Object.keys(partnersRef.current).forEach(id => {
+      if (!current.has(id)) {
+        partnersRef.current[id].remove();
+        delete partnersRef.current[id];
+      }
+    });
+  }, [partnerLocations]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Controls bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '1rem',
+        padding: '1rem 1.5rem',
+        background: 'var(--surface)',
+        border: '1px solid var(--admin-border)',
+        borderBottom: 'none',
+        borderRadius: '12px 12px 0 0',
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Route Navigation</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
+            {isTracking ? (
+              <>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2ecc71', display: 'inline-block', animation: 'live-pulse 1.5s infinite' }} />
+                <span style={{ color: '#2ecc71', fontWeight: 600 }}>Live tracking active</span>
+                {myPosition && (
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 4 }}>
+                    · {myPosition.lat.toFixed(5)}, {myPosition.lng.toFixed(5)} · ±{Math.round(myPosition.accuracy)}m
+                  </span>
+                )}
+              </>
+            ) : (
+              <span>Location tracking off — click "Go On Duty" to start</span>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {partnerLocations.length} partner{partnerLocations.length !== 1 ? 's' : ''} online
+          </span>
+          <button
+            onClick={isTracking ? stopTracking : startTracking}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.5rem 1.25rem',
+              background: isTracking ? 'rgba(231,76,60,0.15)' : 'var(--gold)',
+              color: isTracking ? '#e74c3c' : '#000',
+              border: isTracking ? '1px solid #e74c3c' : 'none',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              transition: 'all 0.2s',
+            }}
+          >
+            <Radio size={14} />
+            {isTracking ? 'Go Off Duty' : 'Go On Duty'}
+          </button>
+        </div>
+      </div>
+
+      {/* Map container */}
+      <div
+        ref={mapRef}
+        style={{
+          height: '500px',
+          border: '1px solid var(--admin-border)',
+          borderRadius: '0 0 12px 12px',
+          overflow: 'hidden',
+          zIndex: 0,
+        }}
+      />
+
+      {/* Trail stats overlay */}
+      {myTrail.length > 1 && (
+        <div style={{
+          position: 'absolute', bottom: '12px', left: '12px',
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+          padding: '0.6rem 1rem', borderRadius: '8px',
+          color: '#fff', fontSize: '0.78rem', zIndex: 500,
+          display: 'flex', gap: '1rem', alignItems: 'center',
+        }}>
+          <span style={{ color: '#c9a84c', fontWeight: 700 }}>📍 Trail</span>
+          <span>{myTrail.length} points recorded</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DeliveryOperations() {
+
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const currentTab = searchParams.get('tab') || 'assigned';
+  const currentTab = searchParams.get('tab') || 'dashboard';
   
   const { orders: liveOrders, updateOrderStatus } = useOrders();
+  const { user, showToast } = useApp();
+  const prevAssignedCountRef = useRef(0);
+  const [optimisticStatuses, setOptimisticStatuses] = useState({});
+
+  useEffect(() => {
+    if (!liveOrders) return;
+    const currentAssignedCount = liveOrders.filter(o => o.status === 'assigned').length;
+    
+    // If the number of assigned orders increases, trigger a notification
+    if (currentAssignedCount > prevAssignedCountRef.current && prevAssignedCountRef.current !== 0) {
+      showToast(`🔔 New delivery assigned! Check your Assigned Orders tab.`);
+      
+      // Attempt to play a subtle notification sound (may be blocked by browser without interaction)
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log('Audio autoplay blocked'));
+      } catch (e) {}
+    }
+    
+    // Update the ref to the current count
+    prevAssignedCountRef.current = currentAssignedCount;
+  }, [liveOrders, showToast]);
+  const { isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations } = useDeliveryLocation(
+    user?.uid,
+    user?.name || user?.email
+  );
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [otpInputs, setOtpInputs] = useState(['', '', '', '']);
   const [currentOtp, setCurrentOtp] = useState('1234');
   const [photos, setPhotos] = useState({});
   const [cameraModal, setCameraModal] = useState({ isOpen: false, pickupId: null });
+  const [failureModal, setFailureModal] = useState({ isOpen: false, order: null, reason: '' });
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  // Delivery Reminder Notification
+  useEffect(() => {
+    if (!liveOrders) return;
+    const hasPending = liveOrders.some(o => ['assigned', 'Pending Pickup', 'shipped', 'out_for_delivery'].includes(o.status));
+    if (!hasPending) return;
+    
+    const interval = setInterval(() => {
+      showToast('⏰ Reminder: You have active pending deliveries to complete.');
+    }, 120000); // 2 minutes for demo purposes (would be longer in production)
+    
+    return () => clearInterval(interval);
+  }, [liveOrders, showToast]);
 
   const startCamera = async () => {
     try {
@@ -57,7 +325,16 @@ export default function DeliveryOperations() {
       const dataUrl = canvas.toDataURL('image/jpeg');
       
       setPhotos(prev => ({ ...prev, [cameraModal.pickupId]: dataUrl }));
-      setCameraModal({ isOpen: false, pickupId: null });
+      const isDelivery = cameraModal.isDelivery;
+      const pickupId = cameraModal.pickupId;
+      setCameraModal({ isOpen: false, pickupId: null, isDelivery: false });
+      
+      if (isDelivery) {
+        setTimeout(() => {
+           const order = liveOrders.find(o => o.id === pickupId);
+           if (order) handleDeliveryClick(order, true);
+        }, 300);
+      }
     }
   };
 
@@ -70,15 +347,41 @@ export default function DeliveryOperations() {
       }))
     : [];
 
-  const pendingPickups = allAssigned.filter(o => o.status === 'Pending Pickup' || o.status === 'Pending');
+  const assignedOrders = allAssigned.filter(o => o.status === 'assigned');
+  const pendingPickups = allAssigned.filter(o => o.status === 'Pending Pickup');
   const activeTransits = allAssigned.filter(o => ['shipped', 'out_for_delivery', 'delayed'].includes(o.status));
 
-  const assignedReturns = [
-    { id: '#RET-4402', customer: 'Anjali Desai', address: 'Andheri East, Mumbai', type: 'Old Gold Exchange', estValue: '₹80,000', instructions: 'Verify 22k hallmark before sealing.' },
-    { id: '#RET-4405', customer: 'Vikram Mehta', address: 'Colaba, Mumbai', type: 'Return', estValue: '₹35,000', instructions: 'Check for physical damage.' }
+  const totalAssigned = allAssigned.length;
+  const pendingDeliveries = allAssigned.filter(o => ['assigned', 'Pending Pickup', 'shipped', 'out_for_delivery', 'delayed'].includes(o.status)).length;
+  const deliveredOrders = liveOrders ? liveOrders.filter(o => o.status === 'delivered').length : 0;
+  const failedDeliveries = liveOrders ? liveOrders.filter(o => ['cancelled', 'refund_pending', 'failed'].includes(o.status)).length : 0;
+  const earnings = deliveredOrders * 50;
+
+  const staticReturns = [
+    { id: '#RET-4402', customer: 'Anjali Desai', address: 'Andheri East, Mumbai', type: 'Old Gold Exchange', estValue: '₹80,000', instructions: 'Verify 22k hallmark before sealing.', isMock: true },
+    { id: '#RET-4405', customer: 'Vikram Mehta', address: 'Colaba, Mumbai', type: 'Return', estValue: '₹35,000', instructions: 'Check for physical damage.', isMock: true }
   ];
 
-  const handleDeliveryClick = (order) => {
+  const dynamicReturns = allAssigned
+    .filter(o => ['failed', 'refund_pending'].includes(o.status))
+    .map(o => ({
+      id: o.id,
+      customer: o.customer,
+      address: o.address,
+      type: o.status === 'failed' ? 'Failed Delivery Return' : 'Customer Return',
+      estValue: `₹${(o.amount || 0).toLocaleString('en-IN')}`,
+      instructions: 'Secure item and return to hub.',
+      isMock: false
+    }));
+
+  const assignedReturns = [...dynamicReturns, ...staticReturns];
+
+  const handleDeliveryClick = (order, skipPhoto = false) => {
+    if (!skipPhoto && !photos[order.id]) {
+      setCameraModal({ isOpen: true, pickupId: order.id, isDelivery: true });
+      return;
+    }
+
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
     setCurrentOtp(generatedOtp);
     setSelectedOrder(order);
@@ -104,7 +407,7 @@ export default function DeliveryOperations() {
         if (selectedOrder) {
           await updateOrderStatus(selectedOrder.id, 'delivered');
         }
-        alert('OTP Verified! Delivery successful.');
+        alert(`OTP Verified! Delivery successful.\n\n[MOCK SMS] Sent to Admin & Customer: Order ${selectedOrder?.id} has been delivered successfully.`);
         setShowOtpModal(false);
       } catch (err) {
         alert('Failed to update delivery status in database.');
@@ -145,35 +448,81 @@ export default function DeliveryOperations() {
               <span>{order.address}</span>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
               <div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: order.status === 'Pending' ? 'var(--status-orange)' : 'var(--status-green)' }}>{order.status}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: (optimisticStatuses[order.id] || order.status) === 'Pending' ? 'var(--status-orange)' : 'var(--status-green)', textTransform: 'capitalize' }}>
+                  {(optimisticStatuses[order.id] || order.status) === 'shipped' ? 'In Transit' : (optimisticStatuses[order.id] || order.status).replace(/_/g, ' ')}
+                </div>
+                {order.updatedAt && (
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <Clock size={10} />
+                    {new Date(order.updatedAt?.toDate ? order.updatedAt.toDate() : order.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <a href="tel:+919876543210" className="btn btn-icon btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} title="Call Customer"><Phone size={14} /></a>
                 
                 {['shipped', 'out_for_delivery', 'delayed'].includes(order.status) && (
                    <select 
                      className="form-input" 
-                     style={{ width: 'auto', padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: '32px', background: 'var(--surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '6px' }}
-                     value={order.status}
-                     onChange={(e) => {
-                       updateOrderStatus(order.id, e.target.value);
+                     style={{ 
+                       width: 'auto', 
+                       minWidth: '135px',
+                       padding: '0 0.5rem', 
+                       fontSize: '0.8rem', 
+                       height: '32px', 
+                       background: 'rgba(255,255,255,0.05)', 
+                       color: 'var(--text-primary)', 
+                       border: '1px solid var(--admin-border)', 
+                       borderRadius: '6px',
+                       cursor: 'pointer',
+                       fontWeight: 600
+                     }}
+                     value={optimisticStatuses[order.id] || order.status}
+                     onChange={async (e) => {
+                       const val = e.target.value;
+                       if (val === 'failed') {
+                         setFailureModal({ isOpen: true, order: order, reason: '' });
+                       } else {
+                         // Optimistically update the UI instantly
+                         setOptimisticStatuses(prev => ({ ...prev, [order.id]: val }));
+                         try {
+                           await updateOrderStatus(order.id, val);
+                           showToast(`✅ Status updated to ${val === 'shipped' ? 'In Transit' : val.replace(/_/g, ' ')}`);
+                         } catch (err) {
+                           console.error("Failed status update", err);
+                           // Revert optimistic update on failure
+                           setOptimisticStatuses(prev => {
+                             const newObj = { ...prev };
+                             delete newObj[order.id];
+                             return newObj;
+                           });
+                           showToast(`❌ Error: Could not update status.`);
+                         }
+                       }
                      }}
                    >
                      <option value="shipped">In Transit</option>
                      <option value="out_for_delivery">Out for Delivery</option>
                      <option value="delayed">Delayed</option>
+                     <option value="failed">Delivery Failed</option>
                    </select>
                 )}
 
-                {(order.status === 'Pending Pickup' || order.status === 'Pending') ? (
+                {order.status === 'assigned' && (
                    <button className="btn btn-sm btn-outline" onClick={() => {
-                     updateOrderStatus(order.id, 'shipped');
-                     alert("Pickup confirmed! Package is now In Transit.");
+                     updateOrderStatus(order.id, 'Pending Pickup');
+                     alert("Assignment accepted! Please proceed to pickup the package from the store.");
+                   }}>Accept Assignment</button>
+                )}
+                {order.status === 'Pending Pickup' && (
+                   <button className="btn btn-sm btn-outline" onClick={() => {
+                     updateOrderStatus(order.id, 'out_for_delivery');
+                     alert("[MOCK SMS GATEWAY] \n\nMessage sent to customer (+91 9876543210):\n\"Your order " + order.id + " is Out for Delivery!\"");
                    }}>Confirm Pickup</button>
-                ) : (
+                )}
+                {['shipped', 'out_for_delivery', 'delayed'].includes(order.status) && (
                    <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => handleDeliveryClick(order)}>Verify & Deliver</button>
                 )}
               </div>
@@ -211,8 +560,7 @@ export default function DeliveryOperations() {
             <strong>Instruction:</strong> {pickup.instructions}
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <a href="tel:+919876543210" className="btn btn-icon btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}><Phone size={14} /></a>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               {photos[pickup.id] ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -222,7 +570,18 @@ export default function DeliveryOperations() {
               ) : (
                 <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => setCameraModal({ isOpen: true, pickupId: pickup.id })}><Camera size={14} /> Photo Proof</button>
               )}
-              <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => alert("Return sealed and custody transferred!")}>Seal & Collect</button>
+              <button 
+                className="btn btn-sm" 
+                style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
+                onClick={() => {
+                  if (!pickup.isMock) {
+                    updateOrderStatus(pickup.id, 'refund_pending');
+                  }
+                  showToast(`📦 Return initiated for ${pickup.id}. Seal & custody transferred!`);
+                }}
+              >
+                Seal & Collect
+              </button>
             </div>
           </div>
         </div>
@@ -230,11 +589,128 @@ export default function DeliveryOperations() {
     </div>
   );
 
+  const renderDashboard = () => (
+    <>
+      <div className="stat-grid mb-15">
+        <StatCard icon={<Package size={20} />} iconClass="gold" label="Total Assigned" value={totalAssigned} trend="Live" trendUp={true} trendNote="Total orders in your queue" accentColor="var(--gold)" />
+        <StatCard icon={<Truck size={20} />} iconClass="blue" label="Pending Deliveries" value={pendingDeliveries} trend="Live" trendUp={true} trendNote="En route & pending pickups" accentColor="#3498db" />
+        <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Delivered" value={deliveredOrders} trend="Real-Time" trendUp={true} trendNote="Successful handovers" accentColor="#2ecc71" />
+        <StatCard icon={<XCircle size={20} />} iconClass="red" label="Failed / Cancelled" value={failedDeliveries} trend="Live" trendUp={false} trendNote="Needs admin review" accentColor="#e74c3c" />
+      </div>
+      
+      <div className="grid-2-1 mb-15">
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Earnings & Incentives</div>
+          </div>
+          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--gold)', marginBottom: '1rem', textShadow: '0 0 20px rgba(201,168,76,0.2)' }}>
+              ₹{earnings}
+            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Based on {deliveredOrders} successful deliveries</div>
+          </div>
+        </div>
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Active Transits</div>
+            <a href="/admin/delivery?tab=status" style={{ fontSize: '0.75rem', color: 'var(--gold)', fontWeight: 600 }}>View All →</a>
+          </div>
+          {activeTransits.length === 0 ? (
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No active transits on route.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem' }}>
+              {activeTransits.slice(0,3).map((o, idx) => (
+                <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: idx !== activeTransits.slice(0,3).length - 1 ? '1px solid var(--admin-border)' : 'none' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '0.85rem' }}>{o.id}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{o.address}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="badge badge-shipped" style={{ textTransform: 'capitalize' }}>{o.status.replace(/_/g, ' ')}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reports & Analytics Expansion */}
+      <div className="grid-2-1 mb-15">
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Delivery Performance</div>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>On-Time Delivery Rate</span>
+              <span style={{ fontWeight: 700, color: 'var(--status-green)' }}>96.5%</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+              <div style={{ width: '96.5%', height: '100%', background: 'var(--status-green)' }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Customer Satisfaction</span>
+              <span style={{ fontWeight: 700, color: 'var(--gold)' }}>4.8 / 5</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+              <div style={{ width: '96%', height: '100%', background: 'var(--gold)' }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Failed/Returned Ratio</span>
+              <span style={{ fontWeight: 700, color: 'var(--status-red)' }}>{totalAssigned > 0 ? ((failedDeliveries / totalAssigned) * 100).toFixed(1) : '0.0'}%</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: totalAssigned > 0 ? `${(failedDeliveries / totalAssigned) * 100}%` : '0%', height: '100%', background: 'var(--status-red)' }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Monthly Delivery Reports</div>
+          </div>
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Completed</th>
+                  <th>Failed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong style={{ color: 'var(--text-primary)' }}>May 2026</strong></td>
+                  <td style={{ color: 'var(--status-green)' }}>142</td>
+                  <td style={{ color: 'var(--status-red)' }}>3</td>
+                </tr>
+                <tr>
+                  <td><strong style={{ color: 'var(--text-primary)' }}>Apr 2026</strong></td>
+                  <td style={{ color: 'var(--status-green)' }}>128</td>
+                  <td style={{ color: 'var(--status-red)' }}>5</td>
+                </tr>
+                <tr>
+                  <td><strong style={{ color: 'var(--text-primary)' }}>Mar 2026</strong></td>
+                  <td style={{ color: 'var(--status-green)' }}>155</td>
+                  <td style={{ color: 'var(--status-red)' }}>2</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '4rem' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.4rem' }}>
+            {currentTab === 'dashboard' && 'Logistics Dashboard'}
             {currentTab === 'assigned' && 'Assigned Orders'}
             {currentTab === 'pickups' && 'Pickup Confirmation'}
             {currentTab === 'status' && 'Delivery Status Update'}
@@ -245,25 +721,21 @@ export default function DeliveryOperations() {
         </div>
       </div>
 
-      {currentTab === 'assigned' && renderOrderList(allAssigned, "No orders currently assigned to you.")}
-      {currentTab === 'pickups' && renderOrderList(pendingPickups, "No pending warehouse pickups.")}
+      {currentTab === 'dashboard' && renderDashboard()}
+      {currentTab === 'assigned' && renderOrderList(assignedOrders, "No orders currently assigned to you.")}
+      {currentTab === 'pickups' && renderOrderList(pendingPickups, "No pending store pickups.")}
       {currentTab === 'status' && renderOrderList(activeTransits, "No active transits on route.")}
       {currentTab === 'returns' && renderReturnsList()}
 
       {currentTab === 'map' && (
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', height: '450px', position: 'relative' }}>
-          <iframe 
-            width="100%" 
-            height="100%" 
-            style={{ border: 0 }}
-            loading="lazy" 
-            allowFullScreen 
-            src="https://www.openstreetmap.org/export/embed.html?bbox=72.81,18.92,72.90,19.05&layer=mapnik"
-          ></iframe>
-          <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.8)', padding: '0.5rem 1rem', borderRadius: '8px', color: '#fff', fontSize: '0.8rem' }}>
-            <MapPin size={12} color="var(--gold)" style={{ marginRight: '4px' }} /> Active Route: Mumbai South Zone
-          </div>
-        </div>
+        <LiveMapTab
+          isTracking={isTracking}
+          myPosition={myPosition}
+          myTrail={myTrail}
+          startTracking={startTracking}
+          stopTracking={stopTracking}
+          partnerLocations={partnerLocations}
+        />
       )}
 
       {/* OTP Modal */}
@@ -322,6 +794,52 @@ export default function DeliveryOperations() {
             <button className="btn" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={capturePhoto}>
               <Camera size={20} /> Capture Image
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Failure Reason Modal */}
+      {failureModal.isOpen && failureModal.order && (
+        <div className="auth-modal-overlay">
+          <div className="auth-modal" style={{ maxWidth: '400px', padding: '2rem' }}>
+             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <XCircle size={40} color="var(--status-red)" style={{ margin: '0 auto 1rem' }} />
+                <h3 style={{ margin: '0 0 0.5rem 0' }}>Delivery Failed</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Please select the reason for the failed delivery attempt.</p>
+             </div>
+
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem' }}>
+               {['Customer unavailable', 'Incorrect address', 'Customer refused delivery', 'Payment issue'].map(reason => (
+                 <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: failureModal.reason === reason ? '1px solid var(--gold)' : '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer' }}>
+                   <input 
+                     type="radio" 
+                     name="failureReason" 
+                     value={reason} 
+                     checked={failureModal.reason === reason}
+                     onChange={(e) => setFailureModal({ ...failureModal, reason: e.target.value })}
+                     style={{ accentColor: 'var(--gold)' }}
+                   />
+                   <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{reason}</span>
+                 </label>
+               ))}
+             </div>
+
+             <div style={{ display: 'flex', gap: '0.5rem' }}>
+               <button className="btn btn-outline" style={{ flex: 1, padding: '0.8rem' }} onClick={() => setFailureModal({ isOpen: false, order: null, reason: '' })}>Cancel</button>
+               <button 
+                 className="btn" 
+                 style={{ flex: 1, padding: '0.8rem', background: failureModal.reason ? 'var(--status-red)' : 'var(--text-muted)', color: '#FFFFFF', fontWeight: 'bold', cursor: failureModal.reason ? 'pointer' : 'not-allowed' }} 
+                 disabled={!failureModal.reason}
+                 onClick={() => {
+                   updateOrderStatus(failureModal.order.id, 'failed');
+                   // We would normally also save the reason to DB here, e.g. updateDoc({ failureReason: failureModal.reason })
+                   showToast(`Delivery marked as failed. Order will be returned to store.`);
+                   setFailureModal({ isOpen: false, order: null, reason: '' });
+                 }}
+               >
+                 Confirm Failure
+               </button>
+             </div>
           </div>
         </div>
       )}

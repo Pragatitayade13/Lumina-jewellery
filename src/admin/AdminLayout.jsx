@@ -15,7 +15,7 @@ const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery', label: 'Delivery Operations', icon: <Map size={18} />, badge: 'new', roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
@@ -23,10 +23,10 @@ const allNavItems = [
   { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager'] },
+  { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager', 'admin'] },
   { path: '/admin/products', label: 'Product Supervision', icon: <Gem size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/orders', label: 'Order Management', icon: <Package size={18} />, badge: '5', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/customers', label: 'Customers', icon: <UsersRound size={18} />, roles: ['superadmin', 'admin', 'manager'] },
+  { path: '/admin/customers', label: 'Customers', icon: <UsersRound size={18} />, roles: ['superadmin', 'admin', 'manager', 'staff'] },
   { path: '/admin/inventory', label: 'Inventory', icon: <Store size={18} />, badge: '3', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   
   { section: 'Customer Services', roles: ['superadmin', 'admin', 'staff', 'manager', 'finance'] },
@@ -310,9 +310,7 @@ export default function AdminLayout({ children }) {
           <NotificationDropdown userRole={userRole} />
           <QuickActionsDropdown userRole={userRole} />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
-          <button className="topbar-btn" title="Toggle Theme" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+
           <ProfileDropdown userRole={userRole} userName={user?.name || `${portalName} User`} onLogout={handleLogout} isSuperAdmin={isSuperAdmin} />
         </div>
       </header>

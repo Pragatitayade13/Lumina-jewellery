@@ -28,6 +28,7 @@ import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
 import MensJewellery from './pages/MensJewellery';
 import LegalPage from './pages/LegalPage';
+import TrackOrder from './pages/TrackOrder';
 
 import AdminApp from './admin/AdminApp';
 import CustomerApp from './customer/CustomerApp';
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="/admin/*" element={<AdminApp />} />
             <Route path="/account/*" element={<CustomerApp />} />
             <Route path="/delivery/*" element={<DeliveryApp />} />
+            <Route path="/track/:orderId" element={<TrackOrder />} />
             <Route path="/*" element={<StoreLayout />}>
               <Route index element={<HomePage />} />
               <Route path="collections" element={<Catalog />} />

@@ -17,10 +17,14 @@ export function useOrders() {
     const ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(ordersQuery, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const ordersData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: data.id || doc.id, // Preserve custom ID for UI display
+          firebaseId: doc.id     // Keep actual document ID for database updates
+        };
+      });
       setOrders(ordersData);
       setLoading(false);
     }, (err) => {
@@ -50,7 +54,11 @@ export function useOrders() {
 
   const updateOrderStatus = async (id, status) => {
     try {
-      await updateDoc(doc(db, 'orders', id), {
+      // Find the actual Firebase document ID if the provided ID is a display ID
+      const targetOrder = orders.find(o => o.id === id);
+      const realId = targetOrder?.firebaseId || id;
+      
+      await updateDoc(doc(db, 'orders', realId), {
         status: status,
         updatedAt: serverTimestamp()
       });
@@ -60,5 +68,23 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, error, createOrder, updateOrderStatus };
+  const assignOrderToPartner = async (id, partnerId, partnerName) => {
+    try {
+      // Find the actual Firebase document ID if the provided ID is a display ID
+      const targetOrder = orders.find(o => o.id === id);
+      const realId = targetOrder?.firebaseId || id;
+
+      await updateDoc(doc(db, 'orders', realId), {
+        status: 'assigned',
+        deliveryPartnerId: partnerId,
+        deliveryPartnerName: partnerName,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error assigning order: ", err);
+      throw err;
+    }
+  };
+
+  return { orders, loading, error, createOrder, updateOrderStatus, assignOrderToPartner };
 }

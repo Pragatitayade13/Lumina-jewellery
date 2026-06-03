@@ -2,11 +2,13 @@ import { useState, useMemo } from 'react';
 import { PackageOpen, Eye, FileText, Search, X, CheckCircle, Truck, AlertTriangle, Check, XCircle } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
+import { useCustomers } from '../../hooks/useCustomers';
 
-const statusClass = { delivered: 'badge-delivered', shipped: 'badge-shipped', processing: 'badge-pending', confirmed: 'badge-confirmed', pending: 'badge-pending', cancelled: 'badge-cancelled', refund_pending: 'badge-orange' };
+const statusClass = { assigned: 'badge-new', delivered: 'badge-delivered', shipped: 'badge-shipped', processing: 'badge-pending', confirmed: 'badge-confirmed', pending: 'badge-pending', cancelled: 'badge-cancelled', refund_pending: 'badge-orange' };
 
 export default function OrderManagement() {
-  const { orders: liveOrders, loading, updateOrderStatus } = useOrders();
+  const { orders: liveOrders, loading, updateOrderStatus, assignOrderToPartner } = useOrders();
+  const { customers: allUsers } = useCustomers();
   const { showToast } = useApp();
   
   const [activeTab, setActiveTab] = useState('All Orders');
@@ -16,6 +18,9 @@ export default function OrderManagement() {
   
   const [selectedOrder, setSelectedOrder] = useState(null); // For details modal
   const [viewInvoice, setViewInvoice] = useState(null); // For invoice modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [orderToAssign, setOrderToAssign] = useState(null);
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
   
   const tabs = ['All Orders', 'Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returns/Refunds'];
   
@@ -102,8 +107,13 @@ export default function OrderManagement() {
           <div class="invoice-container" style="${index < filteredAndSortedOrders.length - 1 ? 'page-break-after: always; margin-bottom: 4rem;' : ''}">
             <div class="header">
               <div>
-                <h2>LUMINA JEWELS</h2>
-                <div style="font-size: 0.8rem; color: #555;">Tax Invoice / Bill of Supply</div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a;">LUMINA JEWELS</h2>
+                </div>
+                <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
               </div>
               <div style="text-align: right;">
                 <strong style="font-size: 1.2rem;">${order.id}</strong><br/>
@@ -135,17 +145,20 @@ export default function OrderManagement() {
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>${order.product}</strong><br/><span style="color: #666; font-size: 0.75rem;">HSN Code: 7113</span></td>
-                  <td style="text-align: center;">1</td>
-                  <td style="text-align: right;">₹${(order.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style="padding: 1rem 0.5rem;">
+                    <strong style="color: #1a1a1a; font-size: 0.9rem;">${order.product}</strong><br/>
+                    <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
+                  </td>
+                  <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
+                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(order.amount * 0.97).toLocaleString('en-IN')}</td>
                 </tr>
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">GST (3%)</td>
                   <td style="text-align: right;">₹${(order.amount * 0.03).toLocaleString('en-IN')}</td>
                 </tr>
-                <tr style="border-top: 2px solid #000;">
-                  <td colspan="2" style="text-align: right; font-weight: bold; padding: 0.75rem 0.5rem;">Grand Total</td>
-                  <td style="text-align: right; font-weight: bold; font-size: 1.1rem; padding: 0.75rem 0.5rem;">₹${order.amount?.toLocaleString('en-IN')}</td>
+                <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
+                  <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
+                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${order.amount?.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
@@ -163,15 +176,15 @@ export default function OrderManagement() {
           <head>
             <title>Bulk Invoices - ${filteredAndSortedOrders.length} Orders</title>
             <style>
-              body { font-family: monospace; color: #000; padding: 2rem; max-width: 600px; margin: 0 auto; }
-              h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.8rem; }
-              .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 2rem; }
-              .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; font-size: 0.85rem; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.85rem; }
-              th, td { padding: 0.5rem; text-align: left; }
-              th { background: #f5f5f5; border-bottom: 1px solid #ddd; }
-              td { border-bottom: 1px solid #eee; }
-              .footer { text-align: center; color: #888; font-size: 0.7rem; margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+              body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 3rem 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+              h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+              .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem; font-size: 0.9rem; background: #fcfcfc; padding: 1.5rem; border-radius: 8px; border: 1px solid #f0f0f0; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.9rem; }
+              th, td { padding: 0.75rem 0.5rem; text-align: left; }
+              th { background: #f9f9f9; border-bottom: 2px solid #eee; color: #666; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+              td { border-bottom: 1px solid #f0f0f0; }
+              .footer { text-align: center; color: #888; font-size: 0.8rem; margin-top: 4rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
             </style>
           </head>
           <body>
@@ -202,22 +215,27 @@ export default function OrderManagement() {
         <head>
           <title>Invoice - ${viewInvoice.id}</title>
           <style>
-            body { font-family: monospace; color: #000; padding: 2rem; max-width: 600px; margin: 0 auto; }
-            h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.8rem; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 2rem; }
-            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; font-size: 0.85rem; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.85rem; }
-            th, td { padding: 0.5rem; text-align: left; }
-            th { background: #f5f5f5; border-bottom: 1px solid #ddd; }
-            td { border-bottom: 1px solid #eee; }
-            .footer { text-align: center; color: #888; font-size: 0.7rem; margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 3rem 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+            h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem; font-size: 0.9rem; background: #fcfcfc; padding: 1.5rem; border-radius: 8px; border: 1px solid #f0f0f0; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.9rem; }
+            th, td { padding: 0.75rem 0.5rem; text-align: left; }
+            th { background: #f9f9f9; border-bottom: 2px solid #eee; color: #666; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+            td { border-bottom: 1px solid #f0f0f0; }
+            .footer { text-align: center; color: #888; font-size: 0.8rem; margin-top: 4rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
           </style>
         </head>
         <body>
           <div class="header">
             <div>
-              <h2>LUMINA JEWELS</h2>
-              <div style="font-size: 0.8rem; color: #555;">Tax Invoice / Bill of Supply</div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a;">LUMINA JEWELS</h2>
+              </div>
+              <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
             </div>
             <div style="text-align: right;">
               <strong style="font-size: 1.2rem;">${viewInvoice.id}</strong><br/>
@@ -249,17 +267,20 @@ export default function OrderManagement() {
             </thead>
             <tbody>
               <tr>
-                <td><strong>${viewInvoice.product}</strong><br/><span style="color: #666; font-size: 0.75rem;">HSN Code: 7113</span></td>
-                <td style="text-align: center;">1</td>
-                <td style="text-align: right;">₹${(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                <td style="padding: 1rem 0.5rem;">
+                  <strong style="color: #1a1a1a; font-size: 0.9rem;">${viewInvoice.product}</strong><br/>
+                  <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
+                </td>
+                <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
+                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
               </tr>
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">GST (3%)</td>
                 <td style="text-align: right;">₹${(viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
               </tr>
-              <tr style="border-top: 2px solid #000;">
-                <td colspan="2" style="text-align: right; font-weight: bold; padding: 0.75rem 0.5rem;">Grand Total</td>
-                <td style="text-align: right; font-weight: bold; font-size: 1.1rem; padding: 0.75rem 0.5rem;">₹${viewInvoice.amount?.toLocaleString('en-IN')}</td>
+              <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
+                <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
+                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${viewInvoice.amount?.toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
@@ -435,6 +456,24 @@ export default function OrderManagement() {
               </div>
             </div>
 
+            {/* Tracking Link */}
+            <div style={{ background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.82rem' }}>
+              <span style={{ color: 'var(--gold)' }}>📦</span>
+              <span style={{ color: 'var(--text-secondary)', flex: 1 }}>Customer tracking link:</span>
+              <a
+                href={`/track/${selectedOrder.id}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: 'var(--gold)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.78rem', textDecoration: 'none' }}
+              >
+                /track/{selectedOrder.id} ↗
+              </a>
+              <button
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/track/${selectedOrder.id}`); showToast('Tracking link copied!'); }}
+                style={{ background: 'none', border: '1px solid var(--admin-border)', borderRadius: '6px', padding: '0.2rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem' }}
+              >Copy</button>
+            </div>
+
             <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {selectedOrder.hasIssue && (
                 <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'var(--status-red)', color: 'var(--status-red)' }} onClick={() => {
@@ -472,7 +511,8 @@ export default function OrderManagement() {
               )}
               {selectedOrder.status === 'processing' && (
                 <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
-                  handleStatusChange(selectedOrder.id, 'shipped');
+                  setOrderToAssign(selectedOrder);
+                  setAssignModalOpen(true);
                   setSelectedOrder(null);
                 }}>
                   <Truck size={16} /> Coordinate Delivery (Assign)
@@ -487,61 +527,66 @@ export default function OrderManagement() {
       {/* Invoice Modal */}
       {viewInvoice && (
         <div className="auth-modal-overlay" onClick={() => setViewInvoice(null)}>
-          <div className="auth-modal" style={{ maxWidth: '600px', padding: '2rem', background: '#fff', color: '#000', fontFamily: 'monospace' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '2px solid #000', paddingBottom: '1rem' }}>
+          <div className="auth-modal" style={{ maxWidth: '700px', padding: '3rem 2rem', background: '#fff', color: '#333', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", lineHeight: 1.6 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '1.5rem' }}>
               <div>
-                <h2 style={{ margin: 0, color: '#000', fontFamily: 'Playfair Display, serif', fontSize: '1.8rem' }}>LUMINA JEWELS</h2>
-                <div style={{ fontSize: '0.8rem', color: '#555' }}>Tax Invoice / Bill of Supply</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <h2 style={{ margin: 0, color: '#1a1a1a', fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', letterSpacing: '1px' }}>LUMINA JEWELS</h2>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#666', letterSpacing: '0.5px', paddingLeft: '2.25rem' }}>TAX INVOICE / BILL OF SUPPLY</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <strong style={{ fontSize: '1.2rem' }}>{viewInvoice.id}</strong><br/>
-                <span style={{ fontSize: '0.8rem', color: '#555' }}>Date: {viewInvoice.date}</span>
+                <strong style={{ fontSize: '1.2rem', color: '#1a1a1a' }}>{viewInvoice.id}</strong><br/>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>Date: {viewInvoice.date}</span>
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem', fontSize: '0.85rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem', fontSize: '0.9rem', background: '#fcfcfc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #f0f0f0' }}>
               <div>
-                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem' }}>Billed To:</strong><br/>
-                <strong>{viewInvoice.customer}</strong><br/>
+                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Billed To:</strong><br/>
+                <strong style={{ color: '#1a1a1a' }}>{viewInvoice.customer}</strong><br/>
                 {viewInvoice.city}<br/>
                 India
               </div>
               <div>
-                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem' }}>Payment Status:</strong><br/>
-                <strong>{viewInvoice.paymentMethod}</strong><br/>
+                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Payment Status:</strong><br/>
+                <strong style={{ color: '#1a1a1a' }}>{viewInvoice.paymentMethod}</strong><br/>
                 {viewInvoice.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
               </div>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.85rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.9rem' }}>
               <thead>
-                <tr style={{ background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'left' }}>Item Description</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center' }}>Qty</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Total (INR)</th>
+                <tr style={{ background: '#f9f9f9', borderBottom: '2px solid #eee' }}>
+                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Item Description</th>
+                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Qty</th>
+                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Total (INR)</th>
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid #eee' }}>
+                <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                   <td style={{ padding: '1rem 0.5rem' }}>
-                    <strong>{viewInvoice.product}</strong><br/>
-                    <span style={{ color: '#666', fontSize: '0.75rem' }}>HSN Code: 7113</span>
+                    <strong style={{ color: '#1a1a1a', fontSize: '0.9rem' }}>{viewInvoice.product}</strong><br/>
+                    <span style={{ color: '#888', fontSize: '0.75rem' }}>HSN Code: 7113</span>
                   </td>
                   <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
                 </tr>
                 <tr>
-                  <td colSpan="2" style={{ padding: '0.5rem', textAlign: 'right', color: '#666' }}>GST (3%)</td>
-                  <td style={{ padding: '0.5rem', textAlign: 'right' }}>₹{(viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+                  <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST (3%)</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
                 </tr>
-                <tr style={{ background: '#fafafa', borderTop: '2px solid #000' }}>
-                  <td colSpan="2" style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 'bold' }}>Grand Total</td>
-                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem' }}>₹{viewInvoice.amount?.toLocaleString('en-IN')}</td>
+                <tr style={{ background: '#fafafa', borderTop: '2px solid #1a1a1a' }}>
+                  <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{viewInvoice.amount?.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
             
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '0.7rem', marginTop: '3rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
+            <div style={{ textAlign: 'center', color: '#888', fontSize: '0.8rem', marginTop: '4rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
               This is a computer generated invoice and does not require a physical signature.<br/>
               Lumina Jewels, Mumbai, Maharashtra 400001
             </div>
@@ -549,6 +594,49 @@ export default function OrderManagement() {
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
               <button className="btn btn-outline" style={{ borderColor: '#000', color: '#000' }} onClick={() => setViewInvoice(null)}>Close View</button>
               <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000' }} onClick={handleDownloadPDF}>Download PDF</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Partner Modal */}
+      {assignModalOpen && orderToAssign && (
+        <div className="auth-modal-overlay">
+          <div className="auth-modal" style={{ maxWidth: '400px', padding: '2rem', background: 'var(--surface)' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0' }}>Assign Delivery Partner</h3>
+            <div className="form-group mb-1">
+              <label className="form-label">Select Partner</label>
+              <select 
+                className="form-input" 
+                value={selectedPartnerId} 
+                onChange={e => setSelectedPartnerId(e.target.value)}
+              >
+                <option value="">-- Choose Partner --</option>
+                {allUsers?.filter(u => u.role === 'delivery' || u.department === 'Delivery Partner').map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setAssignModalOpen(false); setOrderToAssign(null); }}>Cancel</button>
+              <button 
+                className="btn btn-gold" 
+                style={{ flex: 1, background: 'var(--gold)', color: '#000' }} 
+                disabled={!selectedPartnerId}
+                onClick={async () => {
+                  const partner = allUsers.find(u => u.id === selectedPartnerId);
+                  if (partner) {
+                    try {
+                      await assignOrderToPartner(orderToAssign.id, partner.id, partner.name);
+                      showToast(`Order assigned to ${partner.name}`);
+                      setAssignModalOpen(false);
+                      setOrderToAssign(null);
+                    } catch (err) {
+                      showToast("Error assigning order");
+                    }
+                  }
+                }}
+              >Assign Order</button>
             </div>
           </div>
         </div>

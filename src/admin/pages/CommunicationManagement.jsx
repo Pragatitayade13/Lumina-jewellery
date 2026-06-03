@@ -42,9 +42,6 @@ const mockTransparency = [
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'campaigns', label: 'Campaigns', icon: Mail },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'certificates', label: 'Certifications', icon: Shield },
   { id: 'exchanges', label: 'Exchange/Buyback', icon: RefreshCw },
   { id: 'appointments', label: 'Appointments', icon: Calendar },
   { id: 'schemes', label: 'Scheme Enrollments', icon: Star },
@@ -54,11 +51,23 @@ const TABS = [
 
 export default function CommunicationManagement() {
   const { showToast } = useApp();
-  const [activeTab, setActiveTab] = useState('campaigns');
+  const [activeTab, setActiveTab] = useState('exchanges');
   const [searchTerm, setSearchTerm] = useState('');
-  const [commsList, setCommsList] = useState(communications);
-  const [newCampaignOpen, setNewCampaignOpen] = useState(false);
-  const [newCampaignData, setNewCampaignData] = useState({ subject: '', type: 'Email', target: 'All Customers', content: '' });
+
+  const handleDownload = (filename) => {
+    // Create a dummy PDF blob for demonstration purposes
+    const content = `This is a digital certificate mockup for ${filename || 'document'}.\n\nCertificate details and hallmarks would appear here.`;
+    const blob = new Blob([content], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'certificate.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Downloading ${filename || 'certificate.pdf'}...`, 'success');
+  };
 
   // Certificates state
   const [certificates, setCertificates] = useState(mockCertificates);
@@ -80,10 +89,6 @@ export default function CommunicationManagement() {
 
   // Transparency state
   const [transparencyItems, setTransparencyItems] = useState(mockTransparency);
-
-  // Notification state
-  const [notifModal, setNotifModal] = useState(false);
-  const [notifForm, setNotifForm] = useState({ type: 'Order Confirmed', customer: '', orderId: '', message: '' });
 
   // Subscribers state
   const [subscribers, setSubscribers] = useState([]);
@@ -126,31 +131,7 @@ export default function CommunicationManagement() {
     }
   };
 
-  const notifTemplates = {
-    'Order Confirmed': 'Dear {customer}, your order #{orderId} has been confirmed. Expected delivery in 5-7 business days.',
-    'Shipped': 'Dear {customer}, your order #{orderId} has been shipped! Track your order in the app.',
-    'Offer Alert': 'Dear {customer}, exclusive offer! Get 20% off on bridal jewellery this festive season. Shop now!',
-    'Appointment Reminder': 'Dear {customer}, reminder: your store appointment is scheduled. We look forward to seeing you!',
-  };
-
   // ─── Handlers ────────────────────────────────────────────────────────────────
-
-  const handleSendCampaign = (e) => {
-    e.preventDefault();
-    const newCampaign = {
-      id: `CMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      type: newCampaignData.type,
-      subject: newCampaignData.subject,
-      target: newCampaignData.target,
-      sentDate: new Date().toLocaleDateString('en-GB'),
-      performance: 'Pending...',
-      status: 'active'
-    };
-    setCommsList([newCampaign, ...commsList]);
-    showToast('Campaign successfully dispatched!');
-    setNewCampaignOpen(false);
-    setNewCampaignData({ subject: '', type: 'Email', target: 'All Customers', content: '' });
-  };
 
   const handleUploadCert = (certId) => {
     setCertificates(certificates.map(c =>
@@ -206,13 +187,6 @@ export default function CommunicationManagement() {
     showToast(`Transparency ${updated[idx].visible ? 'enabled' : 'hidden'} for "${updated[idx].product}".`);
   };
 
-  const handleSendNotification = (e) => {
-    e.preventDefault();
-    showToast(`${notifForm.type} notification sent to ${notifForm.customer || 'all customers'}!`);
-    setNotifModal(false);
-    setNotifForm({ type: 'Order Confirmed', customer: '', orderId: '', message: '' });
-  };
-
   // ─── Status Badge ─────────────────────────────────────────────────────────
   const StatusBadge = ({ status }) => {
     const map = {
@@ -232,21 +206,6 @@ export default function CommunicationManagement() {
           <p className="page-subtitle">Campaigns, notifications, certifications, exchanges, appointments, schemes & price transparency.</p>
         </div>
         <div className="page-actions">
-          {activeTab === 'campaigns' && (
-            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewCampaignOpen(true)}>
-              <Plus size={14} /> New Campaign
-            </button>
-          )}
-          {activeTab === 'notifications' && (
-            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNotifModal(true)}>
-              <Bell size={14} /> Send Notification
-            </button>
-          )}
-          {activeTab === 'certificates' && (
-            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => showToast('Upload window opened.')}>
-              <Upload size={14} /> Upload Certificate
-            </button>
-          )}
           {activeTab === 'appointments' && (
             <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewAptOpen(true)}>
               <Calendar size={14} /> Book Appointment
@@ -276,115 +235,6 @@ export default function CommunicationManagement() {
           );
         })}
       </div>
-
-      {/* ──── CAMPAIGNS TAB ──────────────────────────────────────────────────── */}
-      {activeTab === 'campaigns' && (
-        <div className="admin-card">
-          <div className="card-header">
-            <div className="card-title">Email & SMS Campaigns</div>
-            <div className="filter-search" style={{ margin: 0, width: '250px' }}>
-              <Search size={14} />
-              <input placeholder="Search campaigns..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>ID</th><th>Type</th><th>Subject</th><th>Target</th><th>Date</th><th>Performance</th><th>Status</th></tr></thead>
-              <tbody>
-                {commsList.filter(c => c.subject?.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
-                  <tr key={c.id}>
-                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{c.id}</td>
-                    <td><span className="badge badge-info">{c.type}</span></td>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.subject}</td>
-                    <td>{c.target}</td>
-                    <td>{c.sentDate}</td>
-                    <td>{c.performance}</td>
-                    <td><StatusBadge status={c.status || 'active'} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ──── NOTIFICATIONS TAB ──────────────────────────────────────────────── */}
-      {activeTab === 'notifications' && (
-        <div>
-          <div className="grid-3 mb-15">
-            {[
-              { label: 'Order Confirmations', count: '1,204', icon: Package, color: 'var(--status-green)' },
-              { label: 'Shipping Alerts', count: '876', icon: Send, color: 'var(--status-blue)' },
-              { label: 'Offer Campaigns', count: '45', icon: Bell, color: 'var(--gold)' },
-            ].map(item => (
-              <div className="admin-card text-center" key={item.label} style={{ padding: '1.5rem' }}>
-                <div className="icon-wrapper" style={{ margin: '0 auto 0.75rem', background: `${item.color}20` }}>
-                  <item.icon color={item.color} />
-                </div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{item.count}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.label}</div>
-              </div>
-            ))}
-          </div>
-          <div className="admin-card">
-            <div className="card-header"><div className="card-title">Notification Templates</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {Object.entries(notifTemplates).map(([type, msg]) => (
-                <div key={type} style={{ padding: '1rem', background: 'var(--admin-surface)', borderRadius: '8px', border: '1px solid var(--admin-border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{type}</div>
-                    <button className="btn btn-sm btn-outline" onClick={() => {
-                      setNotifForm({ ...notifForm, type, message: msg });
-                      setNotifModal(true);
-                    }}>Use Template</button>
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{msg}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ──── CERTIFICATIONS TAB ─────────────────────────────────────────────── */}
-      {activeTab === 'certificates' && (
-        <div className="admin-card">
-          <div className="card-header">
-            <div className="card-title">Certification Uploads</div>
-            <div className="card-subtitle">Manage GIA, IGI, BIS hallmark certificates for products.</div>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>ID</th><th>Customer</th><th>Product</th><th>Cert Number</th><th>Issue Date</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {certificates.map(cert => (
-                  <tr key={cert.id}>
-                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{cert.id}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cert.customer}</td>
-                    <td>{cert.product}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{cert.certNo}</td>
-                    <td>{cert.issueDate}</td>
-                    <td><StatusBadge status={cert.status} /></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {cert.file ? (
-                          <button className="btn btn-sm btn-outline" onClick={() => showToast(`Downloading ${cert.file}...`)} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <Download size={12} /> Download
-                          </button>
-                        ) : (
-                          <button className="btn btn-sm btn-gold" style={{ color: '#fff' }} onClick={() => setUploadModal({ open: true, certId: cert.id })}>
-                            <Upload size={12} /> Upload
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* ──── EXCHANGE/BUYBACK TAB ───────────────────────────────────────────── */}
       {activeTab === 'exchanges' && (
@@ -612,62 +462,6 @@ export default function CommunicationManagement() {
       )}
 
       {/* ──── MODALS ─────────────────────────────────────────────────────────── */}
-
-      {/* New Campaign Modal */}
-      {newCampaignOpen && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header">
-              <h3 className="modal-title">New Campaign</h3>
-              <button className="modal-close" onClick={() => setNewCampaignOpen(false)}><X size={16} /></button>
-            </div>
-            <form onSubmit={handleSendCampaign} className="modal-body">
-              <div className="form-group"><label>Subject</label><input required className="form-input" value={newCampaignData.subject} onChange={e => setNewCampaignData({ ...newCampaignData, subject: e.target.value })} /></div>
-              <div className="form-group"><label>Type</label>
-                <select className="form-input" value={newCampaignData.type} onChange={e => setNewCampaignData({ ...newCampaignData, type: e.target.value })}>
-                  <option>Email</option><option>SMS</option><option>Push Notification</option><option>WhatsApp</option>
-                </select>
-              </div>
-              <div className="form-group"><label>Target Audience</label>
-                <select className="form-input" value={newCampaignData.target} onChange={e => setNewCampaignData({ ...newCampaignData, target: e.target.value })}>
-                  <option>All Customers</option><option>VIP Customers</option><option>New Registrations</option><option>Inactive 30+ Days</option><option>Scheme Enrollees</option>
-                </select>
-              </div>
-              <div className="form-group"><label>Message Content</label><textarea required className="form-input" rows={4} value={newCampaignData.content} onChange={e => setNewCampaignData({ ...newCampaignData, content: e.target.value })} /></div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setNewCampaignOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><Send size={14} /> Send Campaign</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Modal */}
-      {notifModal && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header">
-              <h3 className="modal-title">Send Notification</h3>
-              <button className="modal-close" onClick={() => setNotifModal(false)}><X size={16} /></button>
-            </div>
-            <form onSubmit={handleSendNotification} className="modal-body">
-              <div className="form-group"><label>Notification Type</label>
-                <select className="form-input" value={notifForm.type} onChange={e => setNotifForm({ ...notifForm, type: e.target.value, message: notifTemplates[e.target.value] || '' })}>
-                  {Object.keys(notifTemplates).map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="form-group"><label>Customer Name (leave blank for all)</label><input className="form-input" value={notifForm.customer} onChange={e => setNotifForm({ ...notifForm, customer: e.target.value })} /></div>
-              <div className="form-group"><label>Order ID (if applicable)</label><input className="form-input" value={notifForm.orderId} onChange={e => setNotifForm({ ...notifForm, orderId: e.target.value })} /></div>
-              <div className="form-group"><label>Message</label><textarea className="form-input" rows={4} value={notifForm.message} onChange={e => setNotifForm({ ...notifForm, message: e.target.value })} /></div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setNotifModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ color: '#fff' }}><Send size={14} /> Send Now</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Upload Certificate Modal */}
       {uploadModal.open && (

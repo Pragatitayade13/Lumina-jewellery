@@ -52,8 +52,8 @@ export default function AdminApp() {
           <Routes>
             <Route index element={role === 'delivery' ? <Navigate to="/admin/delivery" replace /> : <Dashboard />} />
             
-            {/* Superadmin & Manager only routes */}
-            <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager']}><StaffManagement /></ProtectedRoute>} />
+            {/* Superadmin, Admin & Manager routes */}
+            <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager', 'admin']}><StaffManagement /></ProtectedRoute>} />
             
             {/* Logistics routes */}
             <Route path="delivery" element={<ProtectedRoute allowedRoles={['superadmin', 'delivery']}><DeliveryOperations /></ProtectedRoute>} />
@@ -71,7 +71,7 @@ export default function AdminApp() {
             <Route path="support" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><SupportManagement /></ProtectedRoute>} />
             
             {/* Admin & Manager only routes */}
-            <Route path="customers" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><CustomerManagement /></ProtectedRoute>} />
+            <Route path="customers" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager', 'staff']}><CustomerManagement /></ProtectedRoute>} />
             <Route path="communications" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><CommunicationManagement /></ProtectedRoute>} />
             <Route path="appointments" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><StoreAppointments /></ProtectedRoute>} />
             <Route path="schemes" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager', 'finance']}><SchemesAndBuybacks /></ProtectedRoute>} />

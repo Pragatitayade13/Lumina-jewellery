@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LifeBuoy, Search, Reply, CheckCircle, Clock, X, Send, Package, Gem, RotateCcw } from 'lucide-react';
+import { LifeBuoy, Search, Reply, CheckCircle, Clock, X, Send, Package, Gem, RotateCcw, MapPin } from 'lucide-react';
 import { useSupportTickets } from '../../hooks/useSupportTickets';
 import { useOrders } from '../../hooks/useOrders';
 import { useProducts } from '../../hooks/useProducts';
@@ -25,6 +25,7 @@ export default function SupportManagement() {
     { id: 'REV-3', customer: 'Raj Patel', product: 'Silver Chain', rating: 2, review: 'The clasp broke after two days of use. Need a replacement.', date: '25 May 2026', replied: false, hidden: false },
   ]);
   const [reviewModal, setReviewModal] = useState({ isOpen: false, review: null, message: '' });
+  const [trackModal, setTrackModal] = useState({ isOpen: false, orderId: null });
 
   const handleReplyReview = (e) => {
     e.preventDefault();
@@ -50,14 +51,50 @@ export default function SupportManagement() {
     
     setIsSending(true);
     try {
-      await updateTicket(respondModal.ticket.id, {
+      let emailData = null;
+      let emailSuccess = false;
+      
+      try {
+        const emailRes = await fetch('http://localhost:5000/api/support/reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: respondModal.ticket.email,
+            customer: respondModal.ticket.customer,
+            subject: respondModal.ticket.subject,
+            message: respondModal.message,
+            originalMessage: respondModal.ticket.message
+          })
+        });
+        
+        emailData = await emailRes.json();
+        if (emailRes.ok) {
+          emailSuccess = true;
+        } else {
+          console.warn("Email dispatch failed:", emailData.error);
+        }
+      } catch (networkErr) {
+        console.warn("Backend server is offline. Email not sent, but ticket will be resolved locally.", networkErr);
+      }
+
+      await updateTicket(respondModal.ticket.firebaseId, {
         status: 'resolved',
         adminResponse: respondModal.message,
       });
-      showToast("Email dispatched successfully and ticket resolved!");
+      
+      if (emailSuccess && emailData?.previewUrl) {
+        showToast("Ticket resolved! (Test Email opened in new tab)", "success");
+        window.open(emailData.previewUrl, '_blank');
+      } else if (emailSuccess) {
+        showToast("Ticket resolved and email dispatched successfully!", "success");
+      } else {
+        showToast("Ticket resolved! (Note: Email service offline)", "success");
+      }
+      
       setRespondModal({ isOpen: false, ticket: null, message: '' });
     } catch (err) {
-      showToast("Failed to send response", "error");
+      showToast("Failed to update ticket", "error");
+      console.error(err);
     }
     setIsSending(false);
   };
@@ -104,9 +141,6 @@ export default function SupportManagement() {
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Resolved Tickets</div>
             </div>
             <div className="admin-card text-center" style={{ padding: '2rem 1rem' }}>
-              <div className="icon-wrapper" style={{ margin: '0 auto 1rem', background: 'var(--gold-light)' }}>
-                <LifeBuoy color="var(--gold)" />
-              </div>
               <div style={{ fontSize: '2rem', fontWeight: 600, fontFamily: 'Inter' }}>{avgResponseTime}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Avg Response Time</div>
             </div>
@@ -205,7 +239,7 @@ export default function SupportManagement() {
           </div>
           <table className="admin-table">
             <thead>
-              <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status</th><th>ETA / Date</th></tr>
+              <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status</th><th>ETA / Date</th><th>Action</th></tr>
             </thead>
             <tbody>
               {orders.filter(o => o.id.toLowerCase().includes(searchTerm.toLowerCase()) || o.customer.toLowerCase().includes(searchTerm.toLowerCase())).map(o => (
@@ -215,6 +249,15 @@ export default function SupportManagement() {
                   <td>{o.product}</td>
                   <td><span className={`badge ${o.status === 'delivered' ? 'badge-delivered' : 'badge-pending'}`}>{o.status.toUpperCase()}</span></td>
                   <td>{o.date}</td>
+                  <td>
+                    <button 
+                      className="btn btn-sm btn-outline" 
+                      style={{ borderColor: 'var(--gold)', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                      onClick={() => setTrackModal({ isOpen: true, orderId: o.id })}
+                    >
+                      <MapPin size={12} /> Live Track
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -329,66 +372,53 @@ export default function SupportManagement() {
         </div>
       )}
 
-      {/* Internal Respond Modal */}
+      {/* Respond Modal */}
       {respondModal.isOpen && respondModal.ticket && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-box" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">{respondModal.ticket.status === 'resolved' ? 'Ticket Thread' : 'Respond to Ticket'} #{respondModal.ticket.id.substring(0,6).toUpperCase()}</h3>
+              <h3 className="modal-title">Ticket #{respondModal.ticket.id.substring(0,6).toUpperCase()}</h3>
               <button className="modal-close" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}><X size={16} /></button>
             </div>
-            
             <div className="modal-body">
-              <div style={{ background: 'var(--surface-light)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  <strong>From:</strong> {respondModal.ticket.customer} ({respondModal.ticket.email})
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 'bold' }}>{respondModal.ticket.customer}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{respondModal.ticket.date}</span>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  <strong>Subject:</strong> {respondModal.ticket.subject}
-                </div>
-                <div style={{ marginTop: '1rem', color: 'var(--text-primary)', lineHeight: 1.5, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>
-                  {respondModal.ticket.message}
-                </div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{respondModal.ticket.message}</div>
               </div>
-
-              {respondModal.ticket.adminResponse && (
-                <div style={{ background: 'rgba(201,168,76,0.05)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid rgba(201,168,76,0.2)', borderLeft: '4px solid var(--gold)' }}>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--gold)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                    Support Response (Sent to {respondModal.ticket.email})
+              
+              {respondModal.ticket.status === 'resolved' && respondModal.ticket.adminResponse && (
+                <div style={{ background: 'rgba(201,168,76,0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--gold)', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: 'bold', color: 'var(--gold)' }}>Support Team</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Resolved</span>
                   </div>
-                  <div style={{ marginTop: '0.5rem', color: 'var(--text-primary)', lineHeight: 1.5, fontSize: '0.95rem', whiteSpace: 'pre-wrap' }}>
-                    {respondModal.ticket.adminResponse}
-                  </div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{respondModal.ticket.adminResponse}</div>
                 </div>
               )}
-              
-              {respondModal.ticket.status !== 'resolved' ? (
+
+              {respondModal.ticket.status !== 'resolved' && (
                 <form onSubmit={handleRespond}>
                   <div className="form-group">
-                    <label>Email Reply</label>
+                    <label>Your Response (Will be emailed to {respondModal.ticket.email})</label>
                     <textarea 
                       className="form-input" 
-                      rows="6" 
-                      placeholder="Type your response to the customer..."
-                      required
+                      rows="5" 
+                      placeholder="Type your response here..."
                       value={respondModal.message}
-                      onChange={(e) => setRespondModal(prev => ({ ...prev, message: e.target.value }))}
-                    />
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                      Note: Submitting this will simulate dispatching an email to {respondModal.ticket.email} and automatically mark the ticket as Resolved.
-                    </div>
+                      onChange={(e) => setRespondModal({ ...respondModal, message: e.target.value })}
+                      required
+                    ></textarea>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
                     <button type="button" className="btn btn-outline" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}>Cancel</button>
-                    <button type="submit" className="btn btn-gold" disabled={isSending} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#000', fontWeight: 'bold' }}>
-                      <Send size={14} /> {isSending ? 'Sending...' : 'Send Response & Resolve'}
+                    <button type="submit" className="btn btn-gold" disabled={isSending} style={{ color: '#000', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Send size={14} /> {isSending ? 'Sending...' : 'Send Resolution'}
                     </button>
                   </div>
                 </form>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => setRespondModal({ isOpen: false, ticket: null, message: '' })}>Close Window</button>
-                </div>
               )}
             </div>
           </div>
@@ -508,6 +538,30 @@ export default function SupportManagement() {
           </div>
         </div>
       )}
+
+      {/* Live Track Modal */}
+      {trackModal.isOpen && trackModal.orderId && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-box" style={{ maxWidth: '800px', width: '100%', padding: 0, background: 'var(--bg)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid var(--admin-border)', background: 'var(--surface)' }}>
+              <h3 className="modal-title" style={{ margin: 0, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MapPin size={18} /> Live Order Tracking
+              </h3>
+              <button className="modal-close" onClick={() => setTrackModal({ isOpen: false, orderId: null })}><X size={18} /></button>
+            </div>
+            <div className="modal-body" style={{ padding: 0, height: '700px', overflow: 'hidden' }}>
+              <iframe 
+                src={`/track/${trackModal.orderId}`} 
+                width="100%" 
+                height="100%" 
+                style={{ border: 'none', background: 'var(--bg)' }} 
+                title="Live Tracking Map"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -25,6 +25,14 @@ export function useCustomers() {
           const formatTime = (ts) => {
             if (!ts) return '--';
             const date = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+            
+            const today = new Date();
+            if (date.getDate() !== today.getDate() || 
+                date.getMonth() !== today.getMonth() || 
+                date.getFullYear() !== today.getFullYear()) {
+              return '--';
+            }
+            
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
           };
           

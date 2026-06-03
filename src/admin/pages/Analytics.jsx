@@ -7,6 +7,8 @@ import { useInventory } from '../../hooks/useInventory';
 import { useCustomers } from '../../hooks/useCustomers';
 
 function SimpleLineChart({ data }) {
+  const [hoverIndex, setHoverIndex] = useState(null);
+  
   const max = Math.max(...data.map(d => d.revenue));
   const min = Math.min(...data.map(d => d.revenue)) * 0.8;
   const range = max - min;
@@ -22,17 +24,18 @@ function SimpleLineChart({ data }) {
   }).join(' ');
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0', marginTop: '1rem' }}>
-      <svg viewBox={`0 -15 ${width} ${height + 35}`} style={{ width: '100%', minWidth: '600px', height: '280px', overflow: 'visible' }}>
+    <div style={{ width: '100%', overflowX: 'auto', padding: '1rem 0', marginTop: '1rem', position: 'relative' }}>
+      <svg viewBox={`0 -25 ${width} ${height + 55}`} style={{ width: '100%', minWidth: '600px', height: '280px', overflow: 'visible' }}>
         <defs>
           <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.3"/>
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.4"/>
             <stop offset="100%" stopColor="var(--gold)" stopOpacity="0"/>
           </linearGradient>
         </defs>
         <polygon 
           fill="url(#lineGrad)" 
           points={`${points} ${width},${height} 0,${height}`} 
+          style={{ transition: 'all 0.3s ease' }}
         />
         <polyline
           fill="none"
@@ -43,11 +46,33 @@ function SimpleLineChart({ data }) {
         {data.map((d, i) => {
           const x = i * xStep;
           const y = height - ((d.revenue - min) / range) * height;
+          const isHovered = hoverIndex === i;
+          
           return (
-            <g key={d.month}>
-              <circle cx={x} cy={y} r="5" fill="var(--gold)" stroke="var(--surface)" strokeWidth="2" />
-              <text x={x} y={height + 25} fill="var(--text-muted)" fontSize="12" textAnchor="middle">{d.month}</text>
-              <text x={x} y={y - 12} fill="var(--text-primary)" fontSize="11" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
+            <g 
+              key={d.month}
+              onMouseEnter={() => setHoverIndex(i)}
+              onMouseLeave={() => setHoverIndex(null)}
+              style={{ cursor: 'crosshair', transition: 'all 0.2s ease' }}
+            >
+              {/* Vertical Guide Line when hovered */}
+              {isHovered && (
+                <line x1={x} y1={0} x2={x} y2={height} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4" />
+              )}
+              
+              <circle cx={x} cy={y} r={isHovered ? 8 : 5} fill="var(--gold)" stroke={isHovered ? "#fff" : "var(--surface)"} strokeWidth={isHovered ? 3 : 2} style={{ transition: 'all 0.2s ease' }} />
+              
+              <text x={x} y={height + 25} fill={isHovered ? "#fff" : "#ccc"} fontSize="12" fontWeight={isHovered ? "bold" : "normal"} textAnchor="middle" style={{ transition: 'all 0.2s ease' }}>{d.month}</text>
+              
+              {/* Show revenue label - brighter color and bigger if hovered */}
+              {isHovered ? (
+                <g>
+                  <rect x={x - 40} y={y - 45} width="80" height="30" fill="#222" rx="6" stroke="var(--gold)" strokeWidth="1.5" />
+                  <text x={x} y={y - 25} fill="#fff" fontSize="13" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
+                </g>
+              ) : (
+                <text x={x} y={y - 15} fill="#e0e0e0" fontSize="11" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
+              )}
             </g>
           );
         })}

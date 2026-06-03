@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Zap, Plus, FileText, UserPlus, PackagePlus } from 'lucide-react';
+import { Zap, Plus, FileText, UserPlus, PackagePlus, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../NotificationDropdown/NotificationDropdown.css'; // Reusing dropdown styles
 
@@ -59,6 +59,18 @@ export default function QuickActionsDropdown({ userRole }) {
               <div className="notif-item" style={{ cursor: 'pointer', padding: '0.75rem', borderRadius: '6px' }} onClick={() => handleAction('/admin/analytics')}>
                 <FileText size={16} color="var(--gold)" style={{ marginRight: '0.75rem' }} />
                 <div style={{ fontSize: '0.85rem' }}>Generate Report</div>
+              </div>
+            )}
+            {hasAccess(['delivery']) && (
+              <div className="notif-item" style={{ cursor: 'pointer', padding: '0.75rem', borderRadius: '6px' }} onClick={() => handleAction('/admin/delivery?tab=status')}>
+                <Truck size={16} color="var(--gold)" style={{ marginRight: '0.75rem' }} />
+                <div style={{ fontSize: '0.85rem' }}>Update Delivery Status</div>
+              </div>
+            )}
+            {hasAccess(['delivery']) && (
+              <div className="notif-item" style={{ cursor: 'pointer', padding: '0.75rem', borderRadius: '6px' }} onClick={() => handleAction('/admin/delivery?tab=pickups')}>
+                <PackagePlus size={16} color="var(--gold)" style={{ marginRight: '0.75rem' }} />
+                <div style={{ fontSize: '0.85rem' }}>Confirm Next Pickup</div>
               </div>
             )}
           </div>

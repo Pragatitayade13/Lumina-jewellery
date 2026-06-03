@@ -50,7 +50,7 @@ function IconPinterest({ size = 20, className = '' }) {
 }
 
 const galleryItems = [
-  { id: 13, img: p4, likes: 8520, tag: 'snoel.de', postUrl: 'https://pinterest.com/luminajewels', platform: 'pinterest' },
+  { id: 13, img: p4, likes: 8520, tag: 'snoel.de', postUrl: 'https://instagram.com/luminajewels', platform: 'instagram' },
   { id: 1, img: p1, likes: 1247, tag: '#LuminaJewels', postUrl: 'https://instagram.com/p/Cwq1' },
   { id: 2, img: catGold, likes: 893, tag: '#GoldJewellery', postUrl: 'https://instagram.com/p/Cwq2' },
   { id: 3, img: p2, likes: 2145, tag: '#DiamondRings', postUrl: 'https://instagram.com/p/Cwq3' },
@@ -58,7 +58,6 @@ const galleryItems = [
   { id: 5, img: p3, likes: 780, tag: '#GoldEarrings', postUrl: 'https://instagram.com/p/Cwq5' },
   { id: 6, img: catDiamond, likes: 1560, tag: '#DiamondJewellery', postUrl: 'https://instagram.com/p/Cwq6' },
   { id: 7, img: catRings, likes: 945, tag: '#RingCollection', postUrl: 'https://instagram.com/p/Cwq7' },
-  { id: 8, img: p4, likes: 1089, tag: '#GoldBangles', postUrl: 'https://instagram.com/p/Cwq8' },
   { id: 9, img: p5, likes: 2340, tag: '#PolkiChoker', postUrl: 'https://instagram.com/p/Cwq9' },
   { id: 10, img: mensChain, likes: 890, tag: '#MensJewellery', postUrl: 'https://instagram.com/p/mens1' },
   { id: 11, img: mensBand, likes: 1120, tag: '#MensPlatinum', postUrl: 'https://instagram.com/p/mens2' },
@@ -102,13 +101,13 @@ export default function SocialGallery() {
           setPosts(newPosts.map(post => {
             const match = galleryItems.find(g => g.tag === post.title || g.tag === post.tag || g.likes === post.likes);
             return { ...post, image: match ? match.img : post.image };
-          }));
+          }).filter((post, index, self) => index === self.findIndex(p => p.image === post.image)));
         } else {
           // Map to fresh Vite imports to avoid broken images from stale hashes in DB
           setPosts(fetchedPosts.map(post => {
             const match = galleryItems.find(g => g.tag === post.title || g.tag === post.tag || g.likes === post.likes);
             return { ...post, image: match ? match.img : post.image };
-          }));
+          }).filter((post, index, self) => index === self.findIndex(p => p.image === post.image)));
         }
       } catch (error) {
         console.error("Error loading social posts:", error);
