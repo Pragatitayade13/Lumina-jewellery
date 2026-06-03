@@ -86,7 +86,7 @@
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   backdrop-filter: blur(8px);
 }
 
@@ -94,9 +94,10 @@
   font-family: var(--font-heading);
   font-size: clamp(2.8rem, 6vw, 5rem);
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.15;
   color: var(--text-primary);
   margin-bottom: 1rem;
+  padding-top: 0.2rem;
 }
 
 .hero-title span {
