@@ -396,13 +396,13 @@ export default function ProductManagement() {
       {/* Full Edit Product Modal */}
       {editingProduct && (
         <div className="modal-overlay" onClick={() => setEditingProduct(null)}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Edit Product Details</h3>
               <button className="modal-close" onClick={() => setEditingProduct(null)}>×</button>
             </div>
-            <form onSubmit={handleEditSubmit}>
-              <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+              <div className="modal-body" style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
                 <div className="form-group mb-1">
                   <label className="form-label">Product Name</label>
                   <input type="text" className="form-input" required value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
@@ -459,7 +459,10 @@ export default function ProductManagement() {
                   </div>
                 </div>
                 <div className="form-group mb-1">
-                  <label className="form-label">Update Product Image</label>
+                  <label className="form-label">
+                    Update Product Image 
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Recommended: 800x800px, 1:1 Ratio)</span>
+                  </label>
                   <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} onChange={e => {
                     const file = e.target.files[0];
                     if (file) {
@@ -477,7 +480,7 @@ export default function ProductManagement() {
                   )}
                 </div>
               </div>
-              <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setEditingProduct(null)}>Cancel</button>
                 <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Save All Changes</button>
               </div>
@@ -489,13 +492,13 @@ export default function ProductManagement() {
       {/* Add Product Modal (Reused) */}
       {isAddModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAddModalOpen(false)}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Add New Product</h3>
               <button className="modal-close" onClick={() => setIsAddModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleAddSubmit}>
-              <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+            <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+              <div className="modal-body" style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
                 <div className="form-group mb-1">
                   <label className="form-label">Product Name</label>
                   <input type="text" className="form-input" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} placeholder="e.g. Royal Gold Necklace" />
@@ -549,7 +552,10 @@ export default function ProductManagement() {
                   </div>
                 </div>
                 <div className="form-group mb-1">
-                  <label className="form-label">Product Image</label>
+                  <label className="form-label">
+                    Product Image
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Recommended: 800x800px, 1:1 Ratio)</span>
+                  </label>
                   <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} onChange={e => {
                     const file = e.target.files[0];
                     if (file) {
@@ -567,7 +573,7 @@ export default function ProductManagement() {
                   )}
                 </div>
               </div>
-              <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Submit for Approval</button>
               </div>
