@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Tag, Clock, Copy, Check, Zap } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useCMS } from '../../context/CMSContext';
 import './ExclusiveOffers.css';
 
 function CountdownTimer({ endDate }) {
@@ -80,49 +81,54 @@ const coupons = [
 ];
 
 export default function ExclusiveOffers() {
-  const flashEnd = Date.now() + 86400000 * 1.5;
   const { showToast } = useApp();
+  const { landingPageData } = useCMS();
+
+  const defaultOffers = {
+    sectionLabel: 'Limited Time',
+    title: 'Exclusive Offers',
+    subtitle: 'Grab these amazing deals before they\'re gone! Use coupon codes at checkout.',
+    flashTitle: 'Wedding Collection',
+    flashSub: 'Up to 40% off on selected bridal jewellery sets',
+    flashEndDate: Date.now() + 86400000 * 1.5,
+    banners: [
+      { title: 'Festival Offers', sub: 'Up to 35% on gold', icon: '✦', bg: 'linear-gradient(135deg, #2a1f00, #1a0800)' },
+      { title: 'First Purchase', sub: '₹500 cashback', icon: '◈', bg: 'linear-gradient(135deg, #1a002a, #0d0015)' },
+      { title: 'Refer & Earn', sub: '₹1000 for every referral', icon: '◉', bg: 'linear-gradient(135deg, #001a10, #000d08)' },
+    ]
+  };
+  const offers = { ...defaultOffers, ...(landingPageData?.exclusiveOffers || {}) };
 
   return (
     <section className="offers-section" id="exclusive-offers">
       <div className="offers-bg" />
       <div className="container">
         <div className="section-header reveal">
-          <span className="section-label"><Zap size={12} style={{ display: 'inline', marginRight: 6 }} />Limited Time</span>
-          <h2 className="section-title">Exclusive Offers</h2>
+          <span className="section-label"><Zap size={12} style={{ display: 'inline', marginRight: 6 }} />{offers.sectionLabel}</span>
+          <h2 className="section-title">{offers.title}</h2>
           <div className="gold-divider" />
-          <p className="section-subtitle">Grab these amazing deals before they're gone! Use coupon codes at checkout.</p>
+          <p className="section-subtitle">{offers.subtitle}</p>
         </div>
 
         {/* Flash Sale Banner */}
         <div className="flash-sale-banner reveal">
           <div className="flash-sale-left">
             <div className="flash-badge"><Zap size={16} />Flash Sale</div>
-            <h3 className="flash-title">Wedding Collection</h3>
-            <p className="flash-sub">Up to 40% off on selected bridal jewellery sets</p>
+            <h3 className="flash-title">{offers.flashTitle}</h3>
+            <p className="flash-sub">{offers.flashSub}</p>
           </div>
           <div className="flash-sale-right">
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
               <Clock size={12} style={{ display: 'inline', marginRight: 4 }} />Ends in
             </p>
-            <CountdownTimer endDate={flashEnd} />
+            <CountdownTimer endDate={offers.flashEndDate} />
           </div>
         </div>
 
-        {/* Coupons Grid */}
-        <div className="coupons-grid reveal">
-          {coupons.map(coupon => (
-            <CouponCard key={coupon.code} {...coupon} />
-          ))}
-        </div>
 
         {/* Offer Banners */}
         <div className="offer-banners reveal">
-          {[
-            { title: 'Festival Offers', sub: 'Up to 35% on gold', icon: '✦', bg: 'linear-gradient(135deg, #2a1f00, #1a0800)' },
-            { title: 'First Purchase', sub: '₹500 cashback', icon: '◈', bg: 'linear-gradient(135deg, #1a002a, #0d0015)' },
-            { title: 'Refer & Earn', sub: '₹1000 for every referral', icon: '◉', bg: 'linear-gradient(135deg, #001a10, #000d08)' },
-          ].map((b, i) => (
+          {(offers.banners || []).map((b, i) => (
             <div key={i} className="offer-banner-card" style={{ background: b.bg }} id={`offer-banner-${i}`}>
               <div className="offer-banner-icon">{b.icon}</div>
               <div>

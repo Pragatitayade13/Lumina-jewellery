@@ -3,6 +3,8 @@ import Lenis from 'lenis';
 
 export default function SmoothScroll({ children }) {
   useEffect(() => {
+
+    
     const lenis = new Lenis({
       duration: 0.6,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // https://www.desmos.com/calculator/brs54l4xou
@@ -14,15 +16,19 @@ export default function SmoothScroll({ children }) {
       touchMultiplier: 2,
       infinite: false,
     });
+    
+    window.lenis = lenis;
 
+    let rafId;
     function raf(time) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     return () => {
+      cancelAnimationFrame(rafId);
       lenis.destroy();
     };
   }, []);

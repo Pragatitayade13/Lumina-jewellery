@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import './CartModal.css';
 
 export default function CartModal({ isOpen, onClose }) {
+  useScrollLock(isOpen);
   const { cart, removeFromCart, updateQuantity, clearCart, user, setIsAuthOpen } = useApp();
   const { createOrder } = useOrders();
   
@@ -102,8 +104,8 @@ export default function CartModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="auth-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+    <div className="auth-modal-overlay" style={{ zIndex: 9999 }} data-lenis-prevent="true">
+      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} data-lenis-prevent="true">
         
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

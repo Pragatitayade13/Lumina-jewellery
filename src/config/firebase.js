@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -13,14 +14,15 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app, auth, db;
+let app, auth, db, storage;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 } catch (error) {
   console.error("Firebase initialization error. Did you forget to add your .env variables?", error);
 }
 
-export { auth, db, app };
+export { auth, db, storage, app };

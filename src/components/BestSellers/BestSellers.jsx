@@ -2,11 +2,21 @@
 import { useState } from 'react';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import { products } from '../../data/products';
+import { useCMS } from '../../context/CMSContext';
 import ProductCard from '../ProductCard/ProductCard';
 import './BestSellers.css';
 
 export default function BestSellers() {
-  const bestsellers = products.filter(p => p.isBestSeller);
+  const { landingPageData } = useCMS();
+  const bs = landingPageData?.bestSellers || {
+    sectionLabel: 'Customer Favorites',
+    title: 'Best Sellers',
+    subtitle: 'Our most loved pieces — trusted by thousands of happy customers across India.',
+    items: []
+  };
+
+  const hasCustomItems = bs.items && bs.items.length > 0;
+  const bestsellers = hasCustomItems ? bs.items : products.filter(p => p.isBestSeller);
 
   return (
     <section className="bestsellers-section" id="best-sellers">
@@ -14,12 +24,12 @@ export default function BestSellers() {
         <div className="section-header reveal">
           <span className="section-label">
             <TrendingUp size={12} style={{ display: 'inline', marginRight: 6 }} />
-            Customer Favorites
+            {bs.sectionLabel}
           </span>
-          <h2 className="section-title">Best Sellers</h2>
+          <h2 className="section-title">{bs.title}</h2>
           <div className="gold-divider" />
           <p className="section-subtitle">
-            Our most loved pieces — trusted by thousands of happy customers across India.
+            {bs.subtitle}
           </p>
         </div>
 

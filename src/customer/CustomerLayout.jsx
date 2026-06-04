@@ -6,6 +6,7 @@ import {
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
 import { useRates } from '../hooks/useRates';
+import { useCMS } from '../context/CMSContext';
 
 const navItems = [
   { path: '/account', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true },
@@ -39,8 +40,10 @@ export default function CustomerLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, setUser, theme, toggleTheme } = useApp();
+  const { systemSettingsData } = useCMS();
   const { rates } = useRates();
   
+  const storeName = systemSettingsData?.storeName || 'Lumina Jewels';
   const pageTitle = pageTitles[location.pathname] || 'My Account';
 
   const handleLogout = async () => {
@@ -70,7 +73,7 @@ export default function CustomerLayout({ children }) {
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon"><Diamond size={24} color="#0D0800" /></div>
           <div>
-            <div className="sidebar-logo-name">Lumina Jewels</div>
+            <div className="sidebar-logo-name">{storeName}</div>
             <div className="sidebar-logo-tag">My Account</div>
           </div>
         </div>

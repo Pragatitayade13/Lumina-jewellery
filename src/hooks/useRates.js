@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const GOLD_API_KEY = 'goldapi-78522fb8370f2ca6e1bbd21f360cdb5a-io';
+const GOLD_API_KEY = import.meta.env.VITE_GOLD_API_KEY || 'goldapi-d95171e4eac03debe7f9d0c61b0c98bb-io';
 
 // Global shared state for the Live Gold API simulation
 let globalRates = {

@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Camera, X, ZoomIn, ZoomOut, Move, Download } from 'lucide-react';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import './VirtualTryOn.css';
 
 export default function VirtualTryOn({ isOpen, onClose, product }) {
+  useScrollLock(isOpen);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);

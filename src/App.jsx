@@ -1,7 +1,8 @@
 // src/App.jsx
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { CMSProvider, useCMS } from './context/CMSContext';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import SmoothScroll from './components/SmoothScroll/SmoothScroll';
 
@@ -10,12 +11,12 @@ import Hero from './components/Hero/Hero';
 import FeaturedCategories from './components/FeaturedCategories/FeaturedCategories';
 import NewArrivals from './components/NewArrivals/NewArrivals';
 import BestSellers from './components/BestSellers/BestSellers';
-import ExclusiveOffers from './components/ExclusiveOffers/ExclusiveOffers';
 import BrandStory from './components/BrandStory/BrandStory';
 import ProductShowcase from './components/ProductShowcase/ProductShowcase';
 import Testimonials from './components/Testimonials/Testimonials';
 import WhyChooseUs from './components/WhyChooseUs/WhyChooseUs';
 import SocialGallery from './components/SocialGallery/SocialGallery';
+import ExclusiveOffers from './components/ExclusiveOffers/ExclusiveOffers';
 import Footer from './components/Footer/Footer';
 import AuthModal from './components/AuthModal/AuthModal';
 import CartModal from './components/CartModal/CartModal';
@@ -23,6 +24,7 @@ import WishlistModal from './components/WishlistModal/WishlistModal';
 import SupportModal from './components/SupportModal/SupportModal';
 import QuickViewModal from './components/QuickViewModal/QuickViewModal';
 import VirtualTryOn from './components/VirtualTryOn/VirtualTryOn';
+import FloatingWhatsApp from './components/FloatingWhatsApp/FloatingWhatsApp';
 
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
@@ -57,6 +59,12 @@ function StoreLayout() {
   useScrollReveal();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const { landingPageData, systemSettingsData } = useCMS();
+
+  useEffect(() => {
+    const title = systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
+    document.title = title;
+  }, [systemSettingsData?.storeName, landingPageData?.seo?.title]);
 
   return (
     <SmoothScroll>
@@ -69,8 +77,23 @@ function StoreLayout() {
       <AuthModal />
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
+      <FloatingWhatsApp />
     </SmoothScroll>
   );
+}
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (window.lenis) {
+      window.lenis.scrollTo(0, { immediate: true });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
+
+  return null;
 }
 
 function HomePage() {
@@ -128,27 +151,30 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <BrowserRouter>
-          <GlobalModals />
-          <Routes>
-            <Route path="/admin/*" element={<AdminApp />} />
-            <Route path="/account/*" element={<CustomerApp />} />
-            <Route path="/delivery/*" element={<DeliveryApp />} />
-            <Route path="/track/:orderId" element={<TrackOrder />} />
-            <Route path="/*" element={<StoreLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="collections" element={<Catalog />} />
-              <Route path="mens" element={<MensJewellery />} />
-              <Route path="product/:id" element={<ProductDetails />} />
-              <Route path="privacy-policy" element={<LegalPage />} />
-              <Route path="terms-of-service" element={<LegalPage />} />
-              <Route path="cookies" element={<LegalPage />} />
-              <Route path="returns-policy" element={<LegalPage />} />
-              <Route path="size-guide" element={<LegalPage />} />
-              <Route path="care-instructions" element={<LegalPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <CMSProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <GlobalModals />
+            <Routes>
+              <Route path="/admin/*" element={<AdminApp />} />
+              <Route path="/account/*" element={<CustomerApp />} />
+              <Route path="/delivery/*" element={<DeliveryApp />} />
+              <Route path="/track/:orderId" element={<TrackOrder />} />
+              <Route path="/*" element={<StoreLayout />}>
+                <Route index element={<HomePage />} />
+                <Route path="collections" element={<Catalog />} />
+                <Route path="mens" element={<MensJewellery />} />
+                <Route path="product/:id" element={<ProductDetails />} />
+                <Route path="privacy-policy" element={<LegalPage />} />
+                <Route path="terms-of-service" element={<LegalPage />} />
+                <Route path="cookies" element={<LegalPage />} />
+                <Route path="returns-policy" element={<LegalPage />} />
+                <Route path="size-guide" element={<LegalPage />} />
+                <Route path="care-instructions" element={<LegalPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </CMSProvider>
       </AppProvider>
     </ErrorBoundary>
   );

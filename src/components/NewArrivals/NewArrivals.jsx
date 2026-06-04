@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, X, ShoppingBag, Heart, Star } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useCMS } from '../../context/CMSContext';
 import { products as staticProducts } from '../../data/products';
 import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../ProductCard/ProductCard';
@@ -11,22 +12,31 @@ import './NewArrivals.css';
 
 export default function NewArrivals() {
   const { products: fbProducts } = useProducts();
+  const { landingPageData } = useCMS();
   const navigate = useNavigate();
+  
+  const na = landingPageData?.newArrivals || {
+    sectionLabel: 'Just Arrived',
+    title: 'New Arrivals',
+    subtitle: 'Discover our latest jewellery pieces fresh from our master craftsmen\'s studios.',
+    items: []
+  };
+
+  const hasCustomItems = na.items && na.items.length > 0;
   
   const displayProducts = fbProducts.length > 0 ? fbProducts : staticProducts;
   const filteredNew = displayProducts.filter(p => p.isNew === true || p.isNew === 'true' || (p.badge && p.badge.toLowerCase() === 'new'));
-  // Ensure the items added at the end (newest) show up first
-  const newProducts = [...filteredNew].reverse().concat(displayProducts).slice(0, 8);
+  const newProducts = hasCustomItems ? na.items : [...filteredNew].reverse().concat(displayProducts).slice(0, 8);
 
   return (
     <section className="new-arrivals-section" id="new-arrivals">
       <div className="container">
         <div className="section-header reveal">
-          <span className="section-label">Just Arrived</span>
-          <h2 className="section-title">New Arrivals</h2>
+          <span className="section-label">{na.sectionLabel}</span>
+          <h2 className="section-title">{na.title}</h2>
           <div className="gold-divider" />
           <p className="section-subtitle">
-            Discover our latest jewellery pieces fresh from our master craftsmen's studios.
+            {na.subtitle}
           </p>
         </div>
 

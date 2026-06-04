@@ -19,10 +19,8 @@
 
 /* ─── Slider Layout ─── */
 .testimonials-slider {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 2.5rem;
-  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* ─── Main Card ─── */
@@ -32,7 +30,8 @@
   border-radius: var(--radius-xl);
   padding: 3rem;
   position: relative;
-  min-height: 320px;
+  min-height: 400px;
+  overflow: hidden;
 }
 
 .quote-icon {
@@ -47,11 +46,12 @@
 }
 
 .testimonial-card {
-  display: none;
-  animation: slideInHorizontal 0.5s ease;
+  position: absolute;
+  top: 3rem;
+  left: 3rem;
+  right: 3rem;
+  pointer-events: none;
 }
-
-.testimonial-card.active { display: block; }
 
 .testimonial-text {
   font-family: var(--font-accent);
@@ -108,8 +108,12 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 2rem;
+  position: absolute;
+  bottom: 2rem;
+  left: 0;
+  width: 100%;
   justify-content: center;
+  z-index: 10;
 }
 
 .testimonial-arrow {

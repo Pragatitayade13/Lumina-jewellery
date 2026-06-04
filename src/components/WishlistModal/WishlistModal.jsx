@@ -1,8 +1,10 @@
 import { useApp } from '../../context/AppContext';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import { X, Trash2, Heart } from 'lucide-react';
 import '../CartModal/CartModal.css';
 
 export default function WishlistModal({ isOpen, onClose }) {
+  useScrollLock(isOpen);
   const { wishlist, toggleWishlist, addToCart } = useApp();
 
   if (!isOpen) return null;

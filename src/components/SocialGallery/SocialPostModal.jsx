@@ -20,16 +20,7 @@ export default function SocialPostModal({ isOpen, onClose, post }) {
     setNewComment('');
   }, [post]);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  // Scroll lock removed as requested
 
   if (!isOpen || !post) return null;
 

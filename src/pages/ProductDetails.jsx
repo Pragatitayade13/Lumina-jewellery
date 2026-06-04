@@ -31,7 +31,7 @@ export default function ProductDetails() {
 
   useEffect(() => {
     if (!loading && inventory.length > 0) {
-      const found = inventory.find(item => item.id === id || item.sku === id);
+      const found = inventory.find(item => item.id.toString() === id || item.sku === id);
       setProduct(found);
     }
   }, [id, inventory, loading]);

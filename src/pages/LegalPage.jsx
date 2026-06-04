@@ -7,19 +7,64 @@ const policies = [
     id: 'privacy-policy',
     title: 'Privacy Policy',
     icon: <Shield size={20} />,
-    content: `At Lumina Jewels, we take your privacy seriously. We collect minimal data necessary to process your orders and improve our service. Your payment information is securely processed and never stored on our servers. We do not sell your personal information to third parties. Our comprehensive security measures ensure that your personal data is protected against unauthorized access, alteration, or disclosure. We use SSL encryption for all transactions and comply with international data protection regulations.`
+    content: `**1. Introduction**
+Welcome to Lumina Jewels. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.
+
+**2. The Data We Collect About You**
+Personal data, or personal information, means any information about an individual from which that person can be identified. We may collect, use, store and transfer different kinds of personal data about you which we have grouped together follows:
+- **Identity Data**: includes first name, maiden name, last name, username or similar identifier, marital status, title, date of birth and gender.
+- **Contact Data**: includes billing address, delivery address, email address and telephone numbers.
+- **Financial Data**: includes bank account and payment card details.
+- **Transaction Data**: includes details about payments to and from you and other details of products and services you have purchased from us.
+
+**3. How We Use Your Personal Data**
+We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances:
+- Where we need to perform the contract we are about to enter into or have entered into with you.
+- Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests.
+- Where we need to comply with a legal or regulatory obligation.
+
+**4. Data Security**
+We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used or accessed in an unauthorised way, altered or disclosed. In addition, we limit access to your personal data to those employees, agents, contractors and other third parties who have a business need to know.
+
+**5. Data Retention**
+We will only retain your personal data for as long as necessary to fulfil the purposes we collected it for, including for the purposes of satisfying any legal, accounting, or reporting requirements. By law we have to keep basic information about our customers for six years after they cease being customers for tax purposes.`
   },
   {
     id: 'terms-of-service',
     title: 'Terms of Service',
     icon: <FileText size={20} />,
-    content: `By using Lumina Jewels, you agree to these terms. All prices are subject to change based on daily gold and silver rates. Custom orders cannot be cancelled once production begins. We reserve the right to refuse service to anyone for any reason at any time. You understand that your content (not including credit card information), may be transferred unencrypted and involve transmissions over various networks.`
+    content: `**1. Acceptance of Terms**
+By accessing and using Lumina Jewels, you accept and agree to be bound by the terms and provision of this agreement. In addition, when using these particular services, you shall be subject to any posted guidelines or rules applicable to such services.
+
+**2. Product Information and Pricing**
+We make every effort to display as accurately as possible the colors, features, specifications, and details of the products available on the Site. However, we do not guarantee that the colors, features, specifications, and details of the products will be accurate, complete, reliable, current, or free of other errors. Prices are subject to change based on daily gold, silver, and diamond market rates.
+
+**3. User Registration**
+You may be required to register with the Site. You agree to keep your password confidential and will be responsible for all use of your account and password. We reserve the right to remove, reclaim, or change a username you select if we determine, in our sole discretion, that such username is inappropriate, obscene, or otherwise objectionable.
+
+**4. Prohibited Activities**
+You may not access or use the Site for any purpose other than that for which we make the Site available. The Site may not be used in connection with any commercial endeavors except those that are specifically endorsed or approved by us.
+
+**5. Modifications to Service**
+We reserve the right at any time to modify or discontinue, temporarily or permanently, the Service (or any part thereof) with or without notice. You agree that we shall not be liable to you or to any third party for any modification, suspension or discontinuance of the Service.`
   },
   {
     id: 'cookies',
     title: 'Cookie Policy',
     icon: <Cookie size={20} />,
-    content: `We use cookies to enhance your browsing experience, remember your preferences, and analyze site traffic. Essential cookies are required for the site to function, while analytics and marketing cookies are optional. You can choose to accept or decline cookies through your browser settings. However, declining cookies may prevent you from taking full advantage of the website's features, including maintaining a persistent shopping cart.`
+    content: `**1. What Are Cookies**
+As is common practice with almost all professional websites, this site uses cookies, which are tiny files that are downloaded to your computer, to improve your experience. This page describes what information they gather, how we use it and why we sometimes need to store these cookies.
+
+**2. How We Use Cookies**
+We use cookies for a variety of reasons detailed below. Unfortunately, in most cases, there are no industry standard options for disabling cookies without completely disabling the functionality and features they add to this site.
+
+**3. The Cookies We Set**
+- **Account related cookies**: If you create an account with us then we will use cookies for the management of the signup process and general administration.
+- **Login related cookies**: We use cookies when you are logged in so that we can remember this fact. This prevents you from having to log in every single time you visit a new page.
+- **Orders processing related cookies**: This site offers e-commerce or payment facilities and some cookies are essential to ensure that your order is remembered between pages so that we can process it properly.
+
+**4. Third Party Cookies**
+In some special cases we also use cookies provided by trusted third parties. This site uses Google Analytics which is one of the most widespread and trusted analytics solutions on the web for helping us to understand how you use the site and ways that we can improve your experience.`
   },
   {
     id: 'returns-policy',

@@ -2,6 +2,7 @@
 import { Gem, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useCMS } from '../../context/CMSContext';
 
 // Inline SVG social icons (not available in lucide-react@1.16.0)
 function IconInstagram({ size = 16 }) {
@@ -25,6 +26,13 @@ function IconYoutube({ size = 16 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.96-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
       <polygon fill="white" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
+    </svg>
+  );
+}
+function IconTwitter({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
     </svg>
   );
 }
@@ -70,6 +78,7 @@ const getLinkRoute = (link) => {
 
 export default function Footer() {
   const { setIsSupportOpen } = useApp();
+  const { socialMediaData, landingPageData, systemSettingsData } = useCMS();
   const location = useLocation();
   
   const isLegalPage = [
@@ -95,29 +104,44 @@ export default function Footer() {
               <div className="footer-logo">
                 <div className="footer-logo-icon"><Gem size={20} /></div>
                 <div>
-                  <div className="footer-logo-name">Lumina Jewels</div>
-                  <div className="footer-logo-tag">Crafted with Passion</div>
+                  <div className="footer-logo-name">{systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</div>
                 </div>
               </div>
               <p className="footer-desc">
                 India's most trusted destination for authentic, handcrafted jewellery. 
                 BIS certified gold, IGI certified diamonds, and premium silver jewellery since 1998.
               </p>
-              <div className="footer-contact">
-                <a href="tel:+91-9876543210" className="footer-contact-item">
-                  <Phone size={14} /> +91 98765 43210
+              <div className="footer-contact-group">
+                <a href={`tel:${socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91-9876543210'}`} className="footer-contact-item">
+                  <Phone size={14} /> {socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91 98765 43210'}
                 </a>
-                <a href="mailto:luminajewels.app@gmail.com" className="footer-contact-item">
-                  <Mail size={14} /> luminajewels.app@gmail.com
+                <a href={`mailto:${socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}`} className="footer-contact-item">
+                  <Mail size={14} /> {socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}
                 </a>
-                <span className="footer-contact-item">
-                  <MapPin size={14} /> Mumbai, Maharashtra, India
-                </span>
               </div>
+              <span className="footer-contact-item">
+                <MapPin size={14} /> Mumbai, Maharashtra, India
+              </span>
               <div className="footer-socials">
-                <a href="https://instagram.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
-                <a href="https://facebook.com/luminajewels" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
-                <a href="https://youtu.be/bWR1t-l1Bf8?si=b9LJZdf23ZiA8TIn" target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
+                {(!socialMediaData || socialMediaData?.integrations?.footerIcons !== false) && (
+                  <>
+                    {(socialMediaData?.platforms?.instagram?.enabled ?? true) && (
+                      <a href={socialMediaData?.platforms?.instagram?.url || "https://www.instagram.com/luminajewels2/"} target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-instagram" aria-label="Instagram"><IconInstagram size={16} /></a>
+                    )}
+                    {(socialMediaData?.platforms?.facebook?.enabled ?? true) && (
+                      <a href={socialMediaData?.platforms?.facebook?.url || "https://facebook.com/luminajewels"} target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-facebook" aria-label="Facebook"><IconFacebook size={16} /></a>
+                    )}
+                    {(socialMediaData?.platforms?.youtube?.enabled ?? false) && (
+                      <a href={socialMediaData?.platforms?.youtube?.url || "https://youtu.be/bWR1t-l1Bf8"} target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-youtube" aria-label="YouTube"><IconYoutube size={16} /></a>
+                    )}
+                    {(socialMediaData?.platforms?.twitter?.enabled ?? false) && (
+                      <a href={socialMediaData?.platforms?.twitter?.url || "https://twitter.com/luminajewels"} target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-twitter" aria-label="Twitter"><IconTwitter size={16} /></a>
+                    )}
+                    {(socialMediaData?.platforms?.pinterest?.enabled ?? false) && (
+                      <a href={socialMediaData?.platforms?.pinterest?.url || "https://pinterest.com/luminajewels"} target="_blank" rel="noopener noreferrer" className="footer-social-btn magnetic" id="footer-pinterest" aria-label="Pinterest"><IconPinterest size={16} /></a>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
@@ -177,7 +201,7 @@ export default function Footer() {
         <div className="container">
           <div className="footer-bottom-inner">
             <p className="footer-copy">
-              © 2026 Lumina Jewels. All rights reserved. Crafted with ♥ in India.
+              © {new Date().getFullYear()} {systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}. All rights reserved. Crafted with ♥ in India.
             </p>
             <div className="footer-payments">
               <span className="footer-payment-label">We Accept:</span>

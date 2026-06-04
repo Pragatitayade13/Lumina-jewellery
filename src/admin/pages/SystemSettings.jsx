@@ -1,15 +1,82 @@
-// src/admin/pages/SystemSettings.jsx
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Activity } from 'lucide-react';
+import { AlertTriangle, Activity, Loader, Save } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function SystemSettings() {
+  const { showToast } = useApp();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [data, setData] = useState({
+    storeName: 'Lumina Jewels',
+    supportEmail: 'support@luminajewels.com',
+    supportPhone: '+91 1800-123-4567',
+    address: 'Lumina Tower, Bandra Kurla Complex, Mumbai, Maharashtra 400051',
+    gstStandard: 3,
+    gstMaking: 5,
+    freeShippingThreshold: 50000,
+    goldBuyback: 95,
+    goldExchange: 100,
+    diamondBuyback: 80,
+    markup: 2,
+    liveSyncEnabled: true,
+    provider: 'MCX India (Primary)'
+  });
+  const [originalData, setOriginalData] = useState(null);
+
   const [goldRate24k, setGoldRate24k] = useState(7250);
   const [goldRate22k, setGoldRate22k] = useState(6650);
   const [silverRate, setSilverRate] = useState(88);
-  const [liveSyncEnabled, setLiveSyncEnabled] = useState(true);
 
   useEffect(() => {
-    if (!liveSyncEnabled) return;
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      if (!db) throw new Error("Database not initialized");
+      const docRef = doc(db, 'cms', 'systemSettings');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const fetchedData = docSnap.data();
+        setData((prev) => ({ ...prev, ...fetchedData }));
+        setOriginalData((prev) => ({ ...prev, ...fetchedData }));
+      } else {
+        setOriginalData(data);
+      }
+    } catch (e) {
+      console.error("Error fetching system settings:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (!db) throw new Error("Database not initialized");
+      await setDoc(doc(db, 'cms', 'systemSettings'), {
+        ...data,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setOriginalData(data);
+      showToast("System settings saved successfully!");
+    } catch (e) {
+      console.error("Error saving system settings:", e);
+      showToast("Error saving content", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setData({ ...data, [field]: value });
+  };
+
+  useEffect(() => {
+    if (!data.liveSyncEnabled) return;
     
     const interval = setInterval(() => {
       // Simulate market fluctuations
@@ -19,7 +86,13 @@ export default function SystemSettings() {
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [liveSyncEnabled]);
+  }, [data.liveSyncEnabled]);
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}><Loader className="spin" size={24} color="var(--gold)" /></div>;
+  }
+
+  const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData);
 
   return (
     <div>
@@ -28,13 +101,12 @@ export default function SystemSettings() {
           <h1 className="page-title">System Settings</h1>
           <p className="page-subtitle">Configure global business rules, tax rates, and core store settings.</p>
         </div>
-        <div className="page-actions">
-           <button className="btn btn-outline" onClick={() => {
-             showToast("Unsaved changes discarded.");
-           }}>Discard Changes</button>
-           <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => {
-             showToast("System settings saved and applied globally!");
-           }}>Save All Settings</button>
+        <div className="page-actions" style={{ display: 'flex', gap: '1rem' }}>
+           <button className="btn btn-outline" onClick={fetchData} disabled={saving || !hasChanges}>Discard Changes</button>
+           <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold', opacity: (!hasChanges ? 0.6 : 1) }} onClick={handleSave} disabled={saving || !hasChanges}>
+             {saving ? <Loader className="spin" size={16} /> : <Save size={16} />} 
+             <span style={{ marginLeft: 6 }}>{saving ? 'Saving...' : 'Save All Settings'}</span>
+           </button>
         </div>
       </div>
 
@@ -47,21 +119,21 @@ export default function SystemSettings() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="form-group">
                <label className="form-label">Store Name</label>
-               <input type="text" className="form-input" defaultValue="Lumina Jewels" />
+               <input type="text" className="form-input" value={data.storeName} onChange={e => handleChange('storeName', e.target.value)} />
             </div>
             <div className="form-row">
                <div className="form-group">
                  <label className="form-label">Support Email</label>
-                 <input type="email" className="form-input" defaultValue="support@luminajewels.com" />
+                 <input type="email" className="form-input" value={data.supportEmail} onChange={e => handleChange('supportEmail', e.target.value)} />
                </div>
                <div className="form-group">
                  <label className="form-label">Support Phone</label>
-                 <input type="text" className="form-input" defaultValue="+91 1800-123-4567" />
+                 <input type="text" className="form-input" value={data.supportPhone} onChange={e => handleChange('supportPhone', e.target.value)} />
                </div>
             </div>
             <div className="form-group">
                <label className="form-label">Corporate Address</label>
-               <textarea className="form-input" defaultValue="Lumina Tower, Bandra Kurla Complex, Mumbai, Maharashtra 400051"></textarea>
+               <textarea className="form-input" value={data.address} onChange={e => handleChange('address', e.target.value)}></textarea>
             </div>
           </div>
         </div>
@@ -145,8 +217,8 @@ export default function SystemSettings() {
             <label className="toggle">
                <input 
                  type="checkbox" 
-                 checked={liveSyncEnabled} 
-                 onChange={(e) => setLiveSyncEnabled(e.target.checked)} 
+                 checked={data.liveSyncEnabled} 
+                 onChange={(e) => handleChange('liveSyncEnabled', e.target.checked)} 
                />
                <span className="toggle-slider"></span>
             </label>
@@ -156,17 +228,17 @@ export default function SystemSettings() {
             <div style={{ background: 'var(--admin-surface)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--admin-border)', flex: 1 }}>
                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gold 24K (per gram)</div>
                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--gold)' }}>₹{goldRate24k.toLocaleString('en-IN')}</div>
-               <div style={{ fontSize: '0.65rem', color: liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
+               <div style={{ fontSize: '0.65rem', color: data.liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{data.liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
             </div>
             <div style={{ background: 'var(--admin-surface)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--admin-border)', flex: 1 }}>
                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gold 22K (per gram)</div>
                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>₹{goldRate22k.toLocaleString('en-IN')}</div>
-               <div style={{ fontSize: '0.65rem', color: liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
+               <div style={{ fontSize: '0.65rem', color: data.liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{data.liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
             </div>
             <div style={{ background: 'var(--admin-surface)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--admin-border)', flex: 1 }}>
                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Silver (per gram)</div>
                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#bdc3c7' }}>₹{silverRate.toFixed(2)}</div>
-               <div style={{ fontSize: '0.65rem', color: liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
+               <div style={{ fontSize: '0.65rem', color: data.liveSyncEnabled ? 'var(--status-green)' : 'var(--text-muted)', marginTop: '0.2rem' }}>{data.liveSyncEnabled ? 'Live updating...' : 'Paused'}</div>
             </div>
          </div>
 

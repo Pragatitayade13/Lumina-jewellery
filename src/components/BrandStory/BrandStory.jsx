@@ -10,14 +10,48 @@ const milestones = [
   { year: '2024', title: 'Digital Excellence', desc: 'Launched premium online shopping experience with nationwide delivery.' },
 ];
 
-const badges = [
+const defaultBadges = [
   { icon: <Award size={20} />, label: 'BIS Hallmark', sub: 'Certified Gold' },
   { icon: <Shield size={20} />, label: '100% Authentic', sub: 'Guaranteed' },
   { icon: <Gem size={20} />, label: 'IGI Certified', sub: 'Diamonds' },
   { icon: <Users size={20} />, label: '50,000+', sub: 'Happy Customers' },
 ];
 
+import { useCMS } from '../../context/CMSContext';
+
 export default function BrandStory() {
+  const { landingPageData } = useCMS();
+  const bs = landingPageData?.brandStory || {
+    sectionLabel: 'Our Story',
+    title: 'Crafting Dreams Into Timeless Jewellery',
+    desc1: 'For over 25 years, Lumina Jewels has been India\'s most trusted name in authentic, handcrafted jewellery. Every piece we create tells a story — of passion, precision, and the timeless art of goldsmithing.',
+    desc2: 'Our master artisans, many from generations of jewellery-making families, bring centuries of tradition into every creation. From intricate filigree work to modern diamond settings, each piece is a testament to uncompromising craftsmanship.',
+    buttonText: 'Discover Our Heritage',
+    buttonLink: 'https://en.wikipedia.org/wiki/Jewellery#India',
+    yearsOfExcellence: '25+',
+    badges: [
+      { label: 'BIS Hallmark', sub: 'Certified Gold' },
+      { label: '100% Authentic', sub: 'Guaranteed' },
+      { label: 'IGI Certified', sub: 'Diamonds' },
+      { label: '50,000+', sub: 'Happy Customers' }
+    ]
+  };
+
+  // Sync Happy Customers from WhyChooseUs stats if available
+  const happyCustomerStat = landingPageData?.whyChooseUs?.stats?.find(s => s.label.toLowerCase().includes('happy'));
+  const happyCustomerLabel = happyCustomerStat ? `${happyCustomerStat.target}${happyCustomerStat.suffix}` : null;
+  const happyCustomerSub = happyCustomerStat ? 'Happy Customers' : null;
+
+  const currentBadges = (bs.badges && bs.badges.length > 0) 
+    ? bs.badges.map((badge, i) => {
+        // Override the 4th badge (Happy Customers) if we found synced stats
+        if (i === 3 && happyCustomerLabel) {
+          return { label: happyCustomerLabel, sub: happyCustomerSub, icon: defaultBadges[i % defaultBadges.length].icon };
+        }
+        return { ...badge, icon: defaultBadges[i % defaultBadges.length].icon };
+      })
+    : defaultBadges;
+
   return (
     <section className="brand-section" id="brand-story">
       <div className="container">
@@ -28,13 +62,13 @@ export default function BrandStory() {
               <img src={brandImg} alt="Master craftsman at work" className="brand-img" />
               <div className="brand-img-overlay" />
               <div className="brand-exp-badge">
-                <div className="brand-exp-num">25+</div>
+                <div className="brand-exp-num">{bs.yearsOfExcellence}</div>
                 <div className="brand-exp-text">Years of<br/>Excellence</div>
               </div>
             </div>
             {/* Authenticity Badges */}
             <div className="brand-badges">
-              {badges.map((b, i) => (
+              {currentBadges.map((b, i) => (
                 <div key={i} className="brand-badge-item">
                   <div className="brand-badge-icon">{b.icon}</div>
                   <div>
@@ -48,21 +82,18 @@ export default function BrandStory() {
 
           {/* Content Side */}
           <div className="brand-content-col reveal-right">
-            <span className="section-label">Our Story</span>
+            <span className="section-label">{bs.sectionLabel}</span>
             <h2 className="section-title" style={{ textAlign: 'left' }}>
-              Crafting Dreams Into
-              <span className="shimmer-text" style={{ display: 'block' }}> Timeless Jewellery</span>
+              {bs.title.split(' ').slice(0, -2).join(' ')}
+              <span className="shimmer-text" style={{ display: 'block' }}> {bs.title.split(' ').slice(-2).join(' ')}</span>
             </h2>
             <div className="gold-divider gold-divider-left" />
 
             <p className="brand-desc">
-              For over 25 years, Lumina Jewels has been India's most trusted name in authentic, handcrafted jewellery.
-              Every piece we create tells a story — of passion, precision, and the timeless art of goldsmithing.
+              {bs.desc1}
             </p>
             <p className="brand-desc">
-              Our master artisans, many from generations of jewellery-making families, bring centuries of tradition
-              into every creation. From intricate filigree work to modern diamond settings, each piece is a 
-              testament to uncompromising craftsmanship.
+              {bs.desc2}
             </p>
 
             {/* Timeline */}
@@ -80,14 +111,14 @@ export default function BrandStory() {
             </div>
 
             <a 
-              href="https://en.wikipedia.org/wiki/Jewellery#India" 
+              href={bs.buttonLink} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="btn btn-gold" 
               id="brand-story-btn" 
               style={{ marginTop: '1rem', display: 'inline-block' }}
             >
-              Discover Our Heritage
+              {bs.buttonText}
             </a>
           </div>
         </div>

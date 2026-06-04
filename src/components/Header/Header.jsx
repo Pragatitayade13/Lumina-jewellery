@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
+import { useCMS } from '../../context/CMSContext';
 import { useRates } from '../../hooks/useRates';
 import { products } from '../../data/products';
 import { useTranslation } from 'react-i18next';
@@ -24,12 +25,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme } = useApp();
+  const { socialMediaData, landingPageData, systemSettingsData } = useCMS();
   const { rates } = useRates();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
 
-  const navLinks = [
+  const defaultNavLinks = [
     { label: t('nav.home'), href: '/' },
     { label: t('nav.shop'), href: '/collections' },
     { label: t('nav.mens', { defaultValue: 'Men\'s' }), href: '/mens' },
@@ -39,6 +41,8 @@ export default function Header({ onCartClick, onWishlistClick }) {
     { label: t('nav.aboutUs'), href: '/#brand-story' },
     { label: t('nav.contactUs'), href: '#support' },
   ];
+
+  const currentNavLinks = landingPageData?.navBar?.length ? landingPageData.navBar : defaultNavLinks;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -77,8 +81,8 @@ export default function Header({ onCartClick, onWishlistClick }) {
       <div className="contact-strip">
         <div className="header-container" style={{ height: 'auto', display: 'flex', justifyContent: 'space-between', width: '100%', borderBottom: 'none', background: 'transparent' }}>
           <div className="strip-left">
-            <span className="strip-item"><Phone size={12} /><a href="tel:+91-9876543210">+91 98765 43210</a></span>
-            <span className="strip-item"><Mail size={12} /><a href="mailto:luminajewels.app@gmail.com">luminajewels.app@gmail.com</a></span>
+            <span className="strip-item"><Phone size={12} /><a href={`tel:${socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91-9876543210'}`}>{socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91 98765 43210'}</a></span>
+            <span className="strip-item"><Mail size={12} /><a href={`mailto:${socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}`}>{socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}</a></span>
           </div>
           <div className="strip-right" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--gold)', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
@@ -109,16 +113,15 @@ export default function Header({ onCartClick, onWishlistClick }) {
                 <Gem size={18} />
               </div>
               <div className="logo-text">
-                <span className="logo-name">Lumina Jewels</span>
-                <span className="logo-tagline">Crafted with Passion</span>
+                <span className="logo-name">{systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</span>
               </div>
             </a>
 
             {/* Desktop Navigation */}
             <nav className="nav" aria-label="Main Navigation">
-              {navLinks.map(link => (
+              {currentNavLinks.map((link, i) => (
                 <a
-                  key={link.label}
+                  key={i}
                   className="nav-link"
                   href={link.href}
                   onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}
@@ -216,9 +219,9 @@ export default function Header({ onCartClick, onWishlistClick }) {
       {/* Mobile Menu */}
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="navigation" aria-label="Mobile Navigation">
         <nav className="mobile-nav">
-          {navLinks.map(link => (
+          {currentNavLinks.map((link, i) => (
             <a
-              key={link.label}
+              key={i}
               className="mobile-nav-link"
               href={link.href}
               onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}

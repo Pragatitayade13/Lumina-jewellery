@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useCMS } from '../../context/CMSContext';
 import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
 import './Hero.css';
 
-const stats = [
+const defaultStats = [
   { valueKey: '25+', labelKey: 'hero.stats.yearsOfCraft' },
   { valueKey: '50K+', labelKey: 'hero.stats.happyCustomers' },
   { valueKey: '10K+', labelKey: 'hero.stats.uniqueDesigns' },
@@ -18,8 +19,16 @@ export default function Hero() {
   const [active, setActive] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const { t } = useTranslation();
+  const { landingPageData } = useCMS();
+  const cmsSlides = landingPageData?.hero?.slides;
 
-  const slides = [
+  const currentStats = [
+    { valueKey: landingPageData?.brandStory?.yearsOfExcellence || defaultStats[0].valueKey, labelKey: defaultStats[0].labelKey },
+    { valueKey: landingPageData?.brandStory?.badges?.[3]?.label || defaultStats[1].valueKey, labelKey: defaultStats[1].labelKey },
+    defaultStats[2]
+  ];
+
+  const defaultSlides = [
     {
       id: 1,
       badgeKey: 'hero.slide1.badge',
@@ -58,6 +67,21 @@ export default function Hero() {
     },
   ];
 
+  // Map CMS data if available, otherwise use defaults
+  const slides = cmsSlides && cmsSlides[0]?.title ? cmsSlides.map((s, i) => ({
+    id: i + 1,
+    badgeKey: 'hero.slide1.badge', // Default badge
+    title: s.title,
+    titleAccent: s.subtitle,
+    subtitle: '', 
+    bg: s.bgImage || defaultSlides[i]?.bg || heroBg1,
+    ctas: [
+      { label: s.ctaText, href: s.ctaLink || '#categories', primary: true }
+    ],
+    isCms: true
+  })) : defaultSlides;
+
+
 
 
   const next = useCallback(() => setActive(p => (p + 1) % slides.length), []);
@@ -65,7 +89,7 @@ export default function Hero() {
 
   useEffect(() => {
     if (isPaused) return;
-    const t = setInterval(next, 6000);
+    const t = setInterval(next, 3000);
     return () => clearInterval(t);
   }, [next, isPaused]);
 
@@ -127,28 +151,30 @@ export default function Hero() {
                 className="hero-title"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {t(slides[active].titleKey)}<span>{t(slides[active].titleAccentKey)}</span>
+                {slides[active].isCms ? slides[active].title : t(slides[active].titleKey)}
+                <span>{slides[active].isCms ? slides[active].titleAccent : t(slides[active].titleAccentKey)}</span>
               </motion.h1>
               
               <motion.p 
                 className="hero-subtitle"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {t(slides[active].subtitleKey)}
+                {slides[active].isCms ? slides[active].subtitle : t(slides[active].subtitleKey)}
               </motion.p>
+
               
               <motion.div 
                 className="hero-actions"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {slides[active].ctas.map(cta => (
+                {slides[active].ctas.map((cta, i) => (
                   <button
-                    key={cta.labelKey}
+                    key={cta.labelKey || `cta-${i}`}
                     className={`btn ${cta.primary ? 'btn-primary' : 'btn-outline'}`}
                     onClick={() => handleCTA(cta.href)}
-                    id={`hero-cta-${cta.labelKey.replace(/\./g, '-')}`}
+                    id={`hero-cta-${(cta.labelKey || cta.label || `cta-${i}`).replace(/\./g, '-')}`}
                   >
-                    {t(cta.labelKey)}
+                    {cta.label || (cta.labelKey ? t(cta.labelKey) : 'Shop Now')}
                   </button>
                 ))}
               </motion.div>
@@ -157,7 +183,7 @@ export default function Hero() {
                 className="hero-stats"
                 variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
               >
-                {stats.map(s => (
+                {currentStats.map(s => (
                   <div key={s.labelKey}>
                     <div className="hero-stat-value">{s.valueKey}</div>
                     <div className="hero-stat-label">{t(s.labelKey)}</div>

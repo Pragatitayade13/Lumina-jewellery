@@ -87,8 +87,23 @@
 }
 
 .brand-badge-item:hover {
-  border-color: var(--border-bright);
-  box-shadow: var(--shadow-gold);
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  border-color: transparent;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.brand-badge-item:hover .brand-badge-label {
+  color: var(--text-dark);
+}
+
+.brand-badge-item:hover .brand-badge-sub {
+  color: rgba(13,8,0,0.75);
+}
+
+.brand-badge-item:hover .brand-badge-icon {
+  color: var(--text-dark);
+  background: rgba(13,8,0,0.1);
+  border-color: rgba(13,8,0,0.2);
 }
 
 .brand-badge-icon {
@@ -141,11 +156,11 @@
 .brand-timeline::before {
   content: '';
   position: absolute;
-  left: 56px;
+  left: calc(56px + 1rem + 8px); /* Col 1 width + gap + half of Col 2 width */
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--border);
+  background: var(--border-bright);
 }
 
 .timeline-item {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, ClipboardList, Diamond, Key, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../config/firebase';
@@ -10,6 +11,7 @@ import './AuthModal.css';
 
 export default function AuthModal() {
   const { isAuthOpen, setIsAuthOpen, setUser } = useApp();
+  useScrollLock(isAuthOpen);
   const navigate = useNavigate();
   const [selectedGroup, setSelectedGroup] = useState(null); // null | 'admin'
   const [selectedOption, setSelectedOption] = useState(null);
@@ -229,8 +231,8 @@ export default function AuthModal() {
   ];
 
   return (
-    <div className="auth-page-container" style={{ backgroundImage: `url(${bgImage})` }}>
-      <div className="auth-glass-modal" onClick={e => e.stopPropagation()}>
+    <div className="auth-page-container" style={{ backgroundImage: `url(${bgImage})`, zIndex: 9999 }} data-lenis-prevent="true">
+      <div className="auth-glass-modal" onClick={e => e.stopPropagation()} data-lenis-prevent="true">
         <button className="auth-glass-close" onClick={() => setIsAuthOpen(false)}>
           <X size={20} />
         </button>

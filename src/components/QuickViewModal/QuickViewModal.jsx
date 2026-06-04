@@ -1,19 +1,40 @@
+import { useEffect } from 'react';
 import { X, ShoppingBag, Heart, Star } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 export default function QuickViewModal() {
   const { addToCart, toggleWishlist, isWishlisted, quickViewProduct, setQuickViewProduct } = useApp();
   
+  useScrollLock(!!quickViewProduct);
+
+  const onClose = () => setQuickViewProduct(null);
+
+  useEffect(() => {
+    if (quickViewProduct) {
+      // Handle ESC key
+      const handleEsc = (e) => {
+        if (e.key === 'Escape') {
+          setQuickViewProduct(null);
+        }
+      };
+      window.addEventListener('keydown', handleEsc);
+
+      // Cleanup
+      return () => {
+        window.removeEventListener('keydown', handleEsc);
+      };
+    }
+  }, [quickViewProduct, setQuickViewProduct]);
+
   if (!quickViewProduct) return null;
   const product = quickViewProduct;
   const wishlisted = isWishlisted(product.id);
   const discount = Math.round(((product.originalPrice || product.price - product.price) / (product.originalPrice || product.price)) * 100) || 0;
 
-  const onClose = () => setQuickViewProduct(null);
-
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" style={{ zIndex: 9999 }}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ display: 'flex', maxWidth: '800px', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }}>
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" style={{ zIndex: 9999 }} data-lenis-prevent="true">
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ display: 'flex', maxWidth: '800px', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }} data-lenis-prevent="true">
         <div style={{ flex: '0 0 45%' }}>
           <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)' }} />
         </div>

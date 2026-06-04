@@ -14,6 +14,8 @@ const InventoryManagement = lazy(() => import('./pages/InventoryManagement'));
 const PaymentManagement = lazy(() => import('./pages/PaymentManagement'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const ContentManagement = lazy(() => import('./pages/ContentManagement'));
+const LandingPageCMS = lazy(() => import('./pages/LandingPageCMS'));
+const SocialMediaSettings = lazy(() => import('./pages/SocialMediaSettings'));
 const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
 const SystemSettings = lazy(() => import('./pages/SystemSettings'));
 const CommunicationManagement = lazy(() => import('./pages/CommunicationManagement'));
@@ -63,6 +65,8 @@ export default function AdminApp() {
 
             {/* Superadmin only routes */}
             <Route path="settings" element={<ProtectedRoute allowedRoles={['superadmin']}><SystemSettings /></ProtectedRoute>} />
+            <Route path="landing-cms" element={<ProtectedRoute allowedRoles={['superadmin']}><LandingPageCMS /></ProtectedRoute>} />
+            <Route path="social-media" element={<ProtectedRoute allowedRoles={['superadmin']}><SocialMediaSettings /></ProtectedRoute>} />
             
             {/* Shared routes (including staff and manager where applicable) */}
             <Route path="products" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><ProductManagement /></ProtectedRoute>} />

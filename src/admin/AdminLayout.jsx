@@ -10,6 +10,7 @@ import NotificationDropdown from '../components/NotificationDropdown/Notificatio
 import ProfileDropdown from '../components/ProfileDropdown/ProfileDropdown';
 import QuickActionsDropdown from '../components/QuickActionsDropdown/QuickActionsDropdown';
 import LanguageSwitcher from '../components/LanguageSwitcher/LanguageSwitcher';
+import { useCMS } from '../context/CMSContext';
 
 const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
@@ -47,6 +48,10 @@ const allNavItems = [
   { path: '/admin/content', label: 'Content Management', icon: <FileText size={18} />, roles: ['superadmin', 'admin'] },
   { path: '/admin/security', label: 'Security & Access', icon: <Shield size={18} />, roles: ['superadmin', 'admin'] },
   { path: '/admin/settings', label: 'System Settings', icon: <Settings size={18} />, roles: ['superadmin'] },
+
+  { section: 'CMS & Branding', roles: ['superadmin'] },
+  { path: '/admin/landing-cms', label: 'Landing Page CMS', icon: <FileText size={18} />, roles: ['superadmin'] },
+  { path: '/admin/social-media', label: 'Social Media Settings', icon: <Globe size={18} />, roles: ['superadmin'] },
 ];
 
 const pageTitles = {
@@ -70,15 +75,20 @@ const pageTitles = {
   '/admin/content': 'Content Management',
   '/admin/security': 'Security & Access Control',
   '/admin/settings': 'System Settings',
+  '/admin/landing-cms': 'Landing Page CMS',
+  '/admin/social-media': 'Social Media Settings',
 };
 
 export default function AdminLayout({ children }) {
+  const { user, setUser, theme, toggleTheme } = useApp();
+  const { systemSettingsData } = useCMS();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, setUser, theme, toggleTheme } = useApp();
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isSidebarMenuOpen, setIsSidebarMenuOpen] = useState(false);
   const sidebarAvatarRef = useRef(null);
+
+  const storeName = systemSettingsData?.storeName || 'Lumina Jewels';
 
   // Close sidebar avatar dropdown when clicking outside
   useEffect(() => {
@@ -154,7 +164,7 @@ export default function AdminLayout({ children }) {
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon"><Diamond size={24} color="#0D0800" /></div>
           <div>
-            <div className="sidebar-logo-name">Lumina Jewels</div>
+            <div className="sidebar-logo-name">{storeName}</div>
             <div className="sidebar-logo-tag">{panelName}</div>
           </div>
         </div>
@@ -295,7 +305,7 @@ export default function AdminLayout({ children }) {
           </button>
           <div>
             <div className="topbar-page-title">{pageTitle}</div>
-            <div className="topbar-breadcrumb">Lumina Jewels {portalName} › {pageTitle}</div>
+            <div className="topbar-breadcrumb">{storeName} {portalName} › {pageTitle}</div>
           </div>
         </div>
 

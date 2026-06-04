@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { X, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useSupportTickets } from '../../hooks/useSupportTickets';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import './SupportModal.css';
 
 export default function SupportModal({ isOpen, onClose }) {
+  useScrollLock(isOpen);
   const { addTicket } = useSupportTickets();
   const [formData, setFormData] = useState({
     customer: '',
