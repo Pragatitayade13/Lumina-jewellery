@@ -21,11 +21,11 @@ const fetchLiveRates = async () => {
     const headers = { 'x-access-token': GOLD_API_KEY, 'Content-Type': 'application/json' };
     
     // Fetch Gold Rates
-    const goldRes = await fetch('https://www.goldapi.io/api/XAU/INR', { headers });
+    const goldRes = await fetch('/api/goldapi/XAU/INR', { headers });
     const goldData = await goldRes.json();
     
     // Fetch Silver Rates
-    const silverRes = await fetch('https://www.goldapi.io/api/XAG/INR', { headers });
+    const silverRes = await fetch('/api/goldapi/XAG/INR', { headers });
     const silverData = await silverRes.json();
 
     if (goldData && goldData.price_gram_24k) {

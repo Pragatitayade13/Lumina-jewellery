@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/goldapi/(.*)", "destination": "https://www.goldapi.io/api/$1" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
