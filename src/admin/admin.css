@@ -420,7 +420,7 @@
 
 .admin-table-wrap { overflow-x: auto; }
 
-.admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; min-width: 700px; }
 
 .admin-table th {
   text-align: left;
@@ -972,7 +972,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
     --topbar-height: auto;
   }
 
-  .stat-grid, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .stat-grid, .grid-4, .grid-3, .grid-2, .grid-2-1, .grid-3-1, .grid-1-2, .form-row, .form-row-3 { grid-template-columns: 1fr; }
 
   /* Topbar wraps on mobile */
   .admin-topbar {
@@ -1028,9 +1028,10 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
   .filter-search { width: 100%; }
 
-  .admin-table-wrap {
+  .admin-table-wrap, .table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    width: 100%;
     max-width: 100%;
   }
 

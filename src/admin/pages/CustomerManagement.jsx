@@ -226,7 +226,7 @@ export default function CustomerManagement() {
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
                   <Star size={16} color="var(--gold)" /> Manage Loyalty Program
                 </h4>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                     <label>Points to Add/Deduct</label>
                     <input 
@@ -277,7 +277,7 @@ export default function CustomerManagement() {
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
                     <Shield size={16} color="var(--gold)" /> Owner Access: Manage Customer Type
                   </h4>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                       <label>Account Status / Tier</label>
                       <select 

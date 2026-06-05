@@ -515,14 +515,30 @@ section {
   .section-subtitle { font-size: 0.95rem; }
 
   /* Modals should be full width on mobile */
-  .modal-overlay { padding: 1rem; }
+  .modal-overlay { 
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    align-items: flex-end;
+  }
   .modal-content {
-    border-radius: var(--radius-lg);
-    max-height: 95vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
 
   /* Buttons stretch on mobile */
   .btn { padding: 0.75rem 1.5rem; }
+
+  /* Fix inline flex containers from overflowing */
+  .modal-body [style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+  
+  /* Ensure image grids and items wrap */
+  [style*="display: flex"] {
+    max-width: 100%;
+  }
 }
 
 /* Small Mobile (iPhone SE, 320px) */

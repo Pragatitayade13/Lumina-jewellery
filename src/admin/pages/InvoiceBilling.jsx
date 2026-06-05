@@ -19,10 +19,38 @@ const initialInvoices = [
   { id: 'INV-2026-0038', orderId: '#ORD-88072', customer: 'Sunita Rao', email: 'sunita@email.com', phone: '+91 94600 33322', address: '5, Dadar East, Mumbai', date: '24 May 2026', dueDate: '03 Jun 2026', items: [{ name: 'Polki Kundan Necklace Set', qty: 1, rate: 185000, gst: 3 }], status: 'paid', paymentMethod: 'Net Banking', type: 'invoice' },
 ];
 
-const calcTotals = (items) => {
+const calcTotals = (items, calculateTax, customerState) => {
   const subtotal = items.reduce((s, i) => s + i.qty * Math.abs(i.rate), 0);
-  const gstAmt = items.reduce((s, i) => s + (i.qty * Math.abs(i.rate) * i.gst) / 100, 0);
-  return { subtotal, gstAmt, total: subtotal + gstAmt };
+  let gstAmt = 0;
+  let cgst = 0;
+  let sgst = 0;
+  let igst = 0;
+
+  items.forEach(i => {
+    // If the item has a specific gst % hardcoded, we can pass it as a special category or override
+    // For simplicity, we'll use calculateTax which handles state logic. 
+    // We'll pass the item's gst property directly if it's a number, or fallback to 'gold'.
+    const rate = Number(i.gst) || 3;
+    const base = i.qty * Math.abs(i.rate);
+    
+    // Quick inline logic for state splitting to reuse calculateTax's internal logic, 
+    // but since we don't have the full hook here, we'll do the splitting.
+    // Or we just call the passed `calculateTax` from the hook!
+    // Since calculateTax takes (baseAmount, category, destinationState)
+    // We will modify useTaxes to accept a raw rate number as category.
+    let taxDetails;
+    if (calculateTax) {
+      taxDetails = calculateTax(base, rate.toString(), customerState || 'Maharashtra', true); // true = isRawRate
+    } else {
+      taxDetails = { total: (base * rate) / 100, cgst: (base * rate) / 200, sgst: (base * rate) / 200, igst: 0 };
+    }
+    gstAmt += taxDetails.total;
+    cgst += taxDetails.cgst || 0;
+    sgst += taxDetails.sgst || 0;
+    igst += taxDetails.igst || 0;
+  });
+
+  return { subtotal, gstAmt, cgst, sgst, igst, total: subtotal + gstAmt };
 };
 
 const statusMeta = {
@@ -33,8 +61,8 @@ const statusMeta = {
   draft: { color: 'var(--text-muted)', label: 'DRAFT' },
 };
 
-function generateInvoiceHTML(inv, isCreditNote = false) {
-  const { subtotal, gstAmt, total } = calcTotals(inv.items);
+function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
+  const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(inv.items, calculateTax, inv.state || 'Maharashtra');
   const titleColor = isCreditNote ? '#e74c3c' : '#c9a84c';
   return `<!DOCTYPE html><html><head><title>${isCreditNote ? 'Credit Note' : 'Tax Invoice'} ${inv.id}</title>
   <style>
@@ -89,31 +117,42 @@ function generateInvoiceHTML(inv, isCreditNote = false) {
       </div>
     </div>
     <table>
-      <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>GST %</th><th>GST Amt</th><th>Total</th></tr>
+      <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>GST %</th><th>GST Type</th><th>GST Amt</th><th>Total</th></tr>
       ${inv.items.map((item, i) => {
         const lineTotal = item.qty * Math.abs(item.rate);
-        const lineGST = lineTotal * item.gst / 100;
-        return `<tr><td>${i + 1}</td><td>${item.name}</td><td>${item.qty}</td><td>₹${Math.abs(item.rate).toLocaleString('en-IN')}</td><td>${item.gst}%</td><td>₹${lineGST.toFixed(2)}</td><td>₹${(lineTotal + lineGST).toFixed(2)}</td></tr>`;
+        const rate = Number(item.gst) || 3;
+        let taxDetails;
+        if (calculateTax) {
+          taxDetails = calculateTax(lineTotal, rate.toString(), inv.state || 'Maharashtra', true);
+        } else {
+          taxDetails = { total: (lineTotal * rate) / 100, type: 'CGST+SGST' };
+        }
+        return `<tr><td>${i + 1}</td><td>${item.name}</td><td>${item.qty}</td><td>₹${Math.abs(item.rate).toLocaleString('en-IN')}</td><td>${rate}%</td><td><span class="badge" style="background:#f0f0f0;color:#555">${taxDetails.type}</span></td><td>₹${taxDetails.total.toFixed(2)}</td><td>₹${(lineTotal + taxDetails.total).toFixed(2)}</td></tr>`;
       }).join('')}
     </table>
     <div class="totals">
       <div class="total-row"><span>Subtotal:</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
-      <div class="total-row"><span>GST:</span><span>₹${gstAmt.toFixed(2)}</span></div>
+      ${igst > 0 ? `<div class="total-row"><span>IGST:</span><span>₹${igst.toFixed(2)}</span></div>` : ''}
+      ${cgst > 0 ? `<div class="total-row"><span>CGST:</span><span>₹${cgst.toFixed(2)}</span></div>` : ''}
+      ${sgst > 0 ? `<div class="total-row"><span>SGST:</span><span>₹${sgst.toFixed(2)}</span></div>` : ''}
       <div class="total-row total-final"><span>${isCreditNote ? 'Credit Amount:' : 'Grand Total:'}</span><span>${isCreditNote ? '-' : ''}₹${total.toFixed(2)}</span></div>
     </div>
     <div class="footer">Thank you for choosing ${COMPANY.name} | Computer Generated ${isCreditNote ? 'Credit Note' : 'Invoice'} — No Signature Required</div>
   </body></html>`;
 }
 
+import { useTaxes } from '../../hooks/useTaxes';
+
 export default function InvoiceBilling() {
   const { showToast } = useApp();
+  const { calculateTax } = useTaxes();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
   const [previewInv, setPreviewInv] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newInvType, setNewInvType] = useState('invoice');
-  const [newInv, setNewInv] = useState({ customer: '', email: '', phone: '', address: '', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
+  const [newInv, setNewInv] = useState({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
 
   const filtered = useMemo(() => {
     let list = invoices;
@@ -128,7 +167,7 @@ export default function InvoiceBilling() {
     showToast(`Generating ${inv.type === 'credit_note' ? 'Credit Note' : 'Invoice'} PDF...`);
     setTimeout(() => {
       const w = window.open('', '_blank');
-      w.document.write(generateInvoiceHTML(inv, inv.type === 'credit_note'));
+      w.document.write(generateInvoiceHTML(inv, inv.type === 'credit_note', calculateTax));
       w.document.close();
       w.print();
       showToast('Document ready for download/print!');
@@ -144,7 +183,7 @@ export default function InvoiceBilling() {
   const handleRemoveItem = (idx) => setNewInv(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
   const handleItemChange = (idx, field, val) => setNewInv(prev => ({ ...prev, items: prev.items.map((item, i) => i === idx ? { ...item, [field]: val } : item) }));
 
-  const handleGenerateInvoice = () => {
+  const handleGenerateInvoice = async () => {
     if (!newInv.customer || !newInv.orderId || !newInv.items[0].name) { showToast('Please fill required fields.', 'error'); return; }
     const today = new Date();
     const due = new Date(today); due.setDate(due.getDate() + 10);
@@ -152,6 +191,9 @@ export default function InvoiceBilling() {
     const isCN = newInvType === 'credit_note';
     const nextNum = invoices.length + 1;
     const id = isCN ? `CN-2026-${String(nextNum).padStart(4, '0')}` : `INV-2026-${String(nextNum).padStart(4, '0')}`;
+    const mappedItems = newInv.items.map(i => ({ ...i, qty: Number(i.qty), rate: isCN ? -Math.abs(Number(i.rate)) : Number(i.rate), gst: Number(i.gst) }));
+    const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(mappedItems, calculateTax, newInv.state);
+
     const invoice = {
       id,
       orderId: newInv.orderId,
@@ -159,21 +201,45 @@ export default function InvoiceBilling() {
       email: newInv.email,
       phone: newInv.phone,
       address: newInv.address,
+      state: newInv.state,
       date: fmt(today),
       dueDate: isCN ? '—' : fmt(due),
-      items: newInv.items.map(i => ({ ...i, qty: Number(i.qty), rate: isCN ? -Math.abs(Number(i.rate)) : Number(i.rate), gst: Number(i.gst) })),
+      items: mappedItems,
       status: isCN ? 'issued' : 'pending',
       paymentMethod: isCN ? 'Credit Note' : newInv.paymentMethod,
       type: newInvType
     };
+    
+    // Log tax transaction
+    import('firebase/firestore').then(({ collection, addDoc, serverTimestamp }) => {
+       import('../../config/firebase').then(({ db }) => {
+          if (db) {
+            addDoc(collection(db, 'tax_transactions'), {
+              displayId: id,
+              date: fmt(today),
+              amount: subtotal,
+              gstPerc: 'mixed', // Invoice has multiple items with different rates
+              gstAmount: gstAmt,
+              cgst,
+              sgst,
+              igst,
+              state: newInv.state,
+              type: igst > 0 ? 'IGST' : 'CGST+SGST',
+              source: 'invoice_billing',
+              createdAt: serverTimestamp()
+            }).catch(console.error);
+          }
+       });
+    });
+
     setInvoices(prev => [invoice, ...prev]);
     showToast(`${isCN ? 'Credit Note' : 'Invoice'} ${id} generated!`);
     setShowNewModal(false);
-    setNewInv({ customer: '', email: '', phone: '', address: '', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
+    setNewInv({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
     setTimeout(() => handleDownload(invoice), 800);
   };
 
-  const totalPaid = invoices.filter(i => i.status === 'paid' && i.type === 'invoice').reduce((s, i) => s + calcTotals(i.items).total, 0);
+  const totalPaid = invoices.filter(i => i.status === 'paid' && i.type === 'invoice').reduce((s, i) => s + calcTotals(i.items, calculateTax, i.state || 'Maharashtra').total, 0);
   const totalPending = invoices.filter(i => i.status === 'pending' || i.status === 'overdue').length;
   const totalCreditNotes = invoices.filter(i => i.type === 'credit_note').length;
 
@@ -245,7 +311,7 @@ export default function InvoiceBilling() {
               {filtered.length === 0 ? (
                 <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found.</td></tr>
               ) : filtered.map(inv => {
-                const { total } = calcTotals(inv.items);
+                const { total } = calcTotals(inv.items, calculateTax, inv.state || 'Maharashtra');
                 const isCN = inv.type === 'credit_note';
                 const sm = statusMeta[inv.status] || statusMeta.pending;
                 return (
@@ -299,7 +365,7 @@ export default function InvoiceBilling() {
 
       {/* PREVIEW MODAL */}
       {previewInv && (() => {
-        const { subtotal, gstAmt, total } = calcTotals(previewInv.items);
+        const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(previewInv.items, calculateTax, previewInv.state || 'Maharashtra');
         const isCN = previewInv.type === 'credit_note';
         const accentColor = isCN ? 'var(--status-red)' : 'var(--gold)';
         return (
@@ -378,11 +444,24 @@ export default function InvoiceBilling() {
                 {/* Totals */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <div style={{ minWidth: '250px' }}>
-                    {[['Subtotal', `₹${subtotal.toLocaleString('en-IN')}`], ['GST', `₹${gstAmt.toFixed(2)}`]].map(([k, v]) => (
-                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        <span>{k}</span><span>{v}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      <span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {igst > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <span>IGST</span><span>₹{igst.toFixed(2)}</span>
                       </div>
-                    ))}
+                    )}
+                    {cgst > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <span>CGST</span><span>₹{cgst.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {sgst > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        <span>SGST</span><span>₹{sgst.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', fontSize: '1.1rem', fontWeight: 800, color: accentColor, borderTop: `2px solid ${accentColor}`, marginTop: '0.5rem' }}>
                       <span>{isCN ? 'Credit Amount' : 'Grand Total'}</span>
                       <span>{isCN ? '-' : ''}₹{total.toFixed(2)}</span>
@@ -426,6 +505,16 @@ export default function InvoiceBilling() {
                 <label>Billing Address</label>
                 <input placeholder="Full address" value={newInv.address} onChange={e => setNewInv({ ...newInv, address: e.target.value })} />
               </div>
+              <div className="form-group">
+                <label>State (Place of Supply)</label>
+                <select value={newInv.state} onChange={e => setNewInv({ ...newInv, state: e.target.value })} style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <option value="Maharashtra">Maharashtra</option>
+                  <option value="Delhi">Delhi</option>
+                  <option value="Karnataka">Karnataka</option>
+                  <option value="Gujarat">Gujarat</option>
+                  <option value="Tamil Nadu">Tamil Nadu</option>
+                </select>
+              </div>
               {newInvType === 'invoice' && (
                 <div className="form-group">
                   <label>Payment Method</label>
@@ -457,15 +546,27 @@ export default function InvoiceBilling() {
                 {/* Live Total Preview */}
                 {(() => {
                   const items = newInv.items.map(i => ({ ...i, qty: Number(i.qty) || 0, rate: Number(i.rate) || 0, gst: Number(i.gst) || 0 }));
-                  const { subtotal, gstAmt, total } = calcTotals(items);
+                  const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(items, calculateTax, newInv.state);
                   return (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(201,168,76,0.08)', borderRadius: '8px', border: '1px solid var(--gold)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
                         <span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
-                        <span>GST</span><span>₹{gstAmt.toFixed(2)}</span>
-                      </div>
+                      {igst > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                          <span>IGST</span><span>₹{igst.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {cgst > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                          <span>CGST</span><span>₹{cgst.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {sgst > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>
+                          <span>SGST</span><span>₹{sgst.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 800, color: 'var(--gold)' }}>
                         <span>Grand Total</span><span>₹{total.toFixed(2)}</span>
                       </div>

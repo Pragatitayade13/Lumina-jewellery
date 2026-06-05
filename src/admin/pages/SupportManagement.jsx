@@ -55,7 +55,7 @@ export default function SupportManagement() {
       let emailSuccess = false;
       
       try {
-        const emailRes = await fetch('http://localhost:5000/api/support/reply', {
+        const emailRes = await fetch('/api/support-reply', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -18,15 +18,20 @@ let lastFetchTime = 0;
 
 const fetchLiveRates = async () => {
   try {
-    const headers = { 'x-access-token': GOLD_API_KEY, 'Content-Type': 'application/json' };
-    
-    // Fetch Gold Rates
-    const goldRes = await fetch('/api/goldapi/XAU/INR', { headers });
-    const goldData = await goldRes.json();
-    
-    // Fetch Silver Rates
-    const silverRes = await fetch('/api/goldapi/XAG/INR', { headers });
-    const silverData = await silverRes.json();
+    let goldRes, silverRes, goldData, silverData;
+
+    if (import.meta.env.DEV) {
+      const headers = { 'x-access-token': GOLD_API_KEY, 'Content-Type': 'application/json' };
+      goldRes = await fetch('/api/goldapi/XAU/INR', { headers });
+      silverRes = await fetch('/api/goldapi/XAG/INR', { headers });
+    } else {
+      // Fetch Gold & Silver Rates via our secure Vercel backend proxy
+      goldRes = await fetch('/api/gold-rates?symbol=XAU&currency=INR');
+      silverRes = await fetch('/api/gold-rates?symbol=XAG&currency=INR');
+    }
+
+    goldData = await goldRes.json();
+    silverData = await silverRes.json();
 
     if (goldData && goldData.price_gram_24k) {
       globalRates.gold24k = Math.round(goldData.price_gram_24k);

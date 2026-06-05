@@ -24,8 +24,11 @@ export default async function handler(req, res) {
       },
     });
 
-    const toEmail = process.env.SUPERADMIN_EMAIL || process.env.SMTP_USER;
-    const fromEmail = process.env.SMTP_FROM || `"Security Alert" <${process.env.SMTP_USER}>`;
+    const adminEmail = process.env.SUPERADMIN_EMAIL || process.env.VITE_SUPERADMIN_EMAIL || process.env.SMTP_USER || process.env.VITE_SMTP_USER;
+    const shopEmail = process.env.SHOP_EMAIL || process.env.VITE_SHOP_EMAIL;
+    
+    const toEmails = [...new Set([adminEmail, shopEmail].filter(Boolean))].join(', ');
+    const fromEmail = process.env.SMTP_FROM || process.env.VITE_SMTP_FROM || `"Security Alert" <${process.env.SMTP_USER || process.env.VITE_SMTP_USER}>`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
@@ -50,7 +53,7 @@ export default async function handler(req, res) {
 
     await transporter.sendMail({
       from: fromEmail,
-      to: toEmail,
+      to: toEmails,
       subject: subject,
       html: htmlContent,
     });

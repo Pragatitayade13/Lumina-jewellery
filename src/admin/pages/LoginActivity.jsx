@@ -72,113 +72,130 @@ export default function LoginActivity() {
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-header">
+    <div>
+      <div className="page-header">
         <div>
-          <h2>Security & Login Activity</h2>
-          <p className="admin-subtitle">Monitor user access and detect suspicious activities.</p>
+          <h1 className="page-title">Security & Login Activity</h1>
+          <p className="page-subtitle">Monitor user access and detect suspicious activities.</p>
         </div>
-        <div className="admin-header-actions">
-          <button className="admin-btn-primary" onClick={exportToCSV}>
-            <Download size={18} /> Export CSV
+        <div className="page-actions">
+          <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={exportToCSV}>
+            <Download size={16} /> Export CSV
           </button>
         </div>
       </div>
 
-      <div className="admin-filters-bar">
-        <div className="search-box">
-          <Search size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by name, email, or IP..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        
-        <div className="filter-group">
-          <div className="filter-select">
-            <Filter size={18} />
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-              <option value="all">All Roles</option>
-              <option value="superadmin">Super Admin</option>
-              <option value="admin">Admin</option>
-              <option value="staff">Staff</option>
-              <option value="manager">Manager</option>
-              <option value="customer">Customer</option>
-            </select>
+      <div className="admin-card">
+        <div className="filter-bar" style={{ marginBottom: '1.25rem' }}>
+          <div className="filter-search" style={{ margin: 0, width: '300px' }}>
+            <Search size={14} />
+            <input 
+              type="text" 
+              placeholder="Search by name, email, or IP..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           
-          <div className="filter-select">
-            <ShieldCheck size={18} />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">All Statuses</option>
-              <option value="success">Successful Logins</option>
-              <option value="failed">Failed Logins</option>
-              <option value="completed">Completed Sessions</option>
-            </select>
-          </div>
+          <select className="form-input" style={{ width: '160px', padding: '0.475rem 0.875rem' }} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+            <option value="all">All Roles</option>
+            <option value="superadmin">Super Admin</option>
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+            <option value="manager">Manager</option>
+            <option value="customer">Customer</option>
+          </select>
+          
+          <select className="form-input" style={{ width: '180px', padding: '0.475rem 0.875rem' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All Statuses</option>
+            <option value="success">Successful Logins</option>
+            <option value="failed">Failed Logins</option>
+            <option value="completed">Completed Sessions</option>
+          </select>
         </div>
-      </div>
 
-      <div className="admin-table-container">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>IP Address</th>
-              <th>Login Time</th>
-              <th>Logout Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredActivities.length === 0 ? (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No login activity found.</td>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>IP & Device</th>
+                <th>Login Time</th>
+                <th>Logout Time</th>
               </tr>
-            ) : (
-              filteredActivities.map((activity) => (
-                <tr key={activity.id}>
-                  <td>
-                    <div style={{ fontWeight: '500' }}>{activity.userName || 'Unknown User'}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>{activity.email}</div>
-                  </td>
-                  <td>
-                    <span className="admin-role-badge">{activity.role || 'unknown'}</span>
-                  </td>
-                  <td>
-                    {activity.status === 'failed' ? (
-                      <span className="admin-badge admin-badge-danger"><ShieldAlert size={12} style={{marginRight: 4}}/>Failed</span>
-                    ) : activity.status === 'completed' ? (
-                      <span className="admin-badge admin-badge-secondary">Completed</span>
-                    ) : (
-                      <span className="admin-badge admin-badge-success">Active</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>{activity.ipAddress || 'Unknown'}</div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                      <Clock size={12} /> {new Date(activity.loginTime).toLocaleString()}
-                    </div>
-                  </td>
-                  <td>
-                    {activity.logoutTime ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#666' }}>
-                        <Clock size={12} /> {new Date(activity.logoutTime).toLocaleString()}
-                      </div>
-                    ) : (
-                      activity.status === 'failed' ? '-' : <span style={{ color: '#2ecc71', fontSize: '12px' }}>Currently Active</span>
-                    )}
+            </thead>
+            <tbody>
+              {filteredActivities.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--text-muted)' }}><ShieldCheck size={48} /></div>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>No login activity found</div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filteredActivities.map((activity) => {
+                  let deviceOS = 'Unknown Device';
+                  let browserInfo = '';
+                  if (activity.deviceInfo) {
+                    const ua = activity.deviceInfo;
+                    if (ua.includes('Win')) deviceOS = 'Windows';
+                    else if (ua.includes('Mac')) deviceOS = 'MacOS';
+                    else if (ua.includes('Linux')) deviceOS = 'Linux';
+                    else if (ua.includes('Android')) deviceOS = 'Android';
+                    else if (ua.includes('iOS') || ua.includes('iPhone')) deviceOS = 'iOS';
+                    
+                    if (ua.includes('Chrome')) browserInfo = 'Chrome';
+                    else if (ua.includes('Safari') && !ua.includes('Chrome')) browserInfo = 'Safari';
+                    else if (ua.includes('Firefox')) browserInfo = 'Firefox';
+                    else if (ua.includes('Edge')) browserInfo = 'Edge';
+                  }
+
+                  return (
+                  <tr key={activity.id}>
+                    <td>
+                      <div className="user-name">{activity.userName || 'Unknown User'}</div>
+                      <div className="user-email">{activity.email}</div>
+                    </td>
+                    <td>
+                      <span className="badge badge-pending" style={{ textTransform: 'uppercase' }}>{activity.role || 'unknown'}</span>
+                    </td>
+                    <td>
+                      {activity.status === 'failed' ? (
+                        <span className="badge badge-cancelled">Failed</span>
+                      ) : activity.status === 'completed' ? (
+                        <span className="badge badge-shipped">Completed</span>
+                      ) : (
+                        <span className="badge badge-delivered">Active</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{activity.ipAddress || 'Unknown'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title={activity.deviceInfo}>
+                        {deviceOS} {browserInfo && `· ${browserInfo}`}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
+                        <Clock size={12} /> {new Date(activity.loginTime).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                      </div>
+                    </td>
+                    <td>
+                      {activity.logoutTime ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          <Clock size={12} /> {new Date(activity.logoutTime).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
+                        </div>
+                      ) : (
+                        activity.status === 'failed' ? '-' : <span style={{ color: 'var(--status-green)', fontSize: '0.85rem', fontWeight: 600 }}>Currently Active</span>
+                      )}
+                    </td>
+                  </tr>
+                )})
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

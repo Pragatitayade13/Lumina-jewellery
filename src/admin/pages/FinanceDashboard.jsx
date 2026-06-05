@@ -118,6 +118,12 @@ export default function FinanceDashboard() {
   const yesterdayRevenue = chartData[chartData.length - 2].revenue;
   const dayChange = (((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100).toFixed(1);
 
+  // GST Metrics
+  const totalGstCollected = firebaseOrders?.reduce((s, o) => s + (Number(o.gstAmt) || 0), 0) || 0;
+  const totalCgst = firebaseOrders?.reduce((s, o) => s + (Number(o.cgst) || 0), 0) || 0;
+  const totalSgst = firebaseOrders?.reduce((s, o) => s + (Number(o.sgst) || 0), 0) || 0;
+  const totalIgst = firebaseOrders?.reduce((s, o) => s + (Number(o.igst) || 0), 0) || 0;
+
   const handleExport = () => {
     showToast('Generating Finance Report...');
     setTimeout(() => {
@@ -247,8 +253,34 @@ export default function FinanceDashboard() {
               </div>
             </div>
 
-            <div className="admin-card">
-              <div className="card-title" style={{ marginBottom: '1.5rem' }}>Revenue by Month — 2026</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="admin-card">
+                <div className="card-title" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '8px', height: '8px', background: 'var(--status-blue)', borderRadius: '50%', display: 'inline-block' }}></span>
+                  Tax Collection (GST Liability)
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.8rem', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Total GST Collected</span>
+                  <span style={{ fontWeight: 800, color: 'var(--status-blue)', fontSize: '1.1rem' }}>₹{totalGstCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', textAlign: 'center' }}>
+                  <div style={{ padding: '0.8rem', background: 'rgba(52, 152, 219, 0.08)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>CGST</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div style={{ padding: '0.8rem', background: 'rgba(52, 152, 219, 0.08)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>SGST</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{totalSgst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+                  </div>
+                  <div style={{ padding: '0.8rem', background: 'rgba(52, 152, 219, 0.08)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>IGST</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{totalIgst.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-card" style={{ flex: 1 }}>
+                <div className="card-title" style={{ marginBottom: '1.5rem' }}>Revenue by Month — 2026</div>
               {[
                 { month: 'January', revenue: 1820000, growth: 12 },
                 { month: 'February', revenue: 2100000, growth: 15 },
@@ -274,6 +306,7 @@ export default function FinanceDashboard() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </>

@@ -1,62 +1,82 @@
-import { useState } from 'react';
-import { Receipt, FileText, Download, Calculator, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Receipt, FileText, Download, Calculator, Plus, Loader } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useTaxes } from '../../hooks/useTaxes';
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 export default function TaxManagement() {
-  const { showToast } = useApp();
+  const { user, showToast } = useApp();
+  const { taxSettings, loading: taxLoading, updateTaxSettings, calculateTax } = useTaxes();
   
-  const [taxRecords, setTaxRecords] = useState([
-    { id: '#INV-88912', date: '27 May 2026', amount: 285000, gstPerc: 3, gstAmount: 8550, state: 'Maharashtra', type: 'CGST+SGST' },
-    { id: '#INV-88911', date: '26 May 2026', amount: 45000, gstPerc: 3, gstAmount: 1350, state: 'Delhi', type: 'IGST' },
-    { id: '#INV-88910', date: '25 May 2026', amount: 120000, gstPerc: 3, gstAmount: 3600, state: 'Karnataka', type: 'IGST' },
-  ]);
+  const [taxRecords, setTaxRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
 
-  const [gstRates, setGstRates] = useState({ gold: 3, diamond: 3, silver: 3, making: 5 });
-  const [newTx, setNewTx] = useState({ amount: '', state: 'Maharashtra', type: 'gold' });
+  useEffect(() => {
+    if (!db) {
+      setLoadingRecords(false);
+      return;
+    }
+    const q = query(collection(db, 'tax_transactions'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records = [];
+      snapshot.forEach(doc => {
+        records.push({ id: doc.id, ...doc.data() });
+      });
+      setTaxRecords(records);
+      setLoadingRecords(false);
+    }, (err) => {
+      console.error(err);
+      setLoadingRecords(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const [newTx, setNewTx] = useState({ amount: '', state: taxSettings.storeOriginState || 'Maharashtra', type: 'gold' });
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [tempRates, setTempRates] = useState({ gold: 3, diamond: 3, silver: 3, making: 5 });
 
   const calculateGstDetails = () => {
     if (!newTx.amount) return { total: 0, cgst: 0, sgst: 0, igst: 0, rate: 0, type: '' };
-    const rate = gstRates[newTx.type];
-    const amount = parseFloat(newTx.amount);
-    const totalGst = (amount * rate) / 100;
+    return calculateTax(parseFloat(newTx.amount), newTx.type, newTx.state);
+  };
+
+  const handleAddTransaction = async () => {
+    if (!newTx.amount) return;
+    const details = calculateGstDetails();
     
-    const isInterstate = newTx.state !== 'Maharashtra';
+    const newRecord = {
+      displayId: `#INV-${Math.floor(Math.random() * 10000) + 80000}`,
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      amount: parseFloat(newTx.amount),
+      gstPerc: details.rate,
+      gstAmount: details.total,
+      cgst: details.cgst,
+      sgst: details.sgst,
+      igst: details.igst,
+      state: newTx.state,
+      type: details.type,
+      createdAt: serverTimestamp(),
+      source: 'manual_calculator'
+    };
     
-    if (isInterstate) {
-      return { total: totalGst, cgst: 0, sgst: 0, igst: totalGst, rate, type: 'IGST' };
-    } else {
-      return { total: totalGst, cgst: totalGst / 2, sgst: totalGst / 2, igst: 0, rate, type: 'CGST+SGST' };
+    try {
+      await addDoc(collection(db, 'tax_transactions'), newRecord);
+      setNewTx({ amount: '', state: taxSettings.storeOriginState || 'Maharashtra', type: 'gold' });
+      showToast('Tax Transaction Recorded!');
+    } catch (err) {
+      showToast('Failed to record transaction', 'error');
     }
   };
 
-  const handleAddTransaction = () => {
-    if (!newTx.amount) return;
-    const gstDetails = calculateGstDetails();
-    const gstAmount = gstDetails.total;
-    const rate = gstDetails.rate;
-    const type = gstDetails.type;
-    
-    const newRecord = {
-      id: `#INV-${Math.floor(Math.random() * 10000) + 80000}`,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      amount: parseFloat(newTx.amount),
-      gstPerc: rate,
-      gstAmount,
-      state: newTx.state,
-      type
-    };
-    
-    setTaxRecords([newRecord, ...taxRecords]);
-    setNewTx({ amount: '', state: 'Maharashtra', type: 'gold' });
-    showToast('Tax Transaction Recorded!');
-  };
-
-  const handleUpdateBrackets = () => {
-    setGstRates(tempRates);
-    setShowUpdateModal(false);
-    showToast('Tax configuration updated successfully (Regional rules applied)');
+  const handleUpdateBrackets = async () => {
+    const success = await updateTaxSettings(tempRates, user);
+    if (success) {
+      setShowUpdateModal(false);
+      showToast('Tax configuration updated successfully (Regional rules applied)');
+    } else {
+      showToast('Failed to update tax brackets', 'error');
+    }
   };
 
   const handleDownloadInvoice = (record) => {
@@ -143,21 +163,21 @@ export default function TaxManagement() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--surface)', borderRadius: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Gold Jewellery</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{gstRates.gold}%</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{taxSettings.gold}%</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--surface)', borderRadius: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Diamond Jewellery</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{gstRates.diamond}%</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{taxSettings.diamond}%</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--surface)', borderRadius: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Silver Jewellery</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{gstRates.silver}%</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{taxSettings.silver}%</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--surface)', borderRadius: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Making Charges</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{gstRates.making}%</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{taxSettings.making}%</span>
             </div>
-            <button className="btn btn-outline btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => {setTempRates(gstRates); setShowUpdateModal(true);}}>Update Tax Brackets</button>
+            <button className="btn btn-outline btn-sm" style={{ marginTop: '0.5rem' }} onClick={() => {setTempRates(taxSettings); setShowUpdateModal(true);}}>Update Tax Brackets</button>
           </div>
         </div>
 
@@ -167,17 +187,17 @@ export default function TaxManagement() {
             <button className="btn btn-gold btn-sm" onClick={handleGSTR3B} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFFFFF', fontWeight: 'bold' }}><FileText size={14} /> GSTR-3B Report</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-             <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total IGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹4.2L</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.igst||0),0).toLocaleString('en-IN')}</div>
              </div>
              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total CGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹1.8L</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.cgst||0),0).toLocaleString('en-IN')}</div>
              </div>
              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total SGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹1.8L</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.sgst||0),0).toLocaleString('en-IN')}</div>
              </div>
            </div>
         </div>
@@ -258,9 +278,13 @@ export default function TaxManagement() {
               </tr>
             </thead>
             <tbody>
-              {taxRecords.map(record => (
+              {loadingRecords ? (
+                <tr><td colSpan="9" style={{textAlign:'center', padding:'2rem'}}><Loader className="spin" size={24} color="var(--gold)" /></td></tr>
+              ) : taxRecords.length === 0 ? (
+                <tr><td colSpan="9" style={{textAlign:'center', padding:'2rem'}}>No tax transactions found.</td></tr>
+              ) : taxRecords.map(record => (
                 <tr key={record.id}>
-                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{record.id}</td>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{record.displayId || record.id.slice(0,8)}</td>
                   <td>{record.date}</td>
                   <td>
                     <span style={{ 
@@ -268,17 +292,17 @@ export default function TaxManagement() {
                       borderRadius: '12px', 
                       fontSize: '0.75rem', 
                       fontWeight: 700,
-                      background: record.state === 'Maharashtra' ? 'var(--status-green)' : 'var(--status-blue)',
+                      background: record.state === taxSettings.storeOriginState ? 'var(--status-green)' : 'var(--status-blue)',
                       color: '#000'
                     }}>
                       {record.state}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 600 }}>₹{record.amount.toLocaleString('en-IN')}</td>
+                  <td style={{ fontWeight: 600 }}>₹{record.amount?.toLocaleString('en-IN') || 0}</td>
                   <td>{record.gstPerc}%</td>
                   <td><span className="badge badge-info">{record.type}</span></td>
-                  <td style={{ color: 'var(--status-orange)' }}>₹{record.gstAmount.toLocaleString('en-IN')}</td>
-                  <td style={{ fontWeight: 700 }}>₹{(record.amount + record.gstAmount).toLocaleString('en-IN')}</td>
+                  <td style={{ color: 'var(--status-orange)' }}>₹{record.gstAmount?.toLocaleString('en-IN') || 0}</td>
+                  <td style={{ fontWeight: 700 }}>₹{((record.amount || 0) + (record.gstAmount || 0)).toLocaleString('en-IN')}</td>
                   <td>
                     <button className="btn btn-icon btn-outline" onClick={() => handleDownloadInvoice(record)} title="Download Tax Invoice">
                       <Download size={14} />

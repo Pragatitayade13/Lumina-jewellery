@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
+import { useTaxes } from '../../hooks/useTaxes';
 import './CartModal.css';
 
 export default function CartModal({ isOpen, onClose }) {
@@ -15,9 +16,10 @@ export default function CartModal({ isOpen, onClose }) {
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [lastOrderId, setLastOrderId] = useState(null);
+  const { calculateTax } = useTaxes();
 
   const [shippingDetails, setShippingDetails] = useState({
-    name: '', email: '', phone: '', address: '', city: 'Mumbai'
+    name: '', email: '', phone: '', address: '', city: 'Mumbai', state: 'Maharashtra'
   });
   const [paymentMethod, setPaymentMethod] = useState('Credit Card');
 
@@ -40,9 +42,26 @@ export default function CartModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  let subtotal = 0;
+  let totalGstAmt = 0;
+  let cgst = 0;
+  let sgst = 0;
+  let igst = 0;
+
+  cart.forEach(item => {
+    const basePrice = item.price * item.qty;
+    subtotal += basePrice;
+    if (calculateTax) {
+      const tax = calculateTax(basePrice, item.category || 'gold', shippingDetails.state);
+      totalGstAmt += tax.total;
+      cgst += tax.cgst || 0;
+      sgst += tax.sgst || 0;
+      igst += tax.igst || 0;
+    }
+  });
+
   const deliveryFee = subtotal > 50000 ? 0 : (subtotal > 0 ? 500 : 0);
-  const total = subtotal + deliveryFee - discount;
+  const total = subtotal + totalGstAmt + deliveryFee - discount;
 
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'LUMINA10') {
@@ -80,10 +99,15 @@ export default function CartModal({ isOpen, onClose }) {
         email: shippingDetails.email,
         phone: shippingDetails.phone,
         city: shippingDetails.city,
+        state: shippingDetails.state,
         address: shippingDetails.address,
         product: cart.map(c => `${c.qty}x ${c.name}`).join(', '),
         items: cart,
         subtotal,
+        gstAmt: totalGstAmt,
+        cgst,
+        sgst,
+        igst,
         deliveryFee,
         discount,
         amount: total,
@@ -185,6 +209,24 @@ export default function CartModal({ isOpen, onClose }) {
                   <span>Subtotal</span>
                   <span style={{ color: '#fff' }}>₹{subtotal.toLocaleString('en-IN')}</span>
                 </div>
+                {igst > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                    <span>IGST</span>
+                    <span style={{ color: '#fff' }}>₹{igst.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {cgst > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                    <span>CGST</span>
+                    <span style={{ color: '#fff' }}>₹{cgst.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {sgst > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                    <span>SGST</span>
+                    <span style={{ color: '#fff' }}>₹{sgst.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
                 {discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--status-green)' }}>
                     <span>Discount</span>
@@ -234,9 +276,22 @@ export default function CartModal({ isOpen, onClose }) {
                 <textarea className="checkout-input checkout-textarea" placeholder="Flat No., Building Name, Street..." required value={shippingDetails.address} onChange={e => setShippingDetails({...shippingDetails, address: e.target.value})}></textarea>
               </div>
               
-              <div className="checkout-form-group">
-                <label className="checkout-label">City</label>
-                <input type="text" className="checkout-input" placeholder="e.g. Mumbai" required value={shippingDetails.city} onChange={e => setShippingDetails({...shippingDetails, city: e.target.value})} />
+              <div className="checkout-grid-2-col">
+                <div className="checkout-form-group">
+                  <label className="checkout-label">City</label>
+                  <input type="text" className="checkout-input" placeholder="e.g. Mumbai" required value={shippingDetails.city} onChange={e => setShippingDetails({...shippingDetails, city: e.target.value})} />
+                </div>
+                <div className="checkout-form-group">
+                  <label className="checkout-label">State</label>
+                  <select className="checkout-input" required value={shippingDetails.state} onChange={e => setShippingDetails({...shippingDetails, state: e.target.value})} style={{ background: '#222' }}>
+                    <option value="Maharashtra">Maharashtra</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Karnataka">Karnataka</option>
+                    <option value="Gujarat">Gujarat</option>
+                    <option value="Tamil Nadu">Tamil Nadu</option>
+                    <option value="Rajasthan">Rajasthan</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
@@ -264,7 +319,15 @@ export default function CartModal({ isOpen, onClose }) {
             </div>
 
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.3rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                <span>Subtotal</span>
+                <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                <span>GST ({igst > 0 ? 'IGST' : 'CGST+SGST'})</span>
+                <span>₹{totalGstAmt.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontWeight: 600, fontSize: '1.3rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                 <span>Amount to Pay</span>
                 <span style={{ color: 'var(--gold)' }}>₹{total.toLocaleString('en-IN')}</span>
               </div>

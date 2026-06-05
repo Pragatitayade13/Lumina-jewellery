@@ -150,12 +150,32 @@ export default function OrderManagement() {
                     <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                   </td>
                   <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(order.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(order.subtotal || order.amount * 0.97).toLocaleString('en-IN')}</td>
                 </tr>
+                ${order.igst > 0 ? `
                 <tr>
-                  <td colspan="2" style="text-align: right; color: #666;">GST (3%)</td>
-                  <td style="text-align: right;">₹${(order.amount * 0.03).toLocaleString('en-IN')}</td>
+                  <td colspan="2" style="text-align: right; color: #666;">IGST</td>
+                  <td style="text-align: right;">₹${order.igst.toLocaleString('en-IN')}</td>
                 </tr>
+                ` : ''}
+                ${order.cgst > 0 ? `
+                <tr>
+                  <td colspan="2" style="text-align: right; color: #666;">CGST</td>
+                  <td style="text-align: right;">₹${order.cgst.toLocaleString('en-IN')}</td>
+                </tr>
+                ` : ''}
+                ${order.sgst > 0 ? `
+                <tr>
+                  <td colspan="2" style="text-align: right; color: #666;">SGST</td>
+                  <td style="text-align: right;">₹${order.sgst.toLocaleString('en-IN')}</td>
+                </tr>
+                ` : ''}
+                ${!order.igst && !order.cgst && !order.sgst ? `
+                <tr>
+                  <td colspan="2" style="text-align: right; color: #666;">GST</td>
+                  <td style="text-align: right;">₹${(order.gstAmt || order.amount * 0.03).toLocaleString('en-IN')}</td>
+                </tr>
+                ` : ''}
                 <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                   <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
                   <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${order.amount?.toLocaleString('en-IN')}</td>
@@ -272,12 +292,32 @@ export default function OrderManagement() {
                   <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                 </td>
                 <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(viewInvoice.subtotal || viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
               </tr>
+              ${viewInvoice.igst > 0 ? `
               <tr>
-                <td colspan="2" style="text-align: right; color: #666;">GST (3%)</td>
-                <td style="text-align: right;">₹${(viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+                <td colspan="2" style="text-align: right; color: #666;">IGST</td>
+                <td style="text-align: right;">₹${viewInvoice.igst.toLocaleString('en-IN')}</td>
               </tr>
+              ` : ''}
+              ${viewInvoice.cgst > 0 ? `
+              <tr>
+                <td colspan="2" style="text-align: right; color: #666;">CGST</td>
+                <td style="text-align: right;">₹${viewInvoice.cgst.toLocaleString('en-IN')}</td>
+              </tr>
+              ` : ''}
+              ${viewInvoice.sgst > 0 ? `
+              <tr>
+                <td colspan="2" style="text-align: right; color: #666;">SGST</td>
+                <td style="text-align: right;">₹${viewInvoice.sgst.toLocaleString('en-IN')}</td>
+              </tr>
+              ` : ''}
+              ${!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst ? `
+              <tr>
+                <td colspan="2" style="text-align: right; color: #666;">GST</td>
+                <td style="text-align: right;">₹${(viewInvoice.gstAmt || viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+              </tr>
+              ` : ''}
               <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                 <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
                 <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${viewInvoice.amount?.toLocaleString('en-IN')}</td>
@@ -573,12 +613,32 @@ export default function OrderManagement() {
                     <span style={{ color: '#888', fontSize: '0.75rem' }}>HSN Code: 7113</span>
                   </td>
                   <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{(viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{(viewInvoice.subtotal || viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
                 </tr>
-                <tr>
-                  <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST (3%)</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
-                </tr>
+                {viewInvoice.igst > 0 && (
+                  <tr>
+                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>IGST</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.igst.toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
+                {viewInvoice.cgst > 0 && (
+                  <tr>
+                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>CGST</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.cgst.toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
+                {viewInvoice.sgst > 0 && (
+                  <tr>
+                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>SGST</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.sgst.toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
+                {!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst && (
+                  <tr>
+                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.gstAmt || viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+                  </tr>
+                )}
                 <tr style={{ background: '#fafafa', borderTop: '2px solid #1a1a1a' }}>
                   <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total</td>
                   <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{viewInvoice.amount?.toLocaleString('en-IN')}</td>

@@ -2,8 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdminOrSuperAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
+    
+    function isStaffOrHigher() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
+    }
+
+    // Public Read-Only (Products, Categories, CMS)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher();
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher();
+    }
+    
+    match /cms/{document=**} {
+      allow read: if true;
+      allow write: if isAdminOrSuperAdmin();
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      // Users can read/write their own data. Admins can read/write all.
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      // Users can read their own orders. Staff can read/write all.
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaffOrHigher());
+      allow write: if isAuthenticated(); // Allow users to create orders
+    }
+
+    // Security & Login Activity
+    match /loginActivity/{docId} {
+      // Users can write their own login activity, but only admins can read all
+      allow create: if true; // We need to allow creation even if auth isn't fully established for failed attempts
+      allow read, update, delete: if isStaffOrHigher();
+    }
+    
+    // Financial Data (Strictly Admin/SuperAdmin)
+    match /tax_transactions/{docId} {
+      allow read, write: if isAdminOrSuperAdmin();
+    }
+    match /tax_audit_logs/{docId} {
+      allow read, write: if isAdminOrSuperAdmin();
+    }
+
+    // Catch-all: Restrict anything not explicitly defined
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isStaffOrHigher();
     }
   }
 }
