@@ -1,14 +1,19 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
+function GLTFModel({ url }) {
+  const { scene } = useGLTF(url);
+  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  return <primitive object={clonedScene} />;
+}
+
 export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, category }) {
   const groupRef = useRef();
-  const [model, setModel] = useState(null);
   
   // Interpolation targets for smooth movement
-  const targetPos = new THREE.Vector3(0, 0, 0);
+  const targetPos = useMemo(() => new THREE.Vector3(0, 0, 0), []);
 
   // Default scales based on category
   let defaultScale = 1;
@@ -16,18 +21,6 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
   else if (category === 'Earrings' || category === 'Earring') defaultScale = 0.3;
   else if (category === 'Necklace') defaultScale = 1.2;
   else if (category === 'Bracelet' || category === 'Bangle') defaultScale = 0.6;
-
-  // Try to load custom GLB, else we render a fallback primitive
-  useEffect(() => {
-    if (modelUrl) {
-      try {
-        const { scene } = useGLTF(modelUrl);
-        setModel(scene.clone());
-      } catch (e) {
-        console.warn("Failed to load GLB model, using fallback", e);
-      }
-    }
-  }, [modelUrl]);
 
   useFrame((state, delta) => {
     if (!groupRef.current || !positionRef || !positionRef.current) return;
@@ -44,8 +37,8 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
 
   return (
     <group ref={groupRef} scale={[defaultScale, defaultScale, defaultScale]}>
-      {model ? (
-        <primitive object={model} />
+      {modelUrl ? (
+        <GLTFModel url={modelUrl} />
       ) : (
         // Fallback placeholder shape
         <mesh>

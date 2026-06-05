@@ -123,6 +123,17 @@
   align-items: center;
 }
 
+.vto-footer {
+  padding: 1rem 1.5rem;
+  background: var(--bg-dark);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+  position: relative;
+}
+
 .vto-controls-left {
   flex: 1;
 }
@@ -176,6 +187,21 @@
 }
 
 @media (max-width: 768px) {
+  .vto-container {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  .vto-footer {
+    flex-direction: column;
+    gap: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .vto-actions {
+    width: 100%;
+    justify-content: center;
+  }
   .vto-controls {
     flex-direction: column;
     gap: 1rem;

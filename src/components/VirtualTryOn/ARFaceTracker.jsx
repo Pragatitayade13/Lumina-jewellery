@@ -14,15 +14,9 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
   const hasLoadedRef = useRef(false);
   const [isReady, setIsReady] = useState(false); // Only toggle once to mount renderer
 
+  // Initialize MediaPipe once
   useEffect(() => {
     if (!videoRef.current) return;
-
-    const mapLandmark = (point) => {
-      const x = (point.x - 0.5) * -10; 
-      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
-      const z = -point.z * 10;
-      return [x, y, z];
-    };
 
     faceMeshRef.current = new FaceMesh({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -34,6 +28,39 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
     });
+
+    cameraUtilsRef.current = new Camera(videoRef.current, {
+      onFrame: async () => {
+        if (faceMeshRef.current && videoRef.current) {
+          try {
+            await faceMeshRef.current.send({ image: videoRef.current });
+          } catch (e) {
+            console.error("FaceMesh Error:", e);
+          }
+        }
+      },
+      width: 1280,
+      height: 720
+    });
+
+    cameraUtilsRef.current.start();
+
+    return () => {
+      if (cameraUtilsRef.current) cameraUtilsRef.current.stop();
+      if (faceMeshRef.current) faceMeshRef.current.close();
+    };
+  }, [videoRef]);
+
+  // Update logic on resize or product change
+  useEffect(() => {
+    if (!faceMeshRef.current) return;
+
+    const mapLandmark = (point) => {
+      const x = (point.x - 0.5) * -10; 
+      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
+      const z = -point.z * 10;
+      return [x, y, z];
+    };
 
     faceMeshRef.current.onResults((results) => {
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
@@ -55,28 +82,7 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
         }
       }
     });
-
-    cameraUtilsRef.current = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (faceMeshRef.current && videoRef.current) {
-          await faceMeshRef.current.send({ image: videoRef.current });
-        }
-      },
-      width: 1280,
-      height: 720
-    });
-
-    cameraUtilsRef.current.start();
-
-    return () => {
-      if (cameraUtilsRef.current) {
-        cameraUtilsRef.current.stop();
-      }
-      if (faceMeshRef.current) {
-        faceMeshRef.current.close();
-      }
-    };
-  }, [videoRef, product, onLoaded, size.width, size.height]);
+  }, [size.width, size.height, product, onLoaded]);
 
   if (!isReady) return null;
 

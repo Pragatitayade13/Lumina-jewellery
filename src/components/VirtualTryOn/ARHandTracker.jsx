@@ -14,15 +14,9 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
   const hasLoadedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
+  // Initialize MediaPipe once
   useEffect(() => {
     if (!videoRef.current) return;
-
-    const mapLandmark = (point) => {
-      const x = (point.x - 0.5) * -10; 
-      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
-      const z = -point.z * 10;
-      return [x, y, z];
-    };
 
     handsRef.current = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -34,6 +28,39 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
     });
+
+    cameraUtilsRef.current = new Camera(videoRef.current, {
+      onFrame: async () => {
+        if (handsRef.current && videoRef.current) {
+          try {
+            await handsRef.current.send({ image: videoRef.current });
+          } catch (e) {
+            console.error("Hands Error:", e);
+          }
+        }
+      },
+      width: 1280,
+      height: 720
+    });
+
+    cameraUtilsRef.current.start();
+
+    return () => {
+      if (cameraUtilsRef.current) cameraUtilsRef.current.stop();
+      if (handsRef.current) handsRef.current.close();
+    };
+  }, [videoRef]);
+
+  // Update logic on resize or product change
+  useEffect(() => {
+    if (!handsRef.current) return;
+
+    const mapLandmark = (point) => {
+      const x = (point.x - 0.5) * -10; 
+      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
+      const z = -point.z * 10;
+      return [x, y, z];
+    };
 
     handsRef.current.onResults((results) => {
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -51,28 +78,7 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
         }
       }
     });
-
-    cameraUtilsRef.current = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (handsRef.current && videoRef.current) {
-          await handsRef.current.send({ image: videoRef.current });
-        }
-      },
-      width: 1280,
-      height: 720
-    });
-
-    cameraUtilsRef.current.start();
-
-    return () => {
-      if (cameraUtilsRef.current) {
-        cameraUtilsRef.current.stop();
-      }
-      if (handsRef.current) {
-        handsRef.current.close();
-      }
-    };
-  }, [videoRef, product, onLoaded, size.width, size.height]);
+  }, [size.width, size.height, product, onLoaded]);
 
   if (!isReady) return null;
 

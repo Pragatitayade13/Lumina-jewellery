@@ -72,6 +72,9 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   const capturePhoto = async () => {
@@ -109,7 +112,6 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
 
   const handleAddToCart = () => {
     addToCart(product);
-    showToast(`${product.name} added to cart from AR Try-On!`);
   };
 
   if (!isOpen) return null;
