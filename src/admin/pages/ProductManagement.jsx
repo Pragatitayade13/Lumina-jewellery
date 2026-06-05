@@ -51,7 +51,7 @@ export default function ProductManagement() {
     }
   ]);
   
-  const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '' });
   
   const { products, loading, removeProduct, addProduct } = useProducts();
   const { showToast } = useApp();
@@ -101,7 +101,7 @@ export default function ProductManagement() {
       showToast("Product submitted for manager approval.");
     }
     setIsAddModalOpen(false);
-    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '' });
+    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '' });
   };
 
   const handleEditSubmit = async (e) => {
@@ -479,6 +479,13 @@ export default function ProductManagement() {
                     </div>
                   )}
                 </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">
+                    3D AR Model (Optional)
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Provide a direct URL to a .glb or .gltf file for AR Try-On)</span>
+                  </label>
+                  <input type="text" className="form-input" placeholder="e.g. https://storage.googleapis.com/.../model.glb" value={editingProduct.modelUrl || ''} onChange={e => setEditingProduct({...editingProduct, modelUrl: e.target.value})} />
+                </div>
               </div>
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setEditingProduct(null)}>Cancel</button>
@@ -571,6 +578,13 @@ export default function ProductManagement() {
                       <img src={newProduct.image} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )}
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">
+                    3D AR Model (Optional)
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Provide a direct URL to a .glb or .gltf file for AR Try-On)</span>
+                  </label>
+                  <input type="text" className="form-input" placeholder="e.g. https://storage.googleapis.com/.../model.glb" value={newProduct.modelUrl} onChange={e => setNewProduct({...newProduct, modelUrl: e.target.value})} />
                 </div>
               </div>
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
