@@ -327,14 +327,31 @@
   .icon-btn { width: 36px; height: 36px; }
   /* Ensure touch target minimum 44px */
   .hamburger { min-width: 44px; min-height: 44px; justify-content: center; }
+  .hide-on-mobile { display: none !important; }
 }
 
 @media (max-width: 640px) {
-  .contact-strip { display: none; }
+  /* Keep contact strip for mobile live rates */
+  .contact-strip { 
+    display: block; 
+    padding: 0.6rem 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  .contact-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .strip-left { display: none; }
+  .strip-right {
+    justify-content: flex-start;
+    gap: 1rem;
+    width: max-content;
+    margin: 0 auto;
+  }
   .logo-tagline { display: none; }
 }
 
 @media (max-width: 375px) {
-  .login-btn span { display: none; } /* Hide label on very small screens */
   .logo-name { font-size: 1rem; }
 }

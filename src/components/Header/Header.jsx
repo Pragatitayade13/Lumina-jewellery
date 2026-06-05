@@ -178,7 +178,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
               </div>
 
               <button
-                className="icon-btn"
+                className="icon-btn hide-on-mobile"
                 id="wishlist-btn"
                 aria-label="Wishlist"
                 onClick={onWishlistClick}
@@ -188,7 +188,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
               </button>
 
               <button
-                className="icon-btn"
+                className="icon-btn hide-on-mobile"
                 id="cart-btn"
                 aria-label="Shopping Cart"
                 onClick={onCartClick}
@@ -198,7 +198,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
               </button>
 
               <button
-                className="login-btn"
+                className="login-btn hide-on-mobile"
                 id="login-btn"
                 onClick={() => setIsAuthOpen(true)}
                 aria-label={t('nav.login')}
@@ -234,8 +234,16 @@ export default function Header({ onCartClick, onWishlistClick }) {
             </a>
           ))}
         </nav>
+        <div className="mobile-menu-actions" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-outline" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem' }} onClick={() => { setMenuOpen(false); onWishlistClick(); }}>
+            <Heart size={16} /> Wishlist {wishlistCount > 0 && `(${wishlistCount})`}
+          </button>
+          <button className="btn btn-outline" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem' }} onClick={() => { setMenuOpen(false); onCartClick(); }}>
+            <ShoppingBag size={16} /> Cart {cartCount > 0 && `(${cartCount})`}
+          </button>
+        </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setIsAuthOpen(true)}>
+          <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => { setMenuOpen(false); setIsAuthOpen(true); }}>
             <User size={16} /> Login / Register
           </button>
         </div>
