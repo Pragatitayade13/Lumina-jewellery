@@ -84,7 +84,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
             <span className="strip-item"><Phone size={12} /><a href={`tel:${socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91-9876543210'}`}>{socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91 98765 43210'}</a></span>
             <span className="strip-item"><Mail size={12} /><a href={`mailto:${socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}`}>{socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}</a></span>
           </div>
-          <div className="strip-right" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="strip-right" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'nowrap' }}>
             <span style={{ color: 'var(--gold)', fontWeight: '600', display: 'flex', alignItems: 'center' }}>
               <span className="live-dot" /> {liveRatesLabel}:
             </span>
