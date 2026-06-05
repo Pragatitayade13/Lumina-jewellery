@@ -30,10 +30,22 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
     groupRef.current.position.lerp(targetPos, 0.2);
     
     // Subtle auto-rotation for demo purposes if no exact rotation matrix is available
-    if (category === 'Ring' || category === 'Bracelet' || category === 'Bangle') {
+    const cat = (category || '').toLowerCase();
+    if (cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle')) {
       groupRef.current.rotation.y += delta * 0.5;
     }
+    
+    // Hide if position is set to the 'hidden' default
+    if (positionRef.current[1] === -1000) {
+      groupRef.current.visible = false;
+    } else {
+      groupRef.current.visible = true;
+    }
   });
+
+  const cat = (category || '').toLowerCase();
+  const isRing = cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle');
+  const isNecklace = cat.includes('necklace');
 
   return (
     <group ref={groupRef} scale={[defaultScale, defaultScale, defaultScale]}>
@@ -42,9 +54,9 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
       ) : (
         // Fallback placeholder shape
         <mesh>
-          {category === 'Ring' || category === 'Bracelet' || category === 'Bangle' ? (
+          {isRing ? (
             <torusGeometry args={[1, 0.1, 16, 100]} />
-          ) : category === 'Necklace' ? (
+          ) : isNecklace ? (
              <torusGeometry args={[2, 0.05, 16, 100]} />
           ) : (
              <sphereGeometry args={[0.5, 32, 32]} />

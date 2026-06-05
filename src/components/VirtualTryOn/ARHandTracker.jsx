@@ -10,7 +10,7 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
   const handsRef = useRef(null);
   const cameraUtilsRef = useRef(null);
   
-  const positionRef = useRef([0, -10, -50]);
+  const positionRef = useRef([0, -1000, 0]);
   const hasLoadedRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -65,7 +65,8 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
     handsRef.current.onResults((results) => {
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
-        if (product?.category === 'Ring') {
+        const cat = (product?.category || '').toLowerCase();
+        if (cat.includes('ring')) {
           positionRef.current = mapLandmark(landmarks[13]);
         } else {
           positionRef.current = mapLandmark(landmarks[0]);
@@ -76,6 +77,9 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
           setIsReady(true);
           onLoaded();
         }
+      } else {
+        // Hide model when no hands are detected
+        positionRef.current = [0, -1000, 0];
       }
     });
   }, [size.width, size.height, product, onLoaded]);

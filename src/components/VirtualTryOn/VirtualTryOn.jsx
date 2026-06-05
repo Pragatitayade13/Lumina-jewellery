@@ -121,7 +121,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
 
   return (
     <div className="vto-overlay">
-      <div className="vto-modal">
+      <div className="vto-container">
         <div className="vto-header">
           <div className="vto-title">
             <Camera size={20} className="vto-icon" />

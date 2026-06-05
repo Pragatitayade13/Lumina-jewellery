@@ -10,7 +10,7 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
   const faceMeshRef = useRef(null);
   const cameraUtilsRef = useRef(null);
   
-  const positionRef = useRef([0, -10, -50]); // Default hidden far away
+  const positionRef = useRef([0, -1000, 0]);
   const hasLoadedRef = useRef(false);
   const [isReady, setIsReady] = useState(false); // Only toggle once to mount renderer
 
@@ -67,7 +67,8 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
         const landmarks = results.multiFaceLandmarks[0];
         
         let newPos = [0, 0, 0];
-        if (product?.category === 'Earrings' || product?.category === 'Earring') {
+        const cat = (product?.category || '').toLowerCase();
+        if (cat.includes('earring')) {
           newPos = mapLandmark(landmarks[132]);
         } else {
           newPos = mapLandmark(landmarks[152]);
@@ -80,6 +81,9 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
           setIsReady(true);
           onLoaded();
         }
+      } else {
+        // Hide model when no face is detected
+        positionRef.current = [0, -1000, 0];
       }
     });
   }, [size.width, size.height, product, onLoaded]);
