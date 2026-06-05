@@ -47,6 +47,7 @@ const allNavItems = [
   { section: 'System', roles: ['superadmin', 'admin'] },
   { path: '/admin/content', label: 'Content Management', icon: <FileText size={18} />, roles: ['superadmin', 'admin'] },
   { path: '/admin/security', label: 'Security & Access', icon: <Shield size={18} />, roles: ['superadmin', 'admin'] },
+  { path: '/admin/login-activity', label: 'Security Logs', icon: <Shield size={18} />, roles: ['superadmin'] },
   { path: '/admin/settings', label: 'System Settings', icon: <Settings size={18} />, roles: ['superadmin'] },
 
   { section: 'CMS & Branding', roles: ['superadmin'] },
@@ -141,7 +142,7 @@ export default function AdminLayout({ children }) {
     if (user?.uid) {
       try {
         const { auth, db } = await import('../config/firebase');
-        const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+        const { updateDoc, doc, serverTimestamp, collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
         const { signOut } = await import('firebase/auth');
         
         if (db) {
@@ -149,6 +150,25 @@ export default function AdminLayout({ children }) {
              lastCheckOut: serverTimestamp(),
              status: 'offline'
            });
+
+           // Update login activity record
+           try {
+             const q = query(
+               collection(db, 'loginActivity'), 
+               where('userId', '==', user.uid),
+               orderBy('loginTime', 'desc'),
+               limit(1)
+             );
+             const snapshot = await getDocs(q);
+             if (!snapshot.empty) {
+               await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+                 logoutTime: new Date().toISOString(),
+                 status: 'completed'
+               });
+             }
+           } catch (err) {
+             console.error("Error closing login session", err);
+           }
         }
         if (auth) await signOut(auth);
       } catch (e) { console.error("Logout error", e); }

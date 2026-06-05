@@ -50,7 +50,7 @@ export default function CustomerLayout({ children }) {
     if (user?.uid) {
       try {
         const { auth, db } = await import('../config/firebase');
-        const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+        const { updateDoc, doc, serverTimestamp, collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
         const { signOut } = await import('firebase/auth');
         
         if (db) {
@@ -58,6 +58,25 @@ export default function CustomerLayout({ children }) {
              lastCheckOut: serverTimestamp(),
              status: 'offline'
            });
+
+           // Update login activity record
+           try {
+             const q = query(
+               collection(db, 'loginActivity'), 
+               where('userId', '==', user.uid),
+               orderBy('loginTime', 'desc'),
+               limit(1)
+             );
+             const snapshot = await getDocs(q);
+             if (!snapshot.empty) {
+               await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+                 logoutTime: new Date().toISOString(),
+                 status: 'completed'
+               });
+             }
+           } catch (err) {
+             console.error("Error closing login session", err);
+           }
         }
         if (auth) await signOut(auth);
       } catch (e) { console.error("Logout error", e); }

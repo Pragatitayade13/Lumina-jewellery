@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle } from 'lucide-react';
+import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import { Link } from 'react-router-dom';
 import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
@@ -142,6 +144,45 @@ export default function Dashboard() {
   const actualCustomersCount = firebaseCustomers?.length || 0;
   const actualProductsCount = firebaseProducts?.length || 0;
   const pendingOrdersCount = firebaseOrders?.filter(o => o.status === 'pending').length || 0;
+  
+  const [securityStats, setSecurityStats] = useState({ todayLogins: 0, activeUsers: 0, failedLogins: 0, recentActivities: [] });
+
+  useEffect(() => {
+    if (user?.role !== 'superadmin') return;
+    
+    const fetchSecurityStats = async () => {
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        // Fetch recent logins
+        const q = query(collection(db, 'loginActivity'), orderBy('loginTime', 'desc'), limit(50));
+        const snap = await getDocs(q);
+        
+        let todayCount = 0;
+        let activeCount = 0;
+        let failedCount = 0;
+        const recents = [];
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const loginTime = new Date(data.loginTime);
+          if (loginTime >= today) todayCount++;
+          if (data.status === 'failed' && loginTime >= today) failedCount++;
+          if (data.status === 'success' || data.status === 'active') {
+             if (!data.logoutTime) activeCount++;
+          }
+          if (recents.length < 5) recents.push({ id: doc.id, ...data });
+        });
+        
+        setSecurityStats({ todayLogins: todayCount, activeUsers: activeCount, failedLogins: failedCount, recentActivities: recents });
+      } catch (err) {
+        console.error("Error fetching security stats", err);
+      }
+    };
+    
+    fetchSecurityStats();
+  }, [user]);
   
   // Inventory Alerts
   const lowStockProducts = firebaseProducts?.filter(p => (p.stock || 0) <= (p.minStock || 5)) || [];
@@ -300,6 +341,31 @@ export default function Dashboard() {
         <StatCard icon={<Package size={20} />} iconClass="blue" label="Pending Orders" value={pendingOrdersCount} trend="Action Req." trendUp={false} trendNote="awaiting fulfillment" accentColor="#3498db" />
         <StatCard icon={<Gem size={20} />} iconClass="purple" label="Total Products" value={actualProductsCount} trend="Live" trendUp={true} trendNote="synced with DB" accentColor="#9b59b6" />
       </div>
+
+      {/* Security Widgets for Superadmin */}
+      {user?.role === 'superadmin' && (
+        <div className="stat-grid mb-15">
+          <StatCard icon={<ShieldCheck size={20} />} iconClass="green" label="Total Logins Today" value={securityStats.todayLogins} trend="Today" trendUp={true} trendNote="across all roles" accentColor="#2ecc71" />
+          <StatCard icon={<Users size={20} />} iconClass="blue" label="Active Users" value={securityStats.activeUsers} trend="Live" trendUp={true} trendNote="currently logged in" accentColor="#3498db" />
+          <StatCard icon={<ShieldAlert size={20} />} iconClass="red" label="Failed Login Attempts" value={securityStats.failedLogins} trend="Security" trendUp={false} trendNote="failed attempts today" accentColor="#e74c3c" />
+          <div className="admin-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Recent Security Activity</div>
+            {securityStats.recentActivities.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {securityStats.recentActivities.slice(0, 2).map(act => (
+                  <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{act.email || act.userName}</span>
+                    <span style={{ color: act.status === 'failed' ? '#e74c3c' : '#2ecc71' }}>{act.status.toUpperCase()}</span>
+                  </div>
+                ))}
+                <Link to="/admin/login-activity" style={{ fontSize: '0.7rem', color: 'var(--gold)', marginTop: '0.2rem' }}>View All Logs →</Link>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No recent activity.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Revenue Chart + AI Insights */}
       <div className="grid-2-1 mb-15">

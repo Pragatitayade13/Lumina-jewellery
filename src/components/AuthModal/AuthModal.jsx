@@ -5,7 +5,7 @@ import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, 
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../config/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import bgImage from '../../assets/login_bg.png';
 import './AuthModal.css';
 
@@ -51,6 +51,44 @@ export default function AuthModal() {
     setIsSignUp(false); // Default to sign in when selecting a new option
   };
 
+  const recordLoginActivity = async (userDocData, uid, currentEmail, status, errorMsg = '') => {
+    try {
+      let ipAddress = 'Unknown';
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        ipAddress = data.ip;
+      } catch (e) { console.warn('Could not fetch IP', e); }
+
+      const deviceInfo = navigator.userAgent;
+      const role = userDocData ? userDocData.role : (selectedOption?.id || 'unknown');
+      const userName = userDocData ? userDocData.name : (uid === 'unknown' ? 'Unknown' : 'User');
+      
+      const payload = {
+        userId: uid,
+        userName,
+        email: currentEmail,
+        role,
+        loginTime: new Date().toISOString(),
+        ipAddress,
+        deviceInfo,
+        status,
+        errorMessage: errorMsg
+      };
+
+      const docRef = await addDoc(collection(db, 'loginActivity'), payload);
+
+      // Trigger email alert asynchronously
+      fetch('/api/send-login-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, loginId: docRef.id })
+      }).catch(err => console.error("Email API failed:", err));
+
+    } catch (e) {
+      console.error('Error logging activity', e);
+    }
+  };
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -108,6 +146,10 @@ export default function AuthModal() {
           } else {
             const data = userDoc.data();
             
+            if (data.isBlocked) {
+              throw new Error("Account is blocked due to multiple failed login attempts. Please contact support.");
+            }
+
             // SECURITY CHECK: Prevent customers from logging into admin/staff portals
             if (selectedOption.id !== 'customer' && data.role === 'customer') {
               throw new Error("Access Denied. This account does not have administrative privileges.");
@@ -115,10 +157,13 @@ export default function AuthModal() {
             
             await updateDoc(doc(db, 'users', userCredential.user.uid), {
               lastCheckIn: serverTimestamp(),
-              status: 'online'
+              status: 'online',
+              failedLoginAttempts: 0 // reset on success
             });
             
             setUser({ uid: userCredential.user.uid, email, ...data, status: 'online' });
+            // Record successful login
+            await recordLoginActivity(data, userCredential.user.uid, email, 'success');
           }
         }
         
@@ -127,6 +172,35 @@ export default function AuthModal() {
           navigate(selectedOption.path);
         }
       } catch (error) {
+        // Record failed attempt
+        try {
+          const q = query(collection(db, 'users'), where('email', '==', email));
+          const querySnapshot = await getDocs(q);
+          let userDocData = null;
+          let uid = 'unknown';
+
+          if (!querySnapshot.empty) {
+            const docSnap = querySnapshot.docs[0];
+            uid = docSnap.id;
+            userDocData = docSnap.data();
+            
+            const currentFailed = (userDocData.failedLoginAttempts || 0) + 1;
+            const maxFailed = 5; // Configurable threshold
+
+            const updates = { failedLoginAttempts: currentFailed };
+            if (currentFailed >= maxFailed) {
+              updates.isBlocked = true;
+            }
+            await updateDoc(doc(db, 'users', uid), updates);
+            
+            if (currentFailed >= maxFailed && !userDocData.isBlocked) {
+              alert(`Account blocked due to ${maxFailed} failed login attempts.`);
+            }
+          }
+          await recordLoginActivity(userDocData, uid, email, 'failed', error.message);
+        } catch (innerErr) {
+          console.error("Error tracking failed login:", innerErr);
+        }
         alert("Authentication Error: " + error.message);
       }
     } else {
