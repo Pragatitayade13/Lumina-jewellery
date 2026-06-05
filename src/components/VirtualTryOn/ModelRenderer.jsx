@@ -9,18 +9,28 @@ function GLTFModel({ url }) {
   return <primitive object={clonedScene} />;
 }
 
-export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, category }) {
+export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, product }) {
   const groupRef = useRef();
+  
+  const cat = (product?.category || '').toLowerCase();
+  const subcat = (product?.subcategory || '').toLowerCase();
+  const name = (product?.name || '').toLowerCase();
+  
+  const isRing = cat.includes('ring') || subcat.includes('ring') || name.includes('ring') || 
+                 cat.includes('bracelet') || subcat.includes('bracelet') || name.includes('bracelet') ||
+                 cat.includes('bangle') || subcat.includes('bangle') || name.includes('bangle');
+                 
+  const isEarring = cat.includes('earring') || subcat.includes('earring') || name.includes('earring');
+  const isNecklace = cat.includes('necklace') || subcat.includes('necklace') || name.includes('necklace');
   
   // Interpolation targets for smooth movement
   const targetPos = useMemo(() => new THREE.Vector3(0, 0, 0), []);
 
   // Default scales based on category
   let defaultScale = 1;
-  if (category === 'Ring') defaultScale = 0.2;
-  else if (category === 'Earrings' || category === 'Earring') defaultScale = 0.3;
-  else if (category === 'Necklace') defaultScale = 1.2;
-  else if (category === 'Bracelet' || category === 'Bangle') defaultScale = 0.6;
+  if (isRing) defaultScale = 0.2;
+  else if (isEarring) defaultScale = 0.3;
+  else if (isNecklace) defaultScale = 1.2;
 
   useFrame((state, delta) => {
     if (!groupRef.current || !positionRef || !positionRef.current) return;
@@ -30,8 +40,7 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
     groupRef.current.position.lerp(targetPos, 0.2);
     
     // Subtle auto-rotation for demo purposes if no exact rotation matrix is available
-    const cat = (category || '').toLowerCase();
-    if (cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle')) {
+    if (isRing) {
       groupRef.current.rotation.y += delta * 0.5;
     }
     
@@ -43,21 +52,17 @@ export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, ca
     }
   });
 
-  const cat = (category || '').toLowerCase();
-  const isRing = cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle');
-  const isNecklace = cat.includes('necklace');
-
   return (
     <group ref={groupRef} scale={[defaultScale, defaultScale, defaultScale]}>
       {modelUrl ? (
         <GLTFModel url={modelUrl} />
       ) : (
         // Fallback placeholder shape
-        <mesh>
+        <mesh rotation={isNecklace ? [0.5, 0, 0] : [0, 0, 0]}>
           {isRing ? (
             <torusGeometry args={[1, 0.1, 16, 100]} />
           ) : isNecklace ? (
-             <torusGeometry args={[2, 0.05, 16, 100]} />
+             <torusGeometry args={[1.5, 0.08, 16, 100]} />
           ) : (
              <sphereGeometry args={[0.5, 32, 32]} />
           )}

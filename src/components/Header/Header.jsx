@@ -159,8 +159,22 @@ export default function Header({ onCartClick, onWishlistClick }) {
                         maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                       }}
                     >
-                      {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
-                        products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase())).map(product => (
+                      {products.filter(p => {
+                        const sq = searchQuery.toLowerCase();
+                        return (p.name && p.name.toLowerCase().includes(sq)) || 
+                               (p.category && p.category.toLowerCase().includes(sq)) ||
+                               (p.subcategory && p.subcategory.toLowerCase().includes(sq)) ||
+                               (p.purity && p.purity.toLowerCase().includes(sq)) ||
+                               (p.price && p.price.toString().includes(sq));
+                      }).length > 0 ? (
+                        products.filter(p => {
+                          const sq = searchQuery.toLowerCase();
+                          return (p.name && p.name.toLowerCase().includes(sq)) || 
+                                 (p.category && p.category.toLowerCase().includes(sq)) ||
+                                 (p.subcategory && p.subcategory.toLowerCase().includes(sq)) ||
+                                 (p.purity && p.purity.toLowerCase().includes(sq)) ||
+                                 (p.price && p.price.toString().includes(sq));
+                        }).map(product => (
                           <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={() => { setSearchQuery(''); handleNavClick('#new-arrivals'); }}>
                             <img src={product.image} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
                             <div>

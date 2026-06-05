@@ -18,22 +18,43 @@ export default function Catalog() {
   const [category, setCategory] = useState(initialCategory);
   const [subcategory, setSubcategory] = useState('All');
   const [sort, setSort] = useState('featured');
+  const [priceRange, setPriceRange] = useState([0, 500000]);
+  const [selectedMetals, setSelectedMetals] = useState([]);
+  const [selectedGemstones, setSelectedGemstones] = useState([]);
 
-  // Derive unique categories and subcategories from inventory
-  const { categories, subcategories } = useMemo(() => {
+  // Derive unique categories, subcategories, metals, and gemstones from inventory
+  const { categories, subcategories, metals, gemstones } = useMemo(() => {
     const cats = new Set();
     const subcats = new Set();
+    const mets = new Set();
+    const gems = new Set();
+    
+    const knownGemstones = ['Diamond', 'Polki', 'Kundan', 'Pearl', 'Ruby', 'Emerald', 'Sapphire'];
     
     inventory.forEach(item => {
       if (item.category) cats.add(item.category);
       if (item.subcategory && (category === 'All' || item.category === category)) {
         subcats.add(item.subcategory);
       }
+      
+      if (item.purity) {
+        const metal = item.purity.split('+')[0].trim();
+        if (metal) mets.add(metal);
+      }
+      
+      const textToScan = `${item.name} ${item.category} ${item.subcategory}`.toLowerCase();
+      knownGemstones.forEach(gem => {
+        if (textToScan.includes(gem.toLowerCase())) {
+          gems.add(gem);
+        }
+      });
     });
     
     return {
       categories: ['All', ...Array.from(cats)],
-      subcategories: ['All', ...Array.from(subcats)]
+      subcategories: ['All', ...Array.from(subcats)],
+      metals: Array.from(mets),
+      gemstones: Array.from(gems)
     };
   }, [inventory, category]);
 
@@ -55,9 +76,14 @@ export default function Catalog() {
     let result = [...inventory];
 
     if (search) {
+      const s = search.toLowerCase();
       result = result.filter(item => 
-        item.name.toLowerCase().includes(search.toLowerCase()) || 
-        item.sku.toLowerCase().includes(search.toLowerCase())
+        (item.name && item.name.toLowerCase().includes(s)) || 
+        (item.sku && item.sku.toLowerCase().includes(s)) ||
+        (item.category && item.category.toLowerCase().includes(s)) ||
+        (item.subcategory && item.subcategory.toLowerCase().includes(s)) ||
+        (item.purity && item.purity.toLowerCase().includes(s)) ||
+        (item.price && item.price.toString().includes(s))
       );
     }
 
@@ -69,6 +95,23 @@ export default function Catalog() {
       result = result.filter(item => item.subcategory === subcategory);
     }
 
+    result = result.filter(item => item.price >= priceRange[0] && item.price <= priceRange[1]);
+    
+    if (selectedMetals.length > 0) {
+      result = result.filter(item => {
+        if (!item.purity) return false;
+        const metal = item.purity.split('+')[0].trim();
+        return selectedMetals.includes(metal);
+      });
+    }
+    
+    if (selectedGemstones.length > 0) {
+      result = result.filter(item => {
+        const textToScan = `${item.name} ${item.category} ${item.subcategory}`.toLowerCase();
+        return selectedGemstones.some(gem => textToScan.includes(gem.toLowerCase()));
+      });
+    }
+
     if (sort === 'price-low') {
       result.sort((a, b) => a.price - b.price);
     } else if (sort === 'price-high') {
@@ -78,7 +121,7 @@ export default function Catalog() {
     }
 
     return result;
-  }, [inventory, search, category, sort]);
+  }, [inventory, search, category, subcategory, sort, priceRange, selectedMetals, selectedGemstones]);
 
   const handleAddToCart = (e, item) => {
     e.preventDefault();
@@ -186,6 +229,69 @@ export default function Catalog() {
                 </div>
               </div>
             )}
+
+            <div className="filter-group" style={{ marginTop: '2rem' }}>
+              <label>Price Range</label>
+              <div className="price-inputs" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <input 
+                  type="number" 
+                  value={priceRange[0]} 
+                  onChange={e => setPriceRange([Number(e.target.value) || 0, priceRange[1]])}
+                  style={{ width: '100%', padding: '0.5rem', background: '#1a1a1a', border: '1px solid var(--border-color)', color: 'white', borderRadius: '4px' }}
+                  placeholder="Min"
+                />
+                <span style={{ display: 'flex', alignItems: 'center' }}>-</span>
+                <input 
+                  type="number" 
+                  value={priceRange[1]} 
+                  onChange={e => setPriceRange([priceRange[0], Number(e.target.value) || 0])}
+                  style={{ width: '100%', padding: '0.5rem', background: '#1a1a1a', border: '1px solid var(--border-color)', color: 'white', borderRadius: '4px' }}
+                  placeholder="Max"
+                />
+              </div>
+            </div>
+
+            {metals.length > 0 && (
+              <div className="filter-group" style={{ marginTop: '2rem' }}>
+                <label>Metal Type</label>
+                <div className="checkbox-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.8rem' }}>
+                  {metals.map(metal => (
+                    <label key={metal} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedMetals.includes(metal)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedMetals([...selectedMetals, metal]);
+                          else setSelectedMetals(selectedMetals.filter(m => m !== metal));
+                        }}
+                      />
+                      {metal}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {gemstones.length > 0 && (
+              <div className="filter-group" style={{ marginTop: '2rem' }}>
+                <label>Gemstone</label>
+                <div className="checkbox-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.8rem' }}>
+                  {gemstones.map(gem => (
+                    <label key={gem} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedGemstones.includes(gem)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedGemstones([...selectedGemstones, gem]);
+                          else setSelectedGemstones(selectedGemstones.filter(g => g !== gem));
+                        }}
+                      />
+                      {gem}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -210,7 +316,7 @@ export default function Catalog() {
             <div className="empty-state">
               <h3>No products found</h3>
               <p>Try adjusting your search or filters to find what you're looking for.</p>
-              <button className="btn btn-outline" onClick={() => { setSearch(''); setCategory('All'); }}>Clear Filters</button>
+              <button className="btn btn-outline" onClick={() => { setSearch(''); setCategory('All'); setPriceRange([0, 500000]); setSelectedMetals([]); setSelectedGemstones([]); }}>Clear Filters</button>
             </div>
           ) : (
             <div className="product-grid">

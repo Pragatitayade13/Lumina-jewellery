@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
-import { FileText, Download, Plus, Search, CheckCircle, Clock, XCircle, RefreshCw, IndianRupee, Printer, Eye, CreditCard } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { FileText, Download, Plus, Search, CheckCircle, Clock, XCircle, RefreshCw, IndianRupee, Printer, Eye, CreditCard, Loader } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const COMPANY = {
   name: 'Lumina Jewels',
@@ -146,13 +148,31 @@ import { useTaxes } from '../../hooks/useTaxes';
 export default function InvoiceBilling() {
   const { showToast } = useApp();
   const { calculateTax } = useTaxes();
-  const [invoices, setInvoices] = useState(initialInvoices);
+  const [invoices, setInvoices] = useState([]);
+  const [dbLoading, setDbLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
   const [previewInv, setPreviewInv] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newInvType, setNewInvType] = useState('invoice');
   const [newInv, setNewInv] = useState({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
+
+  // Load invoices from Firebase in real-time
+  useEffect(() => {
+    if (!db) {
+      setDbLoading(false);
+      return;
+    }
+    const q = query(collection(db, 'invoices'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setInvoices(snap.docs.map(d => ({ ...d.data(), _docId: d.id })));
+      setDbLoading(false);
+    }, (err) => {
+      console.error('Error loading invoices:', err);
+      setDbLoading(false);
+    });
+    return () => unsub();
+  }, []);
 
   const filtered = useMemo(() => {
     let list = invoices;
@@ -174,9 +194,17 @@ export default function InvoiceBilling() {
     }, 500);
   };
 
-  const handleMarkPaid = (id) => {
-    setInvoices(prev => prev.map(i => i.id === id ? { ...i, status: 'paid' } : i));
-    showToast('Invoice marked as Paid!');
+  const handleMarkPaid = async (inv) => {
+    if (!inv._docId) {
+      showToast('Cannot update: invoice not saved to database.', 'error');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'invoices', inv._docId), { status: 'paid', paidAt: serverTimestamp() });
+      showToast('Invoice marked as Paid!');
+    } catch (err) {
+      showToast('Failed to update invoice status.', 'error');
+    }
   };
 
   const handleAddItem = () => setNewInv(prev => ({ ...prev, items: [...prev.items, { name: '', qty: 1, rate: '', gst: 3 }] }));
@@ -207,37 +235,43 @@ export default function InvoiceBilling() {
       items: mappedItems,
       status: isCN ? 'issued' : 'pending',
       paymentMethod: isCN ? 'Credit Note' : newInv.paymentMethod,
-      type: newInvType
+      type: newInvType,
+      createdAt: serverTimestamp()
     };
-    
-    // Log tax transaction
-    import('firebase/firestore').then(({ collection, addDoc, serverTimestamp }) => {
-       import('../../config/firebase').then(({ db }) => {
-          if (db) {
-            addDoc(collection(db, 'tax_transactions'), {
-              displayId: id,
-              date: fmt(today),
-              amount: subtotal,
-              gstPerc: 'mixed', // Invoice has multiple items with different rates
-              gstAmount: gstAmt,
-              cgst,
-              sgst,
-              igst,
-              state: newInv.state,
-              type: igst > 0 ? 'IGST' : 'CGST+SGST',
-              source: 'invoice_billing',
-              createdAt: serverTimestamp()
-            }).catch(console.error);
-          }
-       });
-    });
 
-    setInvoices(prev => [invoice, ...prev]);
-    showToast(`${isCN ? 'Credit Note' : 'Invoice'} ${id} generated!`);
-    setShowNewModal(false);
-    setNewInv({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
-    setTimeout(() => handleDownload(invoice), 800);
+    try {
+      // Save invoice to Firebase
+      await addDoc(collection(db, 'invoices'), invoice);
+
+      // Also log the tax transaction
+      if (db) {
+        addDoc(collection(db, 'tax_transactions'), {
+          displayId: id,
+          date: fmt(today),
+          amount: subtotal,
+          gstPerc: 'mixed',
+          gstAmount: gstAmt,
+          cgst, sgst, igst,
+          state: newInv.state,
+          type: igst > 0 ? 'IGST' : 'CGST+SGST',
+          source: 'invoice_billing',
+          createdAt: serverTimestamp()
+        }).catch(console.error);
+      }
+
+      showToast(`${isCN ? 'Credit Note' : 'Invoice'} ${id} generated & saved!`);
+      setShowNewModal(false);
+      setNewInv({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
+      setTimeout(() => handleDownload({ ...invoice }), 800);
+    } catch (err) {
+      console.error('Error saving invoice:', err);
+      showToast('Failed to save invoice. Please try again.', 'error');
+    }
   };
+
+  if (dbLoading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}><Loader className="spin" size={24} color="var(--gold)" /></div>;
+  }
 
   const totalPaid = invoices.filter(i => i.status === 'paid' && i.type === 'invoice').reduce((s, i) => s + calcTotals(i.items, calculateTax, i.state || 'Maharashtra').total, 0);
   const totalPending = invoices.filter(i => i.status === 'pending' || i.status === 'overdue').length;
@@ -349,7 +383,7 @@ export default function InvoiceBilling() {
                           <Download size={13} />
                         </button>
                         {inv.status === 'pending' || inv.status === 'overdue' ? (
-                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', fontSize: '0.75rem' }} onClick={() => handleMarkPaid(inv.id)}>
+                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', fontSize: '0.75rem' }} onClick={() => handleMarkPaid(inv)}>
                             Mark Paid
                           </button>
                         ) : null}

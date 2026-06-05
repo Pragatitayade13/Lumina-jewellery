@@ -87,6 +87,16 @@ export default function CartModal({ isOpen, onClose }) {
     setStep(2);
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -116,10 +126,90 @@ export default function CartModal({ isOpen, onClose }) {
         date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       };
       
-      const orderId = await createOrder(orderData);
-      setLastOrderId(orderId);
-      clearCart();
-      setStep(3); // Success step
+      if (paymentMethod === 'Cash on Delivery') {
+        const orderId = await createOrder(orderData);
+        setLastOrderId(orderId);
+        clearCart();
+        setStep(3); // Success step
+        setIsCheckingOut(false);
+        return;
+      }
+
+      // Online Payment Flow (Razorpay)
+      const res = await loadRazorpayScript();
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setIsCheckingOut(false);
+        return;
+      }
+
+      // Create Order on Backend
+      const orderResponse = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: total, currency: 'INR' })
+      });
+      
+      const orderJson = await orderResponse.json();
+
+      if (!orderResponse.ok) {
+        alert(orderJson.message || 'Failed to create payment intent');
+        setIsCheckingOut(false);
+        return;
+      }
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderJson.amount,
+        currency: orderJson.currency,
+        name: "Lumina Jewels",
+        description: "Secure Checkout",
+        image: "/vite.svg", 
+        order_id: orderJson.id,
+        handler: async function (response) {
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const verifyJson = await verifyRes.json();
+
+            if (verifyJson.success) {
+              orderData.paymentId = response.razorpay_payment_id;
+              orderData.status = 'confirmed';
+              const orderId = await createOrder(orderData);
+              setLastOrderId(orderId);
+              clearCart();
+              setStep(3);
+            } else {
+              alert("Payment Verification Failed!");
+            }
+          } catch (err) {
+            alert("Error during verification: " + err.message);
+          }
+        },
+        prefill: {
+          name: shippingDetails.name,
+          email: shippingDetails.email,
+          contact: shippingDetails.phone,
+        },
+        theme: {
+          color: "#C9A84C"
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response) {
+        alert("Payment Failed: " + response.error.description);
+      });
+      paymentObject.open();
+
     } catch (err) {
       alert("Checkout Failed: " + err.message);
     } finally {

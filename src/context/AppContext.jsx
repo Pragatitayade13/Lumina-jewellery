@@ -44,6 +44,25 @@ export function AppProvider({ children }) {
               // Fallback if document doesn't exist yet
               setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: firebaseUser.displayName || 'Customer' });
             }
+
+            // Log activity to Firestore
+            try {
+              const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+              const data = userDoc.exists() ? userDoc.data() : { role: 'customer', name: firebaseUser.displayName || 'Customer' };
+              
+              await addDoc(collection(db, 'loginActivity'), {
+                userId: firebaseUser.uid,
+                userName: data.name || 'Unknown',
+                email: firebaseUser.email,
+                role: data.role || 'customer',
+                status: 'success',
+                loginTime: Date.now(),
+                ipAddress: '127.0.0.1', // Captured server-side in production
+                deviceInfo: navigator.userAgent.substring(0, 100)
+              });
+            } catch (err) {
+              console.warn("Failed to log activity:", err);
+            }
           } catch (err) {
             console.error("Error fetching user role", err);
             setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: 'Customer' });

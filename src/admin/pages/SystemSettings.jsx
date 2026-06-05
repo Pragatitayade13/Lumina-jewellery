@@ -147,21 +147,21 @@ export default function SystemSettings() {
             <div className="form-row">
                <div className="form-group">
                  <label className="form-label">Default GST Rate (%)</label>
-                 <input type="number" className="form-input" defaultValue="3" />
+                 <input type="number" className="form-input" value={data.gstStandard || 3} onChange={e => handleChange('gstStandard', Number(e.target.value))} />
                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Standard rate for Gold/Diamond in India</span>
                </div>
                <div className="form-group">
                  <label className="form-label">Making Charges GST (%)</label>
-                 <input type="number" className="form-input" defaultValue="5" />
+                 <input type="number" className="form-input" value={data.gstMaking || 5} onChange={e => handleChange('gstMaking', Number(e.target.value))} />
                </div>
             </div>
             <div className="form-group">
                <label className="form-label">Free Shipping Threshold (₹)</label>
-               <input type="number" className="form-input" defaultValue="50000" />
+               <input type="number" className="form-input" value={data.freeShippingThreshold || 50000} onChange={e => handleChange('freeShippingThreshold', Number(e.target.value))} />
             </div>
             <div className="form-group">
                <label className="form-label">Loyalty Point Value</label>
-               <select className="form-input">
+               <select className="form-input" value={data.loyaltyValue} onChange={e => handleChange('loyaltyValue', e.target.value)}>
                  <option>1 Point = ₹1</option>
                  <option>1 Point = ₹0.5</option>
                  <option>10 Points = ₹1</option>
@@ -183,21 +183,21 @@ export default function SystemSettings() {
             <div className="form-group">
                <label className="form-label">Gold Buyback Rate (Cash)</label>
                <div style={{ position: 'relative' }}>
-                 <input type="number" className="form-input" defaultValue="95" style={{ paddingRight: '2rem' }} />
+                 <input type="number" className="form-input" value={data.goldBuyback || 95} onChange={e => handleChange('goldBuyback', Number(e.target.value))} style={{ paddingRight: '2rem' }} />
                  <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>%</span>
                </div>
             </div>
             <div className="form-group">
                <label className="form-label">Gold Exchange Rate (Jewellery)</label>
                <div style={{ position: 'relative' }}>
-                 <input type="number" className="form-input" defaultValue="100" style={{ paddingRight: '2rem' }} />
+                 <input type="number" className="form-input" value={data.goldExchange || 100} onChange={e => handleChange('goldExchange', Number(e.target.value))} style={{ paddingRight: '2rem' }} />
                  <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>%</span>
                </div>
             </div>
             <div className="form-group">
                <label className="form-label">Diamond Buyback Rate</label>
                <div style={{ position: 'relative' }}>
-                 <input type="number" className="form-input" defaultValue="80" style={{ paddingRight: '2rem' }} />
+                 <input type="number" className="form-input" value={data.diamondBuyback || 80} onChange={e => handleChange('diamondBuyback', Number(e.target.value))} style={{ paddingRight: '2rem' }} />
                  <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>%</span>
                </div>
             </div>
@@ -250,7 +250,7 @@ export default function SystemSettings() {
          <div className="grid-2" style={{ gap: '1rem' }}>
             <div className="form-group">
                <label className="form-label">Markup over Market Rate (%)</label>
-               <input type="number" className="form-input" defaultValue="2" />
+               <input type="number" className="form-input" value={data.markup || 2} onChange={e => handleChange('markup', Number(e.target.value))} />
             </div>
             <div className="form-group">
                <label className="form-label">Rate Provider API</label>

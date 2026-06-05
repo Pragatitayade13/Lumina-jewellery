@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
-import { Store, TrendingUp, CheckCircle, Clock, Download, Plus, Search, FileText, IndianRupee, BarChart2, RefreshCw, X } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Store, TrendingUp, CheckCircle, Clock, Download, Plus, Search, FileText, IndianRupee, BarChart2, RefreshCw, X, Loader } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 const initialVendors = [
   { id: 'VND-001', name: 'Aura Diamonds', category: 'Diamonds', totalSales: 1240000, commissionRate: 12, amountDue: 148800, paidToDate: 520000, status: 'pending', joinDate: '12 Jan 2025', contact: 'aura@diamonds.in', phone: '+91 98201 12345', bank: 'HDFC **** 4821' },
@@ -24,13 +26,30 @@ const CATEGORY_RATES = {
 
 export default function VendorManagement() {
   const { showToast } = useApp();
-  const [vendors, setVendors] = useState(initialVendors);
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('vendors');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [detailVendor, setDetailVendor] = useState(null);
   const [newVendor, setNewVendor] = useState({ name: '', category: 'Diamonds', contact: '', phone: '', bank: '' });
+
+  // Load vendors from Firebase in real-time
+  useEffect(() => {
+    if (!db) { setLoading(false); return; }
+    const q = query(collection(db, 'vendors'), orderBy('joinDate', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setVendors(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+      setLoading(false);
+    }, (err) => {
+      console.error('Error loading vendors:', err);
+      // Fall back to initial data so page is usable
+      setVendors(initialVendors);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
 
   const totalDue = vendors.reduce((a, v) => a + v.amountDue, 0);
   const totalPaid = vendors.reduce((a, v) => a + v.paidToDate, 0);
@@ -42,18 +61,31 @@ export default function VendorManagement() {
     return matchSearch && matchStatus;
   }), [vendors, searchTerm, statusFilter]);
 
-  const handleReleasePayout = (id) => {
+  const handleReleasePayout = async (vendorId, docId) => {
     showToast('Processing vendor payout...');
-    setTimeout(() => {
-      setVendors(prev => prev.map(v => v.id === id ? { ...v, paidToDate: v.paidToDate + v.amountDue, amountDue: 0, status: 'paid' } : v));
+    const vendor = vendors.find(v => v.id === vendorId || v._docId === docId);
+    if (!vendor) return;
+    try {
+      if (db && docId) {
+        await updateDoc(doc(db, 'vendors', docId), {
+          paidToDate: (vendor.paidToDate || 0) + (vendor.amountDue || 0),
+          amountDue: 0,
+          status: 'paid',
+          lastPaidAt: serverTimestamp()
+        });
+      }
       showToast('Vendor payout released and settled successfully!');
-    }, 1200);
+    } catch (err) {
+      console.error('Payout error:', err);
+      showToast('Failed to release payout.', 'error');
+    }
   };
 
-  const handleAddVendor = () => {
+  const handleAddVendor = async () => {
     if (!newVendor.name || !newVendor.contact) { showToast('Please fill all required fields.', 'error'); return; }
     const rate = CATEGORY_RATES[newVendor.category] || 10;
-    const vendor = {
+    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const vendorData = {
       id: `VND-${String(vendors.length + 1).padStart(3, '0')}`,
       ...newVendor,
       commissionRate: rate,
@@ -61,10 +93,22 @@ export default function VendorManagement() {
       amountDue: 0,
       paidToDate: 0,
       status: 'paid',
-      joinDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      joinDate: today,
+      createdAt: serverTimestamp()
     };
-    setVendors(prev => [vendor, ...prev]);
-    showToast(`Vendor ${newVendor.name} added to marketplace!`);
+    try {
+      if (db) {
+        await addDoc(collection(db, 'vendors'), vendorData);
+        showToast(`Vendor ${newVendor.name} added and saved!`);
+      } else {
+        setVendors(prev => [vendorData, ...prev]);
+        showToast(`Vendor ${newVendor.name} added (offline mode).`);
+      }
+    } catch (err) {
+      console.error('Error adding vendor:', err);
+      showToast('Failed to add vendor.', 'error');
+      return;
+    }
     setShowAddModal(false);
     setNewVendor({ name: '', category: 'Diamonds', contact: '', phone: '', bank: '' });
   };
@@ -80,6 +124,10 @@ export default function VendorManagement() {
   };
 
   const statusColor = { paid: 'var(--status-green)', pending: 'var(--status-orange)', overdue: 'var(--status-red)' };
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}><Loader className="spin" size={24} color="var(--gold)" /></div>;
+  }
 
   return (
     <div>
@@ -186,7 +234,7 @@ export default function VendorManagement() {
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button className="btn btn-sm btn-outline" onClick={() => setDetailVendor(v)}>View</button>
                         {v.status !== 'paid' && (
-                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none' }} onClick={() => handleReleasePayout(v.id)}>
+                          <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none' }} onClick={() => handleReleasePayout(v.id, v._docId)}>
                             Release
                           </button>
                         )}
@@ -322,7 +370,7 @@ export default function VendorManagement() {
                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: statusColor[v.status] }}>₹{v.amountDue.toLocaleString('en-IN')}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{v.status.toUpperCase()}</div>
                   </div>
-                  <button className="btn btn-gold btn-sm" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handleReleasePayout(v.id)}>
+                  <button className="btn btn-gold btn-sm" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handleReleasePayout(v.id, v._docId)}>
                     Release Payout
                   </button>
                 </div>
@@ -420,7 +468,7 @@ export default function VendorManagement() {
               <button className="btn btn-outline" onClick={() => setDetailVendor(null)}>Close</button>
               {detailVendor.status !== 'paid' && (
                 <button className="btn btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none' }}
-                  onClick={() => { handleReleasePayout(detailVendor.id); setDetailVendor(null); }}>
+                  onClick={() => { handleReleasePayout(detailVendor.id, detailVendor._docId); setDetailVendor(null); }}>
                   Release Payout
                 </button>
               )}

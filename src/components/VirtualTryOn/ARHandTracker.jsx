@@ -90,8 +90,8 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
     <ModelRenderer 
       positionRef={positionRef}
       modelUrl={product?.modelUrl} 
-      fallbackColor="silver"
-      category={product?.category}
+      fallbackColor="gold"
+      product={product}
     />
   );
 }

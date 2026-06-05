@@ -23,7 +23,7 @@ function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, ac
 
 
 // ─── Load Leaflet dynamically (no bundler issues) ─────────────────────────
-function usLeaflet(mapRef, center) {
+function useLeaflet(mapRef, center) {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const trailRef = useRef(null);
@@ -61,7 +61,7 @@ function usLeaflet(mapRef, center) {
 function LiveMapTab({ isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations }) {
   const mapRef = useRef(null);
   const center = [19.076, 72.877]; // Mumbai default
-  const { mapInstanceRef, markerRef, trailRef, partnersRef } = usLeaflet(mapRef, center);
+  const { mapInstanceRef, markerRef, trailRef, partnersRef } = useLeaflet(mapRef, center);
 
   // Update MY marker + trail when position changes
   useEffect(() => {
@@ -406,6 +406,7 @@ export default function DeliveryOperations() {
       try {
         if (selectedOrder) {
           await updateOrderStatus(selectedOrder.id, 'delivered');
+          setOptimisticStatuses(prev => { const next = {...prev}; delete next[selectedOrder.id]; return next; });
         }
         alert(`OTP Verified! Delivery successful.\n\n[MOCK SMS] Sent to Admin & Customer: Order ${selectedOrder?.id} has been delivered successfully.`);
         setShowOtpModal(false);
@@ -575,7 +576,7 @@ export default function DeliveryOperations() {
                 style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
                 onClick={() => {
                   if (!pickup.isMock) {
-                    updateOrderStatus(pickup.id, 'refund_pending');
+                    updateOrderStatus(pickup.id, 'returned_to_store');
                   }
                   showToast(`📦 Return initiated for ${pickup.id}. Seal & custody transferred!`);
                 }}
@@ -832,6 +833,7 @@ export default function DeliveryOperations() {
                  disabled={!failureModal.reason}
                  onClick={() => {
                    updateOrderStatus(failureModal.order.id, 'failed');
+                   setOptimisticStatuses(prev => { const next = {...prev}; delete next[failureModal.order.id]; return next; });
                    // We would normally also save the reason to DB here, e.g. updateDoc({ failureReason: failureModal.reason })
                    showToast(`Delivery marked as failed. Order will be returned to store.`);
                    setFailureModal({ isOpen: false, order: null, reason: '' });

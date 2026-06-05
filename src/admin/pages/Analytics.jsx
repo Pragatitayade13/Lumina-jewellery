@@ -9,9 +9,9 @@ import { useCustomers } from '../../hooks/useCustomers';
 function SimpleLineChart({ data }) {
   const [hoverIndex, setHoverIndex] = useState(null);
   
-  const max = Math.max(...data.map(d => d.revenue));
-  const min = Math.min(...data.map(d => d.revenue)) * 0.8;
-  const range = max - min;
+  const max = data.length > 0 ? Math.max(...data.map(d => d.revenue)) : 1;
+  const min = data.length > 0 ? Math.min(...data.map(d => d.revenue)) * 0.8 : 0;
+  const range = (max - min) || 1;
   
   const width = 800;
   const height = 200;
@@ -87,23 +87,57 @@ export default function Analytics() {
   const { inventory } = useInventory();
   const { customers } = useCustomers();
   const [timeframe, setTimeframe] = useState('Monthly');
-  const [liveChartData, setLiveChartData] = useState(revenueData);
   const [isGeneratingForecast, setIsGeneratingForecast] = useState(false);
   const [forecastData, setForecastData] = useState(null);
   const isManagerOrAbove = ['manager', 'superadmin', 'admin'].includes(user?.role);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveChartData(prev => prev.map(d => ({
-        ...d,
-        revenue: d.revenue + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 80000)
-      })));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  // Remove the fake interval simulation
+  const validOrdersAll = orders?.filter(o => !['cancelled', 'refund_pending'].includes(o.status?.toLowerCase())) || [];
+  
+  // 1. Timeframe filtering
+  const now = new Date();
+  const validOrders = validOrdersAll.filter(o => {
+    if (!o.createdAt && !o.date) return false;
+    const orderDate = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt || o.date);
+    if (timeframe === 'Daily') {
+      return orderDate.toDateString() === now.toDateString();
+    } else if (timeframe === 'Monthly') {
+      return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+    } else { // Yearly
+      return orderDate.getFullYear() === now.getFullYear();
+    }
+  });
+
+  // 2. Chart Data Generation
+  const chartDataMap = {};
+  if (timeframe === 'Yearly') {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    months.forEach(m => chartDataMap[m] = 0);
+    validOrders.forEach(o => {
+      const d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt || o.date);
+      chartDataMap[months[d.getMonth()]] += (o.amount || 0);
+    });
+  } else if (timeframe === 'Monthly') {
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    for(let i=1; i<=daysInMonth; i++) chartDataMap[i] = 0;
+    validOrders.forEach(o => {
+      const d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt || o.date);
+      chartDataMap[d.getDate()] += (o.amount || 0);
+    });
+  } else { // Daily
+    for(let i=0; i<24; i++) chartDataMap[`${i}h`] = 0;
+    validOrders.forEach(o => {
+      const d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt || o.date);
+      chartDataMap[`${d.getHours()}h`] += (o.amount || 0);
+    });
+  }
+  
+  const liveChartData = Object.keys(chartDataMap).map(k => ({
+    month: k,
+    revenue: chartDataMap[k]
+  }));
 
   // Live Calculations from Firebase Data
-  const validOrders = orders?.filter(o => !['cancelled', 'refund_pending'].includes(o.status?.toLowerCase())) || [];
   const totalRev = validOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
   const totalCogs = totalRev * 0.70;
   const grossProfit = totalRev - totalCogs;
@@ -125,29 +159,34 @@ export default function Analytics() {
 
   const productSales = {};
   validOrders.forEach(o => {
-    if (o.product) {
-      if (!productSales[o.product]) productSales[o.product] = { n: o.product, v: 0, p: 0 };
-      productSales[o.product].v += (o.amount || 0);
-      productSales[o.product].p += 1;
-    }
+    (o.items || []).forEach(item => {
+      const key = item.name || item.title;
+      if (!key) return;
+      if (!productSales[key]) productSales[key] = { n: key, v: 0, p: 0 };
+      productSales[key].v += (item.price * (item.quantity || 1)) || 0;
+      productSales[key].p += item.quantity || 1;
+    });
   });
   const topProducts = Object.values(productSales).sort((a, b) => b.v - a.v).slice(0, 5).map(p => ({ ...p, v: fmtCurr(p.v), p: `${p.p} units` }));
   const displayTopProducts = topProducts.length > 0 ? topProducts : [{ n: 'No sales data yet', v: '₹0', p: '0 units' }];
 
   const catRevenues = { 'Diamond Jewellery': 0, 'Gold Jewellery (22KT)': 0, 'Polki & Kundan': 0, 'Silver & Gems': 0 };
   validOrders.forEach(o => {
-    const name = (o.product || '').toLowerCase();
-    if (name.includes('diamond') || name.includes('platinum')) catRevenues['Diamond Jewellery'] += o.amount || 0;
-    else if (name.includes('gold')) catRevenues['Gold Jewellery (22KT)'] += o.amount || 0;
-    else if (name.includes('polki') || name.includes('kundan')) catRevenues['Polki & Kundan'] += o.amount || 0;
-    else catRevenues['Silver & Gems'] += o.amount || 0;
+    (o.items || []).forEach(item => {
+      const name = (item.name || item.title || '').toLowerCase();
+      const itemValue = (item.price * (item.quantity || 1)) || 0;
+      if (name.includes('diamond') || name.includes('platinum')) catRevenues['Diamond Jewellery'] += itemValue;
+      else if (name.includes('gold')) catRevenues['Gold Jewellery (22KT)'] += itemValue;
+      else if (name.includes('polki') || name.includes('kundan')) catRevenues['Polki & Kundan'] += itemValue;
+      else catRevenues['Silver & Gems'] += itemValue;
+    });
   });
   const totalCatRev = Object.values(catRevenues).reduce((a, b) => a + b, 0);
   const liveCategoryRevenue = [
-    { name: 'Diamond Jewellery', value: totalCatRev ? Math.round((catRevenues['Diamond Jewellery'] / totalCatRev) * 100) : 40, color: '#f39c12' },
-    { name: 'Gold Jewellery (22KT)', value: totalCatRev ? Math.round((catRevenues['Gold Jewellery (22KT)'] / totalCatRev) * 100) : 35, color: '#f1c40f' },
-    { name: 'Polki & Kundan', value: totalCatRev ? Math.round((catRevenues['Polki & Kundan'] / totalCatRev) * 100) : 15, color: '#e67e22' },
-    { name: 'Silver & Gems', value: totalCatRev ? Math.round((catRevenues['Silver & Gems'] / totalCatRev) * 100) : 10, color: '#ecf0f1' }
+    { name: 'Diamond Jewellery', value: totalCatRev ? Math.round((catRevenues['Diamond Jewellery'] / totalCatRev) * 100) : 0, color: '#f39c12' },
+    { name: 'Gold Jewellery (22KT)', value: totalCatRev ? Math.round((catRevenues['Gold Jewellery (22KT)'] / totalCatRev) * 100) : 0, color: '#f1c40f' },
+    { name: 'Polki & Kundan', value: totalCatRev ? Math.round((catRevenues['Polki & Kundan'] / totalCatRev) * 100) : 0, color: '#e67e22' },
+    { name: 'Silver & Gems', value: totalCatRev ? Math.round((catRevenues['Silver & Gems'] / totalCatRev) * 100) : 0, color: '#ecf0f1' }
   ];
 
   const handleDownloadReport = (reportType) => {
@@ -221,6 +260,100 @@ export default function Analytics() {
     }, 800);
   };
 
+  // ─── CSV Download Handler ───────────────────────────────────────────────────
+  const handleDownloadCSV = (reportType) => {
+    let headers = [];
+    let rows = [];
+    let filename = '';
+
+    const escapeCsvCell = (val) => {
+      const str = String(val ?? '');
+      // Wrap in quotes if cell contains comma, newline, or quote
+      return str.includes(',') || str.includes('\n') || str.includes('"')
+        ? `"${str.replace(/"/g, '""')}"`
+        : str;
+    };
+
+    const buildCSV = (hdrs, dataRows) => {
+      const headerLine = hdrs.map(escapeCsvCell).join(',');
+      const bodyLines = dataRows.map(row => row.map(escapeCsvCell).join(','));
+      return [headerLine, ...bodyLines].join('\n');
+    };
+
+    if (reportType === 'Inventory Report') {
+      filename = `Lumina_Inventory_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['SKU', 'Product Name', 'Category', 'Warehouse', 'Current Stock', 'Min Stock Threshold', 'Status', 'Last Updated'];
+      rows = inventory.map(item => [
+        item.sku || '',
+        item.name || '',
+        item.category || '',
+        item.warehouse || '',
+        item.stock ?? '',
+        item.minStock ?? '',
+        (item.status || '').toUpperCase(),
+        item.lastUpdated || ''
+      ]);
+    } else if (reportType === 'Sales Report') {
+      filename = `Lumina_Sales_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['Order ID', 'Customer', 'Amount (INR)', 'Status', 'Date'];
+      rows = validOrders.map(o => [
+        o.id || o.orderId || '',
+        o.customerName || o.customer || '',
+        o.amount || 0,
+        o.status || '',
+        o.date || o.createdAt || ''
+      ]);
+    } else if (reportType === 'Revenue Report') {
+      filename = `Lumina_Revenue_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['Metric', 'Value'];
+      rows = [
+        ['Total Revenue', currentStats.rev],
+        ['Cost of Goods Sold (COGS)', currentStats.cogs],
+        ['Gross Profit', currentStats.gp],
+        ['Gross Profit Margin', currentStats.gpPct],
+        ['Operating Expenses', currentStats.opex],
+        ['Net Profit', currentStats.np],
+      ];
+    } else if (reportType === 'Product Performance Report') {
+      filename = `Lumina_Product_Performance_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['Product Category', 'Revenue Contribution (INR)', 'Share (%)'];
+      const totalC = Object.values(catRevenues).reduce((a, b) => a + b, 0);
+      rows = Object.entries(catRevenues).map(([cat, rev]) => [
+        cat,
+        fmtCurr(rev),
+        totalC > 0 ? ((rev / totalC) * 100).toFixed(1) + '%' : '0%'
+      ]);
+    } else if (reportType === 'Customer Activity Report') {
+      filename = `Lumina_Customer_Activity_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['Customer Metric', 'Value'];
+      const custList = (customers || []).filter(c => c.role === 'customer');
+      rows = [
+        ['Total Registered Customers', custList.length],
+        ['Active VIP Members', custList.filter(c => c.status === 'vip').length],
+        ['Total Loyalty Points Issued', custList.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0)],
+        ['Repeat Purchasers', custList.filter(c => c.totalOrders > 1).length],
+      ];
+    }
+
+    if (!filename) {
+      showToast('CSV export not available for this report type.', 'error');
+      return;
+    }
+
+    const csvString = buildCSV(headers, rows);
+    // BOM for Excel compatibility with UTF-8 (handles ₹ and special chars)
+    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`${reportType} downloaded as CSV! (${rows.length} rows)`);
+  };
+
   const handleGenerateForecast = () => {
     setIsGeneratingForecast(true);
     showToast("Analyzing historical data and seasonal market trends...");
@@ -273,11 +406,33 @@ export default function Analytics() {
                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Export critical business data in CSV or PDF formats.</p>
              </div>
              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-               <button className="btn btn-outline btn-sm" onClick={() => handleDownloadReport('Sales Report')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={14} /> Sales Report</button>
-               <button className="btn btn-outline btn-sm" onClick={() => handleDownloadReport('Revenue Report')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileSpreadsheet size={14} /> Revenue Report</button>
-               <button className="btn btn-outline btn-sm" onClick={() => handleDownloadReport('Product Performance Report')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Store size={14} /> Product Performance</button>
-               <button className="btn btn-outline btn-sm" onClick={() => handleDownloadReport('Inventory Report')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Package size={14} /> Inventory</button>
-               <button className="btn btn-outline btn-sm" onClick={() => handleDownloadReport('Customer Activity Report')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Sparkles size={14} /> Customer Activity</button>
+               {/* Each report type: PDF print button + CSV download button */}
+               {[
+                 { label: 'Sales Report',              type: 'Sales Report',              icon: <FileText size={14} /> },
+                 { label: 'Revenue Report',             type: 'Revenue Report',             icon: <FileSpreadsheet size={14} /> },
+                 { label: 'Product Performance',        type: 'Product Performance Report', icon: <Store size={14} /> },
+                 { label: 'Inventory',                  type: 'Inventory Report',           icon: <Package size={14} /> },
+                 { label: 'Customer Activity',          type: 'Customer Activity Report',   icon: <Sparkles size={14} /> },
+               ].map(({ label, type, icon }) => (
+                 <div key={type} style={{ display: 'flex', gap: '0', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                   <button
+                     className="btn btn-outline btn-sm"
+                     style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: 0, border: 'none', borderRight: '1px solid var(--border)' }}
+                     title={`Download ${label} as PDF`}
+                     onClick={() => handleDownloadReport(type)}
+                   >
+                     {icon} {label}
+                   </button>
+                   <button
+                     className="btn btn-outline btn-sm"
+                     style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', borderRadius: 0, border: 'none', padding: '0 0.6rem', color: 'var(--status-green)', fontSize: '0.7rem', fontWeight: 700 }}
+                     title={`Download ${label} as CSV`}
+                     onClick={() => handleDownloadCSV(type)}
+                   >
+                     <Download size={12} /> CSV
+                   </button>
+                 </div>
+               ))}
              </div>
           </div>
         </div>

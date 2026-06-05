@@ -26,7 +26,7 @@ export default function StaffManagement() {
   // Directory State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { customers: firebaseUsers, loading: usersLoading, updateUserSchedule, updateUserPermissions } = useCustomers();
+  const { customers: firebaseUsers, loading: usersLoading, updateUserSchedule, updateUserPermissions, updateCustomerStatus } = useCustomers();
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
@@ -94,13 +94,17 @@ export default function StaffManagement() {
   const { messages, sendMessage } = useMessages(user?.uid, selectedChatUser?.id);
 
   // Handlers
-  const handleToggleBlock = (userId) => {
-    setUsers(users.map(u => {
-      if (u.id === userId) {
-        return { ...u, status: u.status === 'blocked' ? 'active' : 'blocked' };
-      }
-      return u;
-    }));
+  const handleToggleBlock = async (userId) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    const newStatus = targetUser.status === 'blocked' ? 'active' : 'blocked';
+    
+    try {
+      await updateCustomerStatus(userId, newStatus);
+      showToast(`User ${newStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully.`);
+    } catch (err) {
+      showToast("Failed to update user status.");
+    }
   };
 
   const handleEditSubmit = async (e) => {

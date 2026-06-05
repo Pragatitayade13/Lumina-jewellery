@@ -177,6 +177,8 @@ app.post('/api/support/reply', async (req, res) => {
     console.error("Support Email Error:", err);
     res.status(500).json({ error: 'Failed to send support email' });
   }
+});
+
 // Email Notification Endpoint
 app.post('/api/notifications/send', async (req, res) => {
   const { email, customer, subject, message } = req.body;

@@ -1,15 +1,37 @@
-import { useState } from 'react';
-import { transactions as mockTransactions } from '../data/mockData';
-import { Search, ShieldAlert, FileText, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, ShieldAlert, FileText, CheckCircle, Clock, RefreshCw, Loader } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 
 export default function PaymentManagement() {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Status: All');
   const [methodFilter, setMethodFilter] = useState('Method: All');
-  const [transactions, setTransactions] = useState(mockTransactions);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isReconciling, setIsReconciling] = useState(false);
+  
+  useEffect(() => {
+    if (!db) {
+      setLoading(false);
+      return;
+    }
+    const q = query(collection(db, 'transactions'), orderBy('date', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        _docId: doc.id,
+        ...doc.data()
+      }));
+      setTransactions(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching transactions:", error);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
   
   const [fraudAlerts, setFraudAlerts] = useState([
     { id: 'TXN-999823', level: 'danger', label: 'High Risk', description: 'Multiple failed high-value credit card attempts from IP address outside India.', customer: 'Unknown', amount: '₹12,45,000' },
@@ -37,20 +59,37 @@ export default function PaymentManagement() {
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
-  const handleProcessRefund = (id) => {
+  const HIGH_VALUE_THRESHOLD = 50000;
+  const APPROVER_ROLES = ['finance_manager', 'super_admin', 'admin'];
+
+  const handleProcessRefund = async (docId, id) => {
+    // Find the transaction to check its amount
+    const txn = transactions.find(t => t._docId === docId || t.id === id);
+    const txnAmount = Number(txn?.amount) || 0;
+
+    // High-value refund gate: requires finance_manager or higher
+    if (txnAmount > HIGH_VALUE_THRESHOLD && !APPROVER_ROLES.includes(user?.role)) {
+      showToast(`⚠️ High-value refund (₹${txnAmount.toLocaleString('en-IN')}) requires Finance Manager approval. Please escalate.`, 'error');
+      return;
+    }
+
     showToast("Processing refund...");
-    setTimeout(() => {
-      setTransactions(transactions.map(t => t.id === id ? { ...t, status: 'refunded' } : t));
+    try {
+      await updateDoc(doc(db, 'transactions', docId), { status: 'refunded' });
       showToast("Refund successfully processed and settled.");
-    }, 800);
+    } catch (err) {
+      showToast("Failed to process refund", "error");
+    }
   };
 
-  const handleVerify = (id) => {
+  const handleVerify = async (docId, id) => {
     showToast("Verifying payment settlement with gateway...");
-    setTimeout(() => {
-      setTransactions(transactions.map(t => t.id === id ? { ...t, status: 'success' } : t));
+    try {
+      await updateDoc(doc(db, 'transactions', docId), { status: 'success' });
       showToast("Payment verified and settled.");
-    }, 800);
+    } catch (err) {
+      showToast("Failed to verify payment", "error");
+    }
   };
 
   const handleCheckLogs = (id) => {
@@ -142,6 +181,10 @@ export default function PaymentManagement() {
       showToast("Vendor payout released and settled successfully!");
     }, 1000);
   };
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}><Loader className="spin" size={24} color="var(--gold)" /></div>;
+  }
 
   return (
     <div>
@@ -325,9 +368,9 @@ export default function PaymentManagement() {
                       </span>
                     </td>
                     <td>
-                      {t.status === 'success' && <button className="btn btn-sm btn-outline" onClick={() => handleProcessRefund(t.id)}>Process Refund</button>}
+                      {t.status === 'success' && <button className="btn btn-sm btn-outline" onClick={() => handleProcessRefund(t._docId, t.id)}>Process Refund</button>}
                       {t.status === 'failed' && <button className="btn btn-sm btn-outline" onClick={() => handleCheckLogs(t.id)}>Check Logs</button>}
-                      {t.status === 'pending' && <button className="btn btn-sm btn-outline" onClick={() => handleVerify(t.id)}>Verify</button>}
+                      {t.status === 'pending' && <button className="btn btn-sm btn-outline" onClick={() => handleVerify(t._docId, t.id)}>Verify</button>}
                       {t.status === 'refunded' && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle size={12} /> Settled</span>}
                     </td>
                     <td>

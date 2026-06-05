@@ -116,8 +116,17 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
 
   if (!isOpen) return null;
 
-  const isFaceProduct = ['Necklace', 'Earrings', 'Earring'].includes(product?.category);
-  const isHandProduct = ['Ring', 'Bracelet', 'Bangle'].includes(product?.category);
+  const cat = (product?.category || '').toLowerCase();
+  const subcat = (product?.subcategory || '').toLowerCase();
+  const name = (product?.name || '').toLowerCase();
+  
+  const isFaceProduct = cat.includes('necklace') || cat.includes('earring') || 
+                        subcat.includes('necklace') || subcat.includes('earring') ||
+                        name.includes('necklace') || name.includes('earring');
+                        
+  const isHandProduct = cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle') ||
+                        subcat.includes('ring') || subcat.includes('bracelet') || subcat.includes('bangle') ||
+                        name.includes('ring') || name.includes('bracelet') || name.includes('bangle');
 
   return (
     <div className="vto-overlay">
@@ -130,7 +139,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
           <button className="vto-close" onClick={onClose}><X size={24} /></button>
         </div>
 
-        <div className="vto-content">
+        <div className="vto-body">
           {error ? (
             <div className="vto-error">
               <ShieldAlert size={48} style={{ marginBottom: '1rem', color: '#e74c3c' }} />
@@ -138,7 +147,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
               <button className="btn btn-outline mt-1" onClick={startCamera}>Try Again</button>
             </div>
           ) : (
-            <div className="vto-video-container" ref={canvasContainerRef}>
+            <div className="vto-viewport" ref={canvasContainerRef}>
               <video 
                 ref={videoRef} 
                 autoPlay 

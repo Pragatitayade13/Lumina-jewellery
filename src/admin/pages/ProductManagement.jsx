@@ -53,7 +53,7 @@ export default function ProductManagement() {
   
   const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '' });
   
-  const { products, loading, removeProduct, addProduct } = useProducts();
+  const { products, loading, removeProduct, addProduct, updateProduct } = useProducts();
   const { showToast } = useApp();
 
   const handleSeedDatabase = async () => {
@@ -114,15 +114,29 @@ export default function ProductManagement() {
       status: Number(editingProduct.stock) > 0 ? 'active' : 'out_of_stock'
     };
     
-    setLocalProducts(prev => prev.map(p => p.id === productData.id ? productData : p));
-    showToast(`Product details updated successfully.`);
+    try {
+      showToast("Updating product in database...");
+      await updateProduct(productData.id, productData);
+      showToast(`Product details updated successfully in live database.`);
+    } catch(err) {
+      setLocalProducts(prev => prev.map(p => p.id === productData.id ? productData : p));
+      showToast(`Product details updated locally.`);
+    }
     setEditingProduct(null);
   };
 
-  const handleApprove = (product) => {
-    setPendingProducts(prev => prev.filter(p => p.id !== product.id));
-    setLocalProducts(prev => [{...product, status: 'active'}, ...prev]);
-    showToast(`${product.name} has been approved and is now live.`);
+  const handleApprove = async (product) => {
+    try {
+      showToast(`Approving ${product.name}...`);
+      await addProduct({...product, status: 'active'});
+      setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      setLocalProducts(prev => [{...product, status: 'active'}, ...prev]);
+      showToast(`${product.name} has been approved and is now live.`);
+    } catch(err) {
+      showToast(`Failed to approve ${product.name} in database. Approved locally.`, "error");
+      setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      setLocalProducts(prev => [{...product, status: 'active'}, ...prev]);
+    }
   };
 
   const handleReject = (id) => {

@@ -12,6 +12,11 @@ export default function TaxManagement() {
   const [taxRecords, setTaxRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
 
+  // Month filter for GSTR-3B: default to current month
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1); // 1-12
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
+
   useEffect(() => {
     if (!db) {
       setLoadingRecords(false);
@@ -32,9 +37,19 @@ export default function TaxManagement() {
     return () => unsubscribe();
   }, []);
 
-  const [newTx, setNewTx] = useState({ amount: '', state: taxSettings.storeOriginState || 'Maharashtra', type: 'gold' });
+  const newTxState = taxSettings.storeOriginState || 'Maharashtra';
+  const [newTx, setNewTx] = useState({ amount: '', state: newTxState, type: 'gold' });
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [tempRates, setTempRates] = useState({ gold: 3, diamond: 3, silver: 3, making: 5 });
+
+  // Filter records to the selected month
+  const filteredRecords = taxRecords.filter(rec => {
+    if (!rec.date) return false;
+    const recDate = new Date(rec.date);
+    return recDate.getMonth() + 1 === filterMonth && recDate.getFullYear() === filterYear;
+  });
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   const calculateGstDetails = () => {
     if (!newTx.amount) return { total: 0, cgst: 0, sgst: 0, igst: 0, rate: 0, type: '' };
@@ -123,20 +138,27 @@ export default function TaxManagement() {
   };
 
   const handleGSTR3B = () => {
-    showToast('Generating GSTR-3B Filing Report...');
+    const periodLabel = `${monthNames[filterMonth - 1]} ${filterYear}`;
+    const reportRecords = filteredRecords;
+    showToast(`Generating GSTR-3B Filing Report for ${periodLabel}...`);
     setTimeout(() => {
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
         <html>
           <head>
-            <title>GSTR-3B Report</title>
+            <title>GSTR-3B Report — ${periodLabel}</title>
             <style>body { font-family: Arial; padding: 2rem; }</style>
           </head>
           <body>
             <h2 style="color: #c9a84c;">GSTR-3B Filing Summary</h2>
-            <p><strong>Filing Period:</strong> May 2026</p>
-            <p><strong>Total Outward Supplies (Base):</strong> ₹${taxRecords.reduce((a,b)=>a+b.amount,0).toLocaleString('en-IN')}</p>
-            <p><strong>Total Tax Liability:</strong> ₹${taxRecords.reduce((a,b)=>a+b.gstAmount,0).toLocaleString('en-IN')}</p>
+            <p><strong>Filing Period:</strong> ${periodLabel}</p>
+            <p><strong>GSTIN:</strong> 27AAACL1234F1Z5</p>
+            <p><strong>Total Outward Supplies (Base):</strong> ₹${reportRecords.reduce((a,b)=>a+(b.amount||0),0).toLocaleString('en-IN')}</p>
+            <p><strong>Total IGST Liability:</strong> ₹${reportRecords.reduce((a,b)=>a+(b.igst||0),0).toLocaleString('en-IN')}</p>
+            <p><strong>Total CGST Liability:</strong> ₹${reportRecords.reduce((a,b)=>a+(b.cgst||0),0).toLocaleString('en-IN')}</p>
+            <p><strong>Total SGST Liability:</strong> ₹${reportRecords.reduce((a,b)=>a+(b.sgst||0),0).toLocaleString('en-IN')}</p>
+            <p><strong>Total Tax Liability:</strong> ₹${reportRecords.reduce((a,b)=>a+(b.gstAmount||0),0).toLocaleString('en-IN')}</p>
+            <p><em>${reportRecords.length} transactions included in this period.</em></p>
             <p>Ready for GST Portal upload.</p>
           </body>
         </html>
@@ -183,21 +205,33 @@ export default function TaxManagement() {
 
         <div className="admin-card" style={{ gridColumn: 'span 2' }}>
            <div className="card-header">
-            <h3 className="card-title" style={{ fontSize: '1rem' }}>Monthly Tax Summary (May 2026)</h3>
+            <div>
+              <h3 className="card-title" style={{ fontSize: '1rem' }}>Monthly Tax Summary</h3>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.3rem' }}>
+                Period:
+                <select value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))} style={{ padding: '0.2rem 0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}>
+                  {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                </select>
+                <select value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} style={{ padding: '0.2rem 0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '4px', color: 'var(--text-primary)' }}>
+                  {[2024, 2025, 2026].map(y => <option key={y}>{y}</option>)}
+                </select>
+                <span style={{ color: 'var(--text-muted)' }}>({filteredRecords.length} records)</span>
+              </div>
+            </div>
             <button className="btn btn-gold btn-sm" onClick={handleGSTR3B} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#FFFFFF', fontWeight: 'bold' }}><FileText size={14} /> GSTR-3B Report</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
               <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total IGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.igst||0),0).toLocaleString('en-IN')}</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{filteredRecords.reduce((a,b)=>a+(b.igst||0),0).toLocaleString('en-IN')}</div>
              </div>
              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total CGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.cgst||0),0).toLocaleString('en-IN')}</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{filteredRecords.reduce((a,b)=>a+(b.cgst||0),0).toLocaleString('en-IN')}</div>
              </div>
              <div style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total SGST Collected</div>
-               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{taxRecords.reduce((a,b)=>a+(b.sgst||0),0).toLocaleString('en-IN')}</div>
+               <div style={{ fontSize: '1.8rem', fontWeight: 600, fontFamily: 'Inter' }}>₹{filteredRecords.reduce((a,b)=>a+(b.sgst||0),0).toLocaleString('en-IN')}</div>
              </div>
            </div>
         </div>

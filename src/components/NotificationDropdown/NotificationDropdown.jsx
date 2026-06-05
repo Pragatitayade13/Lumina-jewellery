@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Package, Tag, AlertCircle, Info, X } from 'lucide-react';
+import { useInventory } from '../../hooks/useInventory';
 import './NotificationDropdown.css';
 
 const getInitialNotifications = (userRole) => {
@@ -26,15 +27,32 @@ const getInitialNotifications = (userRole) => {
   // Default Admin/Manager/Staff
   return [
     { id: 1, title: 'New Order Received', desc: 'Order #ORD-88125 needs packing.', time: '2 mins ago', icon: <Package size={16} />, unread: true },
-    { id: 2, title: 'Low Stock Alert', desc: 'Polki Kundan Bridal Set is out of stock.', time: '30 mins ago', icon: <AlertCircle size={16} />, unread: true },
     { id: 3, title: 'New Support Ticket', desc: 'Neha Singh opened a return request.', time: '1 hour ago', icon: <Info size={16} />, unread: false }
   ];
 };
 
 export default function NotificationDropdown({ userRole }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(() => getInitialNotifications(userRole));
+  const [staticNotifs, setStaticNotifs] = useState(() => getInitialNotifications(userRole));
+  const [dynamicNotifs, setDynamicNotifs] = useState([]);
   const dropdownRef = useRef(null);
+
+  const { inventory } = useInventory();
+
+  useEffect(() => {
+    if (inventory && (!userRole || userRole === 'superadmin' || userRole === 'manager' || userRole === 'staff')) {
+      const lowStockItems = inventory.filter(item => item.stock <= item.minStock);
+      const newAlerts = lowStockItems.map((item) => ({
+        id: `inv-${item.id}`,
+        title: item.stock === 0 ? 'Out of Stock Alert' : 'Low Stock Alert',
+        desc: `${item.name} (${item.sku}) has only ${item.stock} left.`,
+        time: 'Live',
+        icon: <AlertCircle size={16} />,
+        unread: true,
+      }));
+      setDynamicNotifs(newAlerts);
+    }
+  }, [inventory, userRole]);
 
   useEffect(() => {
     if (isOpen) {
@@ -50,14 +68,17 @@ export default function NotificationDropdown({ userRole }) {
     };
   }, [isOpen]);
 
+  const notifications = [...dynamicNotifs, ...staticNotifs];
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+    setStaticNotifs(staticNotifs.map(n => ({ ...n, unread: false })));
+    setDynamicNotifs(dynamicNotifs.map(n => ({ ...n, unread: false })));
   };
 
   const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+    setStaticNotifs(staticNotifs.map(n => n.id === id ? { ...n, unread: false } : n));
+    setDynamicNotifs(dynamicNotifs.map(n => n.id === id ? { ...n, unread: false } : n));
   };
 
   return (

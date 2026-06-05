@@ -68,7 +68,11 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
         
         let newPos = [0, 0, 0];
         const cat = (product?.category || '').toLowerCase();
-        if (cat.includes('earring')) {
+        const subcat = (product?.subcategory || '').toLowerCase();
+        const name = (product?.name || '').toLowerCase();
+        const isEarring = cat.includes('earring') || subcat.includes('earring') || name.includes('earring');
+        
+        if (isEarring) {
           newPos = mapLandmark(landmarks[132]);
         } else {
           newPos = mapLandmark(landmarks[152]);
@@ -95,7 +99,7 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
       positionRef={positionRef}
       modelUrl={product?.modelUrl} 
       fallbackColor="gold"
-      category={product?.category}
+      product={product}
     />
   );
 }
