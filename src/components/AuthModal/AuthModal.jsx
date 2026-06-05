@@ -305,7 +305,8 @@ export default function AuthModal() {
   ];
 
   return (
-    <div className="auth-page-container" style={{ backgroundImage: `url(${bgImage})`, zIndex: 9999 }} data-lenis-prevent="true">
+    <div className="auth-page-container" style={{ zIndex: 9999 }} data-lenis-prevent="true">
+      <div className="auth-bg-animation" style={{ backgroundImage: `url(${bgImage})` }}></div>
       <div className="auth-glass-modal" onClick={e => e.stopPropagation()} data-lenis-prevent="true">
         <button className="auth-glass-close" onClick={() => setIsAuthOpen(false)}>
           <X size={20} />

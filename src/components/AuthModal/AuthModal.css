@@ -236,10 +236,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.auth-bg-animation {
+  position: absolute;
+  inset: -5%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  animation: fadeIn 0.5s ease-out forwards;
+  z-index: 0;
+  animation: subtleZoom 25s infinite alternate ease-in-out;
+}
+
+@keyframes subtleZoom {
+  0% { transform: scale(1); background-position: center center; }
+  100% { transform: scale(1.05); background-position: top right; }
 }
 
 .auth-page-container::before {
