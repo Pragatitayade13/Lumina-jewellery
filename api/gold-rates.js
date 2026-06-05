@@ -23,6 +23,23 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`GoldAPI Error (${response.status}):`, errorData);
+      
+      // If quota exceeded or forbidden, return mock data fallback
+      if (response.status === 403 || response.status === 429) {
+        console.log('Falling back to mock data due to API limits.');
+        if (symbol === 'XAU') {
+          return res.status(200).json({
+            price_gram_24k: 7250,
+            price_gram_22k: 6650,
+            price_gram_18k: 5440
+          });
+        } else if (symbol === 'XAG') {
+          return res.status(200).json({
+            price_gram_24k: 85
+          });
+        }
+      }
+      
       return res.status(response.status).json({ error: `GoldAPI returned ${response.status}` });
     }
 
