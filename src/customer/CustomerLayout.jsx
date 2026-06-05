@@ -40,10 +40,10 @@ export default function CustomerLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, setUser, theme, toggleTheme } = useApp();
-  const { systemSettingsData } = useCMS();
+  const { systemSettingsData, landingPageData } = useCMS();
   const { rates } = useRates();
   
-  const storeName = systemSettingsData?.storeName || 'Lumina Jewels';
+  const storeName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || 'Lumina Jewels';
   const pageTitle = pageTitles[location.pathname] || 'My Account';
 
   const handleLogout = async () => {
@@ -90,7 +90,13 @@ export default function CustomerLayout({ children }) {
       {/* ─── Sidebar ─── */}
       <aside className="customer-sidebar">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon"><Diamond size={24} color="#0D0800" /></div>
+          <div className="sidebar-logo-icon">
+            {landingPageData?.branding?.logoUrl ? (
+              <img src={landingPageData.branding.logoUrl} alt="Store Logo" style={{ height: 24, width: 24, objectFit: 'contain' }} />
+            ) : (
+              <Diamond size={24} color="#0D0800" />
+            )}
+          </div>
           <div>
             <div className="sidebar-logo-name">{storeName}</div>
             <div className="sidebar-logo-tag">My Account</div>

@@ -62,9 +62,9 @@ function StoreLayout() {
   const { landingPageData, systemSettingsData } = useCMS();
 
   useEffect(() => {
-    const title = systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
+    const title = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
     document.title = title;
-  }, [systemSettingsData?.storeName, landingPageData?.seo?.title]);
+  }, [systemSettingsData?.storeName, landingPageData?.branding?.storeName, landingPageData?.seo?.title]);
 
   return (
     <SmoothScroll>

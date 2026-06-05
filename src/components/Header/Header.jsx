@@ -110,10 +110,14 @@ export default function Header({ onCartClick, onWishlistClick }) {
             {/* Logo */}
             <a className="logo" href="#home" onClick={() => handleNavClick('#home')}>
               <div className="logo-icon">
-                <Gem size={18} />
+                {landingPageData?.branding?.logoUrl ? (
+                  <img src={landingPageData.branding.logoUrl} alt="Store Logo" style={{ height: 32, width: 32, objectFit: 'contain' }} />
+                ) : (
+                  <Gem size={18} />
+                )}
               </div>
               <div className="logo-text">
-                <span className="logo-name">{systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</span>
+                <span className="logo-name">{landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</span>
               </div>
             </a>
 

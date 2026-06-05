@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-export default function ModelRenderer({ position, modelUrl, fallbackColor, category }) {
+export default function ModelRenderer({ positionRef, modelUrl, fallbackColor, category }) {
   const groupRef = useRef();
   const [model, setModel] = useState(null);
   
@@ -30,10 +30,10 @@ export default function ModelRenderer({ position, modelUrl, fallbackColor, categ
   }, [modelUrl]);
 
   useFrame((state, delta) => {
-    if (!groupRef.current || !position) return;
+    if (!groupRef.current || !positionRef || !positionRef.current) return;
     
     // Smooth interpolation to avoid jitter
-    targetPos.set(position[0], position[1], position[2]);
+    targetPos.set(positionRef.current[0], positionRef.current[1], positionRef.current[2]);
     groupRef.current.position.lerp(targetPos, 0.2);
     
     // Subtle auto-rotation for demo purposes if no exact rotation matrix is available

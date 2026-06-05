@@ -102,9 +102,15 @@ export default function Footer() {
             {/* Brand */}
             <div className="footer-brand stagger-item">
               <div className="footer-logo">
-                <div className="footer-logo-icon"><Gem size={20} /></div>
+                <div className="footer-logo-icon">
+                  {landingPageData?.branding?.logoUrl ? (
+                    <img src={landingPageData.branding.logoUrl} alt="Store Logo" style={{ height: 32, width: 32, objectFit: 'contain' }} />
+                  ) : (
+                    <Gem size={20} />
+                  )}
+                </div>
                 <div>
-                  <div className="footer-logo-name">{systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</div>
+                  <div className="footer-logo-name">{landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels'}</div>
                 </div>
               </div>
               <p className="footer-desc">

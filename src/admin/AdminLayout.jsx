@@ -82,14 +82,14 @@ const pageTitles = {
 
 export default function AdminLayout({ children }) {
   const { user, setUser, theme, toggleTheme } = useApp();
-  const { systemSettingsData } = useCMS();
+  const { systemSettingsData, landingPageData } = useCMS();
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isSidebarMenuOpen, setIsSidebarMenuOpen] = useState(false);
   const sidebarAvatarRef = useRef(null);
 
-  const storeName = systemSettingsData?.storeName || 'Lumina Jewels';
+  const storeName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
 
   // Close sidebar avatar dropdown when clicking outside
   useEffect(() => {
@@ -182,7 +182,13 @@ export default function AdminLayout({ children }) {
       {/* ─── Sidebar ─── */}
       <aside className="admin-sidebar">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon"><Diamond size={24} color="#0D0800" /></div>
+          <div className="sidebar-logo-icon">
+            {landingPageData?.branding?.logoUrl ? (
+              <img src={landingPageData.branding.logoUrl} alt="Store Logo" style={{ height: 24, width: 24, objectFit: 'contain' }} />
+            ) : (
+              <Diamond size={24} color="#0D0800" />
+            )}
+          </div>
           <div>
             <div className="sidebar-logo-name">{storeName}</div>
             <div className="sidebar-logo-tag">{panelName}</div>

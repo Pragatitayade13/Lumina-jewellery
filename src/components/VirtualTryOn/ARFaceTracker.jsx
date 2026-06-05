@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { FaceMesh } from '@mediapipe/face_mesh';
-import { Camera } from '@mediapipe/camera_utils';
 import ModelRenderer from './ModelRenderer';
 
+const FaceMesh = window.FaceMesh;
+const Camera = window.Camera;
+
 export default function ARFaceTracker({ videoRef, product, onLoaded }) {
-  const { size, camera } = useThree();
+  const { size } = useThree();
   const faceMeshRef = useRef(null);
   const cameraUtilsRef = useRef(null);
   
-  const [landmarks, setLandmarks] = useState(null);
+  const positionRef = useRef([0, -10, -50]); // Default hidden far away
+  const hasLoadedRef = useRef(false);
+  const [isReady, setIsReady] = useState(false); // Only toggle once to mount renderer
 
   useEffect(() => {
     if (!videoRef.current) return;
+
+    const mapLandmark = (point) => {
+      const x = (point.x - 0.5) * -10; 
+      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
+      const z = -point.z * 10;
+      return [x, y, z];
+    };
 
     faceMeshRef.current = new FaceMesh({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -27,11 +37,23 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
 
     faceMeshRef.current.onResults((results) => {
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        setLandmarks(results.multiFaceLandmarks[0]);
-      } else {
-        setLandmarks(null);
+        const landmarks = results.multiFaceLandmarks[0];
+        
+        let newPos = [0, 0, 0];
+        if (product?.category === 'Earrings' || product?.category === 'Earring') {
+          newPos = mapLandmark(landmarks[132]);
+        } else {
+          newPos = mapLandmark(landmarks[152]);
+          newPos[1] -= 2; 
+        }
+        positionRef.current = newPos;
+        
+        if (!hasLoadedRef.current) {
+          hasLoadedRef.current = true;
+          setIsReady(true);
+          onLoaded();
+        }
       }
-      onLoaded();
     });
 
     cameraUtilsRef.current = new Camera(videoRef.current, {
@@ -54,37 +76,13 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
         faceMeshRef.current.close();
       }
     };
-  }, [videoRef, onLoaded]);
+  }, [videoRef, product, onLoaded, size.width, size.height]);
 
-  if (!landmarks) return null;
-
-  // Map MediaPipe landmarks (0-1) to Three.js coordinates
-  // MediaPipe: 0,0 is top-left. Threejs: 0,0 is center
-  const mapLandmark = (point) => {
-    const x = (point.x - 0.5) * -10; // Mirror X
-    const y = -(point.y - 0.5) * 10 * (size.height / size.width);
-    const z = -point.z * 10;
-    return [x, y, z];
-  };
-
-  // Determine attachment point based on category
-  let position = [0,0,0];
-  if (product?.category === 'Earrings' || product?.category === 'Earring') {
-    // Earlobe roughly
-    const leftEarlobe = landmarks[132]; 
-    const rightEarlobe = landmarks[361];
-    // For simplicity, attach to left ear
-    position = mapLandmark(leftEarlobe);
-  } else {
-    // Necklace (Neck base roughly)
-    const chin = landmarks[152];
-    position = mapLandmark(chin);
-    position[1] -= 2; // Shift down to neck
-  }
+  if (!isReady) return null;
 
   return (
     <ModelRenderer 
-      position={position}
+      positionRef={positionRef}
       modelUrl={product?.modelUrl} 
       fallbackColor="gold"
       category={product?.category}

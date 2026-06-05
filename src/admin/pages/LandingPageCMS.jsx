@@ -26,6 +26,10 @@ export default function LandingPageCMS() {
       title: 'Lumina Jewels',
       description: 'Exclusive luxury jewellery'
     },
+    branding: {
+      storeName: 'Lumina Jewels',
+      logoUrl: ''
+    },
     navBar: [
       { label: 'Home', href: '/' },
       { label: 'Shop', href: '/collections' },
@@ -585,6 +589,7 @@ export default function LandingPageCMS() {
           <div className="admin-card" style={{ padding: '1rem 0' }}>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[
+                { id: 'branding', label: 'Branding', icon: <ImageIcon size={16} /> },
                 { id: 'seo', label: 'SEO Settings', icon: <Search size={16} /> },
                 { id: 'hero', label: 'Hero Banners', icon: <ImageIcon size={16} /> },
                 { id: 'navBar', label: 'Navigation Bar', icon: <LinkIcon size={16} /> },
@@ -664,7 +669,70 @@ export default function LandingPageCMS() {
               </div>
             </div>
           )}
+          {/* BRANDING TAB */}
+          {activeTab === 'branding' && (
+            <div className="admin-card">
+              <h2 className="admin-card-title">Store Branding</h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                Manage your store name and logo. These will appear in the header, footer, admin panel, and browser tabs.
+              </p>
+              
+              <div className="form-group">
+                <label className="form-label">Store Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={data.branding?.storeName || ''} 
+                  onChange={(e) => setData({...data, branding: {...data.branding, storeName: e.target.value}})} 
+                />
+              </div>
 
+              <div className="form-group">
+                <label className="form-label">Store Logo</label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 120, height: 120, borderRadius: 8, border: '1px dashed var(--border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fafafa',
+                    backgroundImage: data.branding?.logoUrl ? `url(${data.branding.logoUrl})` : 'none',
+                    backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
+                  }}>
+                    {!data.branding?.logoUrl && <ImageIcon size={32} color="var(--border)" />}
+                  </div>
+                  <div>
+                    <label className="btn btn-outline" style={{ cursor: 'pointer' }}>
+                      <UploadCloud size={16} style={{ marginRight: 8 }} />
+                      Upload Logo
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          try {
+                            const storageRef = ref(storage, `cms/branding/logo_${Date.now()}`);
+                            const uploadTask = uploadBytesResumable(storageRef, file);
+                            uploadTask.on('state_changed', null, null, async () => {
+                              const url = await getDownloadURL(uploadTask.snapshot.ref);
+                              setData({...data, branding: {...data.branding, logoUrl: url}});
+                              showToast("Logo uploaded successfully!");
+                            });
+                          } catch (err) {
+                            showToast("Logo upload failed", "error");
+                          }
+                        }}
+                      />
+                    </label>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                      Recommended: Transparent PNG, 200x200px or similar ratio.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SEO TAB */}
           {activeTab === 'seo' && (
             <div className="admin-card">
               <div className="card-header"><div className="card-title">SEO Settings</div></div>

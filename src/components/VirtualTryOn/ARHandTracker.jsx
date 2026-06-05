@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Hands } from '@mediapipe/hands';
-import { Camera } from '@mediapipe/camera_utils';
 import ModelRenderer from './ModelRenderer';
+
+const Hands = window.Hands;
+const Camera = window.Camera;
 
 export default function ARHandTracker({ videoRef, product, onLoaded }) {
   const { size } = useThree();
   const handsRef = useRef(null);
   const cameraUtilsRef = useRef(null);
   
-  const [landmarks, setLandmarks] = useState(null);
+  const positionRef = useRef([0, -10, -50]);
+  const hasLoadedRef = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (!videoRef.current) return;
+
+    const mapLandmark = (point) => {
+      const x = (point.x - 0.5) * -10; 
+      const y = -(point.y - 0.5) * 10 * (size.height / size.width);
+      const z = -point.z * 10;
+      return [x, y, z];
+    };
 
     handsRef.current = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -27,11 +37,19 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
 
     handsRef.current.onResults((results) => {
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        setLandmarks(results.multiHandLandmarks[0]);
-      } else {
-        setLandmarks(null);
+        const landmarks = results.multiHandLandmarks[0];
+        if (product?.category === 'Ring') {
+          positionRef.current = mapLandmark(landmarks[13]);
+        } else {
+          positionRef.current = mapLandmark(landmarks[0]);
+        }
+        
+        if (!hasLoadedRef.current) {
+          hasLoadedRef.current = true;
+          setIsReady(true);
+          onLoaded();
+        }
       }
-      onLoaded();
     });
 
     cameraUtilsRef.current = new Camera(videoRef.current, {
@@ -54,29 +72,13 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
         handsRef.current.close();
       }
     };
-  }, [videoRef, onLoaded]);
+  }, [videoRef, product, onLoaded, size.width, size.height]);
 
-  if (!landmarks) return null;
-
-  const mapLandmark = (point) => {
-    const x = (point.x - 0.5) * -10; 
-    const y = -(point.y - 0.5) * 10 * (size.height / size.width);
-    const z = -point.z * 10;
-    return [x, y, z];
-  };
-
-  let position = [0,0,0];
-  if (product?.category === 'Ring') {
-    // Ring finger base (landmark 13)
-    position = mapLandmark(landmarks[13]);
-  } else {
-    // Bracelet/Bangle (Wrist - landmark 0)
-    position = mapLandmark(landmarks[0]);
-  }
+  if (!isReady) return null;
 
   return (
     <ModelRenderer 
-      position={position}
+      positionRef={positionRef}
       modelUrl={product?.modelUrl} 
       fallbackColor="silver"
       category={product?.category}
