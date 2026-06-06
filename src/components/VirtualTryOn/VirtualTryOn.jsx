@@ -8,25 +8,50 @@ import ARFaceTracker from './ARFaceTracker';
 import ARHandTracker from './ARHandTracker';
 import { db } from '../../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useProducts } from '../../hooks/useProducts';
 import './VirtualTryOn.css';
 
 export default function VirtualTryOn({ isOpen, onClose, product }) {
   useScrollLock(isOpen);
   const { addToCart, toggleWishlist, isWishlisted, user, showToast } = useApp();
+  const { products } = useProducts();
+  const [activeProduct, setActiveProduct] = useState(product);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState('');
   const [isLoadingModel, setIsLoadingModel] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
+  const [fps, setFps] = useState(0);
   const videoRef = useRef(null);
   const canvasContainerRef = useRef(null);
 
+  // Sync prop changes (if any external changes happen)
+  useEffect(() => {
+    if (product) setActiveProduct(product);
+  }, [product]);
+
   // Track AR usage analytics
   useEffect(() => {
-    if (isOpen && product) {
+    if (isOpen && activeProduct) {
       logARUsage();
     }
     
     if (isOpen) {
       startCamera();
+      
+      // FPS Calculation
+      let frameCount = 0;
+      let lastTime = performance.now();
+      const calcFps = () => {
+        const now = performance.now();
+        frameCount++;
+        if (now - lastTime >= 1000) {
+          setFps(Math.round((frameCount * 1000) / (now - lastTime)));
+          frameCount = 0;
+          lastTime = now;
+        }
+        if (isOpen) requestAnimationFrame(calcFps);
+      };
+      requestAnimationFrame(calcFps);
     } else {
       stopCamera();
     }
@@ -37,9 +62,9 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
   const logARUsage = async () => {
     try {
       await addDoc(collection(db, 'arAnalytics'), {
-        productId: product.id || product.sku,
-        productName: product.name,
-        category: product.category,
+        productId: activeProduct.id || activeProduct.sku,
+        productName: activeProduct.name,
+        category: activeProduct.category,
         userId: user ? user.uid : 'anonymous',
         timestamp: new Date().toISOString(),
         device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'
@@ -100,7 +125,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
       
       const dataUrl = compositeCanvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = `lumina-tryon-${product.sku || 'capture'}.png`;
+      link.download = `lumina-tryon-${activeProduct.sku || 'capture'}.png`;
       link.href = dataUrl;
       link.click();
       showToast('Snapshot saved!');
@@ -111,18 +136,18 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
   };
 
   const handleAddToCart = () => {
-    addToCart(product);
+    addToCart(activeProduct);
   };
 
   if (!isOpen) return null;
 
-  const cat = (product?.category || '').toLowerCase();
-  const subcat = (product?.subcategory || '').toLowerCase();
-  const name = (product?.name || '').toLowerCase();
+  const cat = (activeProduct?.category || '').toLowerCase();
+  const subcat = (activeProduct?.subcategory || '').toLowerCase();
+  const name = (activeProduct?.name || '').toLowerCase();
   
-  const isFaceProduct = cat.includes('necklace') || cat.includes('earring') || 
-                        subcat.includes('necklace') || subcat.includes('earring') ||
-                        name.includes('necklace') || name.includes('earring');
+  const isFaceProduct = cat.includes('necklace') || cat.includes('earring') || cat.includes('tikka') || cat.includes('choker') ||
+                        subcat.includes('necklace') || subcat.includes('earring') || subcat.includes('tikka') || subcat.includes('choker') ||
+                        name.includes('necklace') || name.includes('earring') || name.includes('tikka') || name.includes('choker');
                         
   const isHandProduct = cat.includes('ring') || cat.includes('bracelet') || cat.includes('bangle') ||
                         subcat.includes('ring') || subcat.includes('bracelet') || subcat.includes('bangle') ||
@@ -132,12 +157,34 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
     <div className="vto-overlay">
       <div className="vto-container">
         <div className="vto-header">
-          <div className="vto-title">
+          <div className="vto-title" onDoubleClick={() => setShowDebug(!showDebug)}>
             <Camera size={20} className="vto-icon" />
             <h3>Live AR Try-On</h3>
           </div>
-          <button className="vto-close" onClick={onClose}><X size={24} /></button>
+          <button 
+            className="vto-close" 
+            onClick={() => {
+              console.log("Closing VTO");
+              onClose();
+            }}
+            style={{ position: 'relative', zIndex: 99999, pointerEvents: 'auto', padding: '10px' }}
+          >
+            <X size={24} />
+          </button>
         </div>
+        
+        {showDebug && (
+          <div style={{ position: 'absolute', top: '70px', left: '10px', background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '8px', zIndex: 100, fontSize: '0.75rem', color: '#0f0', fontFamily: 'monospace' }}>
+            <strong>AR DEBUG PANEL</strong><br/>
+            FPS: {fps}<br/>
+            Engine: {isFaceProduct ? 'FaceMesh' : isHandProduct ? 'Hands' : 'FaceMesh (Fallback)'}<br/>
+            Product ID: {activeProduct?.sku || activeProduct?.id}<br/>
+            Scale Multiplier: {activeProduct?.arScale || 1}<br/>
+            Offset: X:{activeProduct?.arOffsetX || 0} Y:{activeProduct?.arOffsetY || 0} Z:{activeProduct?.arOffsetZ || 0}<br/>
+            Occlusion: Active<br/>
+            PBR Rendering: Active
+          </div>
+        )}
 
         <div className="vto-body">
           {error ? (
@@ -160,20 +207,21 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
               {stream && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
                   <Canvas
+                    shadows
                     camera={{ position: [0, 0, 10], fov: 50 }}
                     style={{ background: 'transparent', pointerEvents: 'none' }}
-                    gl={{ alpha: true, preserveDrawingBuffer: true }}
+                    gl={{ alpha: true, preserveDrawingBuffer: true, antialias: true }}
                   >
                     <ambientLight intensity={0.8} />
-                    <directionalLight position={[10, 10, 5]} intensity={1} />
+                    <directionalLight castShadow position={[10, 10, 5]} intensity={1} shadow-mapSize={[1024, 1024]} />
                     <Environment preset="city" />
                     
                     <Suspense fallback={null}>
-                      {isFaceProduct && <ARFaceTracker videoRef={videoRef} product={product} onLoaded={() => setIsLoadingModel(false)} />}
-                      {isHandProduct && <ARHandTracker videoRef={videoRef} product={product} onLoaded={() => setIsLoadingModel(false)} />}
+                      {isFaceProduct && <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />}
+                      {isHandProduct && <ARHandTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />}
                       {!isFaceProduct && !isHandProduct && (
                         // Fallback if category doesn't match
-                        <ARFaceTracker videoRef={videoRef} product={product} onLoaded={() => setIsLoadingModel(false)} />
+                        <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />
                       )}
                     </Suspense>
                   </Canvas>
@@ -190,25 +238,44 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
           )}
         </div>
 
-        <div className="vto-footer">
-          <div className="vto-product-info">
-            <h4>{product?.name}</h4>
-            <div className="vto-price">₹{product?.price?.toLocaleString()}</div>
+        <div className="vto-footer" style={{ flexDirection: 'column', gap: '1rem' }}>
+          
+          {/* Product Carousel */}
+          <div className="vto-carousel">
+            {products?.map(p => (
+              <div 
+                key={p.id || p.sku} 
+                className={`vto-carousel-item ${activeProduct?.id === p.id ? 'active' : ''}`}
+                onClick={() => {
+                  setIsLoadingModel(true);
+                  setActiveProduct(p);
+                }}
+              >
+                <img src={p.image} alt={p.name} />
+              </div>
+            ))}
           </div>
-          <div className="vto-actions" style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-            <button className="btn btn-outline" onClick={capturePhoto} title="Take Snapshot">
-              <Download size={18} /> Snapshot
-            </button>
-            <button 
-              className="btn btn-outline" 
-              onClick={() => toggleWishlist(product)}
-              title={isWishlisted(product?.id) ? "Remove from Wishlist" : "Add to Wishlist"}
-            >
-              <Heart size={18} fill={isWishlisted(product?.id) ? "var(--gold)" : "none"} color={isWishlisted(product?.id) ? "var(--gold)" : "currentColor"} />
-            </button>
-            <button className="btn btn-gold" onClick={handleAddToCart}>
-              <ShoppingBag size={18} /> Add to Cart
-            </button>
+          
+          <div className="vto-footer-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="vto-product-info">
+              <h4>{activeProduct?.name}</h4>
+              <div className="vto-price">₹{activeProduct?.price?.toLocaleString()}</div>
+            </div>
+            <div className="vto-actions" style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-outline" onClick={capturePhoto} title="Take Snapshot">
+                <Download size={18} /> Snapshot
+              </button>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => toggleWishlist(activeProduct)}
+                title={isWishlisted(activeProduct?.id) ? "Remove from Wishlist" : "Add to Wishlist"}
+              >
+                <Heart size={18} fill={isWishlisted(activeProduct?.id) ? "var(--gold)" : "none"} color={isWishlisted(activeProduct?.id) ? "var(--gold)" : "currentColor"} />
+              </button>
+              <button className="btn btn-gold" onClick={handleAddToCart}>
+                <ShoppingBag size={18} /> Add to Cart
+              </button>
+            </div>
           </div>
         </div>
       </div>

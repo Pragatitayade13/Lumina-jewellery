@@ -273,21 +273,23 @@ export default function SupportManagement() {
               <tr><th>Order ID</th><th>Customer</th><th>Reason</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {orders.filter(o => o.status === 'return_requested' || o.status === 'refund_pending').map(o => (
+              {orders.filter(o => o.status === 'return_requested' || o.status === 'returned').map(o => (
                 <tr key={o.id}>
                   <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{o.id}</td>
                   <td>{o.customer}</td>
                   <td>"Size does not fit"</td>
-                  <td><span className="badge badge-warning">Awaiting Approval</span></td>
+                  <td><span className="badge badge-warning">{o.status === 'returned' ? 'Approved (Pending Pickup)' : 'Awaiting Approval'}</span></td>
                   <td>
-                    <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--admin-border-bright)', color: 'var(--text-primary)' }} onClick={() => {
-                      updateOrderStatus(o.id, 'refund_pending');
-                      showToast(`Return for ${o.id} approved. Alerting logistics for pickup!`);
-                    }}><RotateCcw size={12} /> Approve Return (Alert Logistics)</button>
+                    {o.status === 'return_requested' && (
+                      <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--admin-border-bright)', color: 'var(--text-primary)' }} onClick={() => {
+                        updateOrderStatus(o.id, 'returned');
+                        showToast(`Return for ${o.id} approved. Alerting logistics for pickup!`);
+                      }}><RotateCcw size={12} /> Approve Return (Alert Logistics)</button>
+                    )}
                   </td>
                 </tr>
               ))}
-              {orders.filter(o => o.status === 'return_requested' || o.status === 'refund_pending').length === 0 && (
+              {orders.filter(o => o.status === 'return_requested' || o.status === 'returned').length === 0 && (
                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No pending return requests.</td></tr>
               )}
             </tbody>

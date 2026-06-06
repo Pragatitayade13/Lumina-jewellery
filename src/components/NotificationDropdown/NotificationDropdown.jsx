@@ -2,14 +2,15 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Package, Tag, AlertCircle, Info, X } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
+import { useOrders } from '../../hooks/useOrders';
+import { useLogistics } from '../../hooks/useLogistics';
 import './NotificationDropdown.css';
 
 const getInitialNotifications = (userRole) => {
   if (userRole === 'customer') {
     return [
-      { id: 1, title: 'Order Dispatched', desc: 'Your order #ORD-88120 is out for delivery.', time: '10 mins ago', icon: <Package size={16} />, unread: true },
-      { id: 2, title: 'Price Drop Alert', desc: '22k Gold price dropped by ₹145/g today!', time: '2 hours ago', icon: <Tag size={16} />, unread: true },
-      { id: 3, title: 'Scheme Maturity', desc: 'Your Golden Harvest scheme matures next week.', time: '1 day ago', icon: <Info size={16} />, unread: false }
+      { id: 'static-1', title: 'Price Drop Alert', desc: '22k Gold price dropped by ₹145/g today!', time: '2 hours ago', icon: <Tag size={16} />, unread: true },
+      { id: 'static-2', title: 'Scheme Maturity', desc: 'Your Golden Harvest scheme matures next week.', time: '1 day ago', icon: <Info size={16} />, unread: false }
     ];
   }
   if (userRole === 'delivery') {
@@ -36,23 +37,54 @@ export default function NotificationDropdown({ userRole }) {
   const [staticNotifs, setStaticNotifs] = useState(() => getInitialNotifications(userRole));
   const [dynamicNotifs, setDynamicNotifs] = useState([]);
   const dropdownRef = useRef(null);
-
   const { inventory } = useInventory();
+  const { orders } = useOrders();
+  const { shipments } = useLogistics();
 
   useEffect(() => {
-    if (inventory && (!userRole || userRole === 'superadmin' || userRole === 'manager' || userRole === 'staff')) {
+    let newAlerts = [];
+
+    // 1. Inventory Alerts (Admin/Manager)
+    if (inventory && (!userRole || ['superadmin', 'manager', 'staff'].includes(userRole))) {
       const lowStockItems = inventory.filter(item => item.stock <= item.minStock);
-      const newAlerts = lowStockItems.map((item) => ({
+      newAlerts.push(...lowStockItems.map((item) => ({
         id: `inv-${item.id}`,
         title: item.stock === 0 ? 'Out of Stock Alert' : 'Low Stock Alert',
         desc: `${item.name} (${item.sku}) has only ${item.stock} left.`,
         time: 'Live',
         icon: <AlertCircle size={16} />,
         unread: true,
-      }));
-      setDynamicNotifs(newAlerts);
+      })));
     }
-  }, [inventory, userRole]);
+
+    // 2. Customer Notifications (Orders)
+    if (userRole === 'customer' && orders) {
+      const recentOrders = orders.filter(o => o.status !== 'delivered').slice(0, 3);
+      newAlerts.push(...recentOrders.map(o => ({
+        id: `order-${o.id}`,
+        title: `Order Update`,
+        desc: `Your order #${o.id.slice(0,8)} is currently ${o.status || 'processing'}.`,
+        time: o.updatedAt ? new Date(o.updatedAt.seconds * 1000).toLocaleString() : 'Recent',
+        icon: <Package size={16} />,
+        unread: true
+      })));
+    }
+
+    // 3. Delivery Notifications (Shipments)
+    if (userRole === 'delivery' && shipments) {
+      const activeShipments = shipments.filter(s => s.status !== 'DELIVERED' && s.status !== 'RETURNED');
+      newAlerts.push({
+        id: `del-summary`,
+        title: 'Active Deliveries',
+        desc: `You have ${activeShipments.length} active shipments to process.`,
+        time: 'Live',
+        icon: <Package size={16} />,
+        unread: true
+      });
+    }
+
+    setDynamicNotifs(newAlerts);
+  }, [inventory, orders, shipments, userRole]);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,6 +113,11 @@ export default function NotificationDropdown({ userRole }) {
     setDynamicNotifs(dynamicNotifs.map(n => n.id === id ? { ...n, unread: false } : n));
   };
 
+  const clearAll = () => {
+    setStaticNotifs([]);
+    setDynamicNotifs([]);
+  };
+
   return (
     <div className="notif-dropdown-container" ref={dropdownRef}>
       <button className="topbar-btn" title="Notifications" onClick={() => setIsOpen(!isOpen)}>
@@ -95,7 +132,7 @@ export default function NotificationDropdown({ userRole }) {
               <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Notifications</h3>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button className="btn-mark-read" onClick={markAllAsRead}>Mark all read</button>
-                <button className="btn-mark-read" style={{ color: 'var(--status-red)' }} onClick={() => setNotifications([])}>Clear</button>
+                <button className="btn-mark-read" style={{ color: 'var(--status-red)' }} onClick={clearAll}>Clear</button>
                 <button 
                   onClick={() => setIsOpen(false)} 
                   style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}

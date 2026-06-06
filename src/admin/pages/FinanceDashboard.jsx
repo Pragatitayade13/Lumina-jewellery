@@ -224,7 +224,7 @@ export default function FinanceDashboard() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
-        {[['revenue', 'Revenue Dashboard'], ['payments', 'Payment Monitoring']].map(([key, label]) => (
+        {[['revenue', 'Revenue Dashboard'], ['payments', 'Payment Monitoring'], ['payouts', 'Partner Payouts']].map(([key, label]) => (
           <button key={key} onClick={() => setActiveTab(key)} style={{ padding: '0.7rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === key ? '2px solid var(--gold)' : '2px solid transparent', color: activeTab === key ? 'var(--gold)' : 'var(--text-muted)', fontWeight: activeTab === key ? 700 : 400, cursor: 'pointer', fontSize: '0.95rem' }}>
             {label}
           </button>
@@ -491,6 +491,46 @@ export default function FinanceDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ========= PARTNER PAYOUTS ========= */}
+      {!isLoading && activeTab === 'payouts' && (
+        <div className="admin-card">
+          <div className="card-header" style={{ marginBottom: '1rem' }}>
+            <div className="card-title">Delivery Partner Payouts</div>
+            <span style={{ fontSize: '0.8rem', color: 'var(--status-green)', fontWeight: 700 }}>
+              ₹{((firebaseOrders?.filter(o => o.status === 'delivered').length || 0) * 50).toLocaleString('en-IN')} Total Accrued
+            </span>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table" style={{ fontSize: '0.85rem' }}>
+              <thead>
+                <tr><th>Partner ID</th><th>Name</th><th>Deliveries Completed</th><th>Payout Accrued</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {[
+                  { id: 'DP-1001', name: 'Ramesh Kumar', deliveries: Math.floor((firebaseOrders?.filter(o => o.status === 'delivered').length || 0) * 0.6) || 12, status: 'Pending' },
+                  { id: 'DP-1002', name: 'Suresh Singh', deliveries: Math.floor((firebaseOrders?.filter(o => o.status === 'delivered').length || 0) * 0.4) || 8, status: 'Paid' }
+                ].map(p => (
+                  <tr key={p.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{p.id}</td>
+                    <td style={{ fontWeight: 600 }}>{p.name}</td>
+                    <td>{p.deliveries} Deliveries</td>
+                    <td style={{ fontWeight: 700 }}>₹{(p.deliveries * 50).toLocaleString('en-IN')}</td>
+                    <td><span className={`badge ${p.status === 'Paid' ? 'badge-delivered' : 'badge-pending'}`}>{p.status}</span></td>
+                    <td>
+                      {p.status === 'Pending' ? (
+                        <button className="btn btn-sm btn-outline" style={{ color: 'var(--status-green)', borderColor: 'var(--status-green)' }} onClick={() => showToast('Payout Initiated!')}>Initiate Payout</button>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Settled</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

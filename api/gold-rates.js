@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`GoldAPI Error (${response.status}):`, errorData);
-      
+
       // If quota exceeded or forbidden, return mock data fallback
       if (response.status === 403 || response.status === 429) {
         console.log('Falling back to mock data due to API limits.');
@@ -39,16 +39,16 @@ export default async function handler(req, res) {
           });
         }
       }
-      
+
       return res.status(response.status).json({ error: `GoldAPI returned ${response.status}` });
     }
 
     const data = await response.json();
-    
+
     // Set Cache-Control to cache the response for 1 hour (3600 seconds) 
     // to prevent hitting GoldAPI rate limits
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-    
+
     return res.status(200).json(data);
   } catch (error) {
     console.error('Error fetching from GoldAPI:', error);

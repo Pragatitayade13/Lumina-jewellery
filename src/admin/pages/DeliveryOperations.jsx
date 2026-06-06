@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Map, Package, CheckCircle, ShieldAlert, Phone, MapPin, RefreshCcw, Camera, Truck, XCircle, IndianRupee, Navigation, Navigation2, Radio, Clock } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useOrders } from '../../hooks/useOrders';
+import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
 import { useDeliveryLocation } from '../../hooks/useDeliveryLocation';
 import { useApp } from '../../context/AppContext';
 
@@ -235,8 +236,10 @@ export default function DeliveryOperations() {
   const searchParams = new URLSearchParams(location.search);
   const currentTab = searchParams.get('tab') || 'dashboard';
   
-  const { orders: liveOrders, updateOrderStatus } = useOrders();
+  const { orders: liveOrders } = useOrders();
+  const { shipments, updateStatus: updateLogisticsStatus, verifyDeliveryOTP } = useLogistics();
   const { user, showToast } = useApp();
+  const isSuperAdmin = user?.role === 'superadmin';
   const prevAssignedCountRef = useRef(0);
   const [optimisticStatuses, setOptimisticStatuses] = useState({});
 
@@ -259,14 +262,12 @@ export default function DeliveryOperations() {
     // Update the ref to the current count
     prevAssignedCountRef.current = currentAssignedCount;
   }, [liveOrders, showToast]);
-  const { isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations } = useDeliveryLocation(
+    const { isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations } = useDeliveryLocation(
     user?.uid,
     user?.name || user?.email
   );
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [otpInputs, setOtpInputs] = useState(['', '', '', '']);
-  const [currentOtp, setCurrentOtp] = useState('1234');
+  const [otpInputs, setOtpInputs] = useState(['', '', '', '', '', '']);
   const [photos, setPhotos] = useState({});
   const [cameraModal, setCameraModal] = useState({ isOpen: false, pickupId: null });
   const [failureModal, setFailureModal] = useState({ isOpen: false, order: null, reason: '' });
@@ -276,7 +277,7 @@ export default function DeliveryOperations() {
   // Delivery Reminder Notification
   useEffect(() => {
     if (!liveOrders) return;
-    const hasPending = liveOrders.some(o => ['assigned', 'Pending Pickup', 'shipped', 'out_for_delivery'].includes(o.status));
+    const hasPending = liveOrders.some(o => ['assigned', 'in_transit', 'out_for_delivery'].includes(o.status));
     if (!hasPending) return;
     
     const interval = setInterval(() => {
@@ -347,14 +348,14 @@ export default function DeliveryOperations() {
       }))
     : [];
 
-  const assignedOrders = allAssigned.filter(o => o.status === 'assigned');
-  const pendingPickups = allAssigned.filter(o => o.status === 'Pending Pickup');
-  const activeTransits = allAssigned.filter(o => ['shipped', 'out_for_delivery', 'delayed'].includes(o.status));
+  const assignedOrders = allAssigned.filter(o => o.status === 'packed'); // Before assignment, or keep assigned? The prompt: Pending -> Packed -> Assigned -> In Transit
+  const pendingPickups = allAssigned.filter(o => o.status === 'assigned');
+  const activeTransits = allAssigned.filter(o => ['in_transit', 'out_for_delivery', 'delayed'].includes(o.status));
 
   const totalAssigned = allAssigned.length;
-  const pendingDeliveries = allAssigned.filter(o => ['assigned', 'Pending Pickup', 'shipped', 'out_for_delivery', 'delayed'].includes(o.status)).length;
+  const pendingDeliveries = allAssigned.filter(o => ['assigned', 'in_transit', 'out_for_delivery', 'delayed'].includes(o.status)).length;
   const deliveredOrders = liveOrders ? liveOrders.filter(o => o.status === 'delivered').length : 0;
-  const failedDeliveries = liveOrders ? liveOrders.filter(o => ['cancelled', 'refund_pending', 'failed'].includes(o.status)).length : 0;
+  const failedDeliveries = liveOrders ? liveOrders.filter(o => ['cancelled', 'returned'].includes(o.status)).length : 0;
   const earnings = deliveredOrders * 50;
 
   const staticReturns = [
@@ -363,12 +364,12 @@ export default function DeliveryOperations() {
   ];
 
   const dynamicReturns = allAssigned
-    .filter(o => ['failed', 'refund_pending'].includes(o.status))
+    .filter(o => ['cancelled', 'returned'].includes(o.status))
     .map(o => ({
       id: o.id,
       customer: o.customer,
       address: o.address,
-      type: o.status === 'failed' ? 'Failed Delivery Return' : 'Customer Return',
+      type: o.status === 'cancelled' ? 'Failed Delivery Return' : 'Customer Return',
       estValue: `₹${(o.amount || 0).toLocaleString('en-IN')}`,
       instructions: 'Secure item and return to hub.',
       isMock: false
@@ -382,16 +383,9 @@ export default function DeliveryOperations() {
       return;
     }
 
-    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setCurrentOtp(generatedOtp);
     setSelectedOrder(order);
     setShowOtpModal(true);
-    setOtpInputs(['', '', '', '']);
-    
-    // Simulate sending an SMS to the customer's phone
-    setTimeout(() => {
-      alert(`[MOCK SMS GATEWAY] \n\nMessage sent to customer (+91 9876543210):\n"Your Lumina Jewels order ${order.id} is arriving. Your delivery OTP is ${generatedOtp}. Do not share this with anyone."`);
-    }, 500);
+    setOtpInputs(['', '', '', '', '', '']);
   };
 
   const handleOtpChange = (index, value) => {
@@ -402,19 +396,26 @@ export default function DeliveryOperations() {
   };
 
   const verifyOtp = async () => {
-    if (otpInputs.join('') === currentOtp) {
-      try {
-        if (selectedOrder) {
-          await updateOrderStatus(selectedOrder.id, 'delivered');
-          setOptimisticStatuses(prev => { const next = {...prev}; delete next[selectedOrder.id]; return next; });
+    const enteredOtp = otpInputs.join('');
+    if (enteredOtp.length < 6) return;
+    
+    try {
+      if (selectedOrder) {
+        const linkedShipment = shipments.find(s => s.orderId === selectedOrder.id);
+        if (linkedShipment) {
+          const success = await verifyDeliveryOTP(linkedShipment.id, enteredOtp, user?.role, user?.uid);
+          if (success) {
+            showToast('Delivery marked as successful!');
+            setShowOtpModal(false);
+            setSelectedOrder(null);
+            setOptimisticStatuses(prev => { const next = {...prev}; delete next[selectedOrder.id]; return next; });
+          } else {
+            alert('Invalid OTP. Please try again or contact support.');
+          }
         }
-        alert(`OTP Verified! Delivery successful.\n\n[MOCK SMS] Sent to Admin & Customer: Order ${selectedOrder?.id} has been delivered successfully.`);
-        setShowOtpModal(false);
-      } catch (err) {
-        alert('Failed to update delivery status in database.');
       }
-    } else {
-      alert('Invalid OTP. Please try again or contact support.');
+    } catch (err) {
+      alert('Failed to verify OTP or update delivery status in database.');
     }
   };
 
@@ -452,8 +453,8 @@ export default function DeliveryOperations() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
               <div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Status</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: (optimisticStatuses[order.id] || order.status) === 'Pending' ? 'var(--status-orange)' : 'var(--status-green)', textTransform: 'capitalize' }}>
-                  {(optimisticStatuses[order.id] || order.status) === 'shipped' ? 'In Transit' : (optimisticStatuses[order.id] || order.status).replace(/_/g, ' ')}
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: (optimisticStatuses[order.id] || order.status) === 'pending' ? 'var(--status-orange)' : 'var(--status-green)', textTransform: 'capitalize' }}>
+                  {(optimisticStatuses[order.id] || order.status) === 'in_transit' ? 'In Transit' : (optimisticStatuses[order.id] || order.status).replace(/_/g, ' ')}
                 </div>
                 {order.updatedAt && (
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -464,7 +465,7 @@ export default function DeliveryOperations() {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 
-                {['shipped', 'out_for_delivery', 'delayed'].includes(order.status) && (
+                {['in_transit', 'out_for_delivery', 'delayed'].includes(order.status) && (
                    <select 
                      className="form-input" 
                      style={{ 
@@ -489,8 +490,8 @@ export default function DeliveryOperations() {
                          // Optimistically update the UI instantly
                          setOptimisticStatuses(prev => ({ ...prev, [order.id]: val }));
                          try {
-                           await updateOrderStatus(order.id, val);
-                           showToast(`✅ Status updated to ${val === 'shipped' ? 'In Transit' : val.replace(/_/g, ' ')}`);
+                           await updateLogisticsStatus(order.id, val, user?.role, user?.uid);
+                           showToast(`✅ Status updated to ${val === 'in_transit' ? 'In Transit' : val.replace(/_/g, ' ')}`);
                          } catch (err) {
                            console.error("Failed status update", err);
                            // Revert optimistic update on failure
@@ -504,26 +505,36 @@ export default function DeliveryOperations() {
                        }
                      }}
                    >
-                     <option value="shipped">In Transit</option>
+                     <option value="in_transit">In Transit</option>
                      <option value="out_for_delivery">Out for Delivery</option>
                      <option value="delayed">Delayed</option>
-                     <option value="failed">Delivery Failed</option>
+                     <option value="cancelled">Delivery Failed</option>
                    </select>
                 )}
 
-                {order.status === 'assigned' && (
+                {order.status === 'packed' && (
                    <button className="btn btn-sm btn-outline" onClick={() => {
-                     updateOrderStatus(order.id, 'Pending Pickup');
+                     updateLogisticsStatus(order.id, 'assigned', user?.role, user?.uid);
                      alert("Assignment accepted! Please proceed to pickup the package from the store.");
                    }}>Accept Assignment</button>
                 )}
-                {order.status === 'Pending Pickup' && (
-                   <button className="btn btn-sm btn-outline" onClick={() => {
-                     updateOrderStatus(order.id, 'out_for_delivery');
-                     alert("[MOCK SMS GATEWAY] \n\nMessage sent to customer (+91 9876543210):\n\"Your order " + order.id + " is Out for Delivery!\"");
+                {order.status === 'assigned' && (
+                   <button className="btn btn-sm btn-outline" onClick={async () => {
+                     try {
+                      // Find shipment ID linked to this order
+                      const linkedShipment = shipments.find(s => s.orderId === order.id);
+                      
+                      if (linkedShipment) {
+                        await updateLogisticsStatus(linkedShipment.id, 'in_transit', user?.role, user?.uid);
+                      }
+                      showToast('Pickup confirmed. Navigating to delivery status.');
+                    } catch(e) {
+                      showToast('Failed to update status', 'error');
+                    }
+                     alert("[MOCK SMS GATEWAY] \n\nMessage sent to customer (+91 9876543210):\n\"Your order " + order.id + " is In Transit!\"");
                    }}>Confirm Pickup</button>
                 )}
-                {['shipped', 'out_for_delivery', 'delayed'].includes(order.status) && (
+                {['in_transit', 'out_for_delivery', 'delayed'].includes(order.status) && (
                    <button className="btn btn-sm" style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => handleDeliveryClick(order)}>Verify & Deliver</button>
                 )}
               </div>
@@ -590,7 +601,64 @@ export default function DeliveryOperations() {
     </div>
   );
 
-  const renderDashboard = () => (
+  const renderDashboard = () => {
+    if (isSuperAdmin) {
+      return (
+        <>
+          <div className="stat-grid mb-15">
+            <StatCard icon={<Package size={20} />} iconClass="gold" label="Total System Orders" value={liveOrders?.length || 0} trend="Live" trendUp={true} trendNote="All orders" accentColor="var(--gold)" />
+            <StatCard icon={<Truck size={20} />} iconClass="blue" label="System-wide Transits" value={liveOrders?.filter(o => ['in_transit', 'out_for_delivery'].includes(o.status)).length || 0} trend="Live" trendUp={true} trendNote="Active across all partners" accentColor="#3498db" />
+            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Global Delivered" value={liveOrders?.filter(o => o.status === 'delivered').length || 0} trend="Real-Time" trendUp={true} trendNote="Total successful handovers" accentColor="#2ecc71" />
+            <StatCard icon={<XCircle size={20} />} iconClass="red" label="Global Exceptions" value={liveOrders?.filter(o => ['cancelled', 'returned'].includes(o.status)).length || 0} trend="Live" trendUp={false} trendNote="Requires admin review" accentColor="#e74c3c" />
+          </div>
+          
+          <div className="grid-2-1 mb-15">
+            <div className="admin-card">
+              <div className="card-header">
+                <div className="card-title">Partner Management</div>
+                <span className="badge badge-success">Live Tracking Active</span>
+              </div>
+              <div className="admin-table-wrap">
+                 <table className="admin-table" style={{ fontSize: '0.85rem' }}>
+                   <thead><tr><th>Partner Name</th><th>Zone</th><th>Status</th><th>Active Deliveries</th></tr></thead>
+                   <tbody>
+                     <tr><td style={{ fontWeight: 600 }}>Ramesh Singh</td><td>South Mumbai</td><td><span className="badge badge-success">Online</span></td><td>4</td></tr>
+                     <tr><td style={{ fontWeight: 600 }}>Suresh Kumar</td><td>Andheri East</td><td><span className="badge badge-warning">On Break</span></td><td>0</td></tr>
+                     <tr><td style={{ fontWeight: 600 }}>Amit Patel</td><td>Bandra West</td><td><span className="badge badge-success">Online</span></td><td>7</td></tr>
+                     <tr><td style={{ fontWeight: 600 }}>Vikram Desai</td><td>Navi Mumbai</td><td><span className="badge badge-danger">Offline</span></td><td>0</td></tr>
+                   </tbody>
+                 </table>
+              </div>
+            </div>
+            <div className="admin-card">
+              <div className="card-header">
+                <div className="card-title">Delivery Analytics Overview</div>
+              </div>
+              <div style={{ padding: '1.5rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Detailed analytics available in Report Generation Studio.</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>System On-Time Rate</span>
+                  <span style={{ fontWeight: 700, color: 'var(--status-green)' }}>94.2%</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                  <div style={{ width: '94.2%', height: '100%', background: 'var(--status-green)' }} />
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>System Failure Ratio</span>
+                  <span style={{ fontWeight: 700, color: 'var(--status-red)' }}>{liveOrders?.length > 0 ? ((liveOrders.filter(o => ['cancelled', 'returned'].includes(o.status)).length / liveOrders.length) * 100).toFixed(1) : '0.0'}%</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: liveOrders?.length > 0 ? `${(liveOrders.filter(o => ['cancelled', 'returned'].includes(o.status)).length / liveOrders.length) * 100}%` : '0%', height: '100%', background: 'var(--status-red)' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return (
     <>
       <div className="stat-grid mb-15">
         <StatCard icon={<Package size={20} />} iconClass="gold" label="Total Assigned" value={totalAssigned} trend="Live" trendUp={true} trendNote="Total orders in your queue" accentColor="var(--gold)" />
@@ -704,21 +772,24 @@ export default function DeliveryOperations() {
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.4rem' }}>
-            {currentTab === 'dashboard' && 'Logistics Dashboard'}
+            {currentTab === 'dashboard' && (isSuperAdmin ? 'Global Logistics Overview' : 'Logistics Dashboard')}
             {currentTab === 'assigned' && 'Assigned Orders'}
             {currentTab === 'pickups' && 'Pickup Confirmation'}
             {currentTab === 'status' && 'Delivery Status Update'}
             {currentTab === 'returns' && 'Return Handling'}
             {currentTab === 'map' && 'Route Navigation'}
           </h1>
-          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>Vehicle: MH-01-AB-1234 • Mumbai South Zone</p>
+          <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>
+            {isSuperAdmin ? 'System-wide Logistics Tracking & Partner Management' : 'Vehicle: MH-01-AB-1234 • Mumbai South Zone'}
+          </p>
         </div>
       </div>
 

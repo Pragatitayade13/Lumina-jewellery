@@ -16,12 +16,12 @@ const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'admin', 'delivery'] },
+  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['admin', 'finance', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager', 'admin'] },

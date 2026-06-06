@@ -151,9 +151,6 @@ export default function CustomerLayout({ children }) {
                 <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--gold)' }}>₹{rates.gold24k.toLocaleString()}/g</span>
               </div>
             )}
-            <button className="btn btn-icon btn-outline" style={{ border: 'none', color: 'var(--text-primary)' }} title="Toggle Theme" onClick={toggleTheme}>
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
             <NotificationDropdown userRole="customer" />
             <button className="btn btn-primary" onClick={() => navigate('/collections')}>Continue Shopping</button>
           </div>

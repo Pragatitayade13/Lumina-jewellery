@@ -1,213 +1,198 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useJsApiLoader, GoogleMap, Marker, Polyline } from '@react-google-maps/api';
-import { MapPin, Truck, ChevronLeft, Package, Clock, CheckCircle } from 'lucide-react';
+import { ChevronLeft, CheckCircle, Clock, Package, Truck, AlertCircle } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
-import { adminUsers } from '../../admin/data/mockData';
+import { useLogistics } from '../../hooks/useLogistics';
 
-const containerStyle = {
-  width: '100%',
-  height: '400px',
-  borderRadius: '12px'
-};
-
-const defaultCenter = {
-  lat: 19.0760, // Mumbai HQ
-  lng: 72.8777
-};
+const TIMELINE_STEPS = [
+  { key: 'placed', label: 'Order Placed' },
+  { key: 'payment', label: 'Payment Confirmed' },
+  { key: 'PENDING', label: 'Processing' },
+  { key: 'READY', label: 'Ready for Dispatch' },
+  { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
+  { key: 'DELIVERED', label: 'Delivered' }
+];
 
 export default function OrderTracking() {
   const { orderId } = useParams();
   const { orders } = useOrders();
+  const { shipments, getTrackingHistory } = useLogistics();
   
-  // Find the order, or use a mock if not found for demo purposes
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Find the order
   const order = orders?.find(o => o.id === orderId) || {
     id: orderId || '#LJ-7890',
-    status: 'shipped',
-    customer: 'Customer',
-    date: '27 May 2026',
-    items: [{ name: 'Royal Diamond Necklace Set', qty: 1 }],
-    tracking: 'AWB987654321',
-    address: 'Andheri East, Mumbai'
+    createdAt: { seconds: Date.now() / 1000 },
+    status: 'pending',
+    product: 'Jewellery Items'
   };
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: "YOUR_GOOGLE_MAPS_API_KEY", // Replace with real key
-  });
+  const shipment = shipments?.find(s => s.orderId === order.id);
 
-  const [deliveryLocation, setDeliveryLocation] = useState({ lat: 19.1136, lng: 72.8697 }); // Andheri
-  const [storeLocation] = useState(defaultCenter);
-  const [currentLocation, setCurrentLocation] = useState(defaultCenter);
-  
-  // Mock live vehicle movement
   useEffect(() => {
-    if (!isLoaded || order.status === 'delivered') return;
+    async function fetchHistory() {
+      if (shipment?.id) {
+        try {
+          const hist = await getTrackingHistory(shipment.id);
+          setHistory(hist);
+        } catch(e) {
+          console.error(e);
+        }
+      }
+      setLoading(false);
+    }
+    fetchHistory();
+  }, [shipment?.id, getTrackingHistory]);
+
+  const currentStatus = shipment?.status || 'PENDING';
+  
+  // Logic to determine if a step is completed or active
+  const isStepCompleted = (stepKey) => {
+    if (stepKey === 'placed' || stepKey === 'payment') return true;
     
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 0.05;
-      if (progress > 1) {
-        progress = 1;
-        clearInterval(interval);
-      }
-      
-      const newLat = storeLocation.lat + (deliveryLocation.lat - storeLocation.lat) * progress;
-      const newLng = storeLocation.lng + (deliveryLocation.lng - storeLocation.lng) * progress;
-      
-      setCurrentLocation({ lat: newLat, lng: newLng });
-    }, 2000);
+    const statesMap = {
+      'PENDING': 0, 'PACKED': 1, 'READY': 2, 'ASSIGNED': 3, 
+      'IN_TRANSIT': 4, 'OUT_FOR_DELIVERY': 5, 'DELIVERED': 6
+    };
+    
+    const targetMap = {
+      'PENDING': 0,
+      'READY': 2,
+      'OUT_FOR_DELIVERY': 5,
+      'DELIVERED': 6
+    };
+    
+    return statesMap[currentStatus] >= targetMap[stepKey];
+  };
 
-    return () => clearInterval(interval);
-  }, [isLoaded, order.status, storeLocation, deliveryLocation]);
+  const isStepActive = (stepKey) => {
+    const statesMap = {
+      'PENDING': 0, 'PACKED': 1, 'READY': 2, 'ASSIGNED': 3, 
+      'IN_TRANSIT': 4, 'OUT_FOR_DELIVERY': 5, 'DELIVERED': 6
+    };
+    
+    const targetMap = {
+      'PENDING': 0,
+      'READY': 2,
+      'OUT_FOR_DELIVERY': 5,
+      'DELIVERED': 6
+    };
 
-  const mapOptions = useMemo(() => ({
-    disableDefaultUI: true,
-    zoomControl: true,
-    styles: [
-      { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-      { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-      { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-      {
-        featureType: "administrative.locality",
-        elementType: "labels.text.fill",
-        stylers: [{ color: "#d59563" }],
-      },
-      {
-        featureType: "road",
-        elementType: "geometry",
-        stylers: [{ color: "#38414e" }],
-      },
-      {
-        featureType: "road",
-        elementType: "geometry.stroke",
-        stylers: [{ color: "#212a37" }],
-      },
-      {
-        featureType: "road.highway",
-        elementType: "geometry",
-        stylers: [{ color: "#746855" }],
-      },
-      {
-        featureType: "road.highway",
-        elementType: "geometry.stroke",
-        stylers: [{ color: "#1f2835" }],
-      },
-      {
-        featureType: "water",
-        elementType: "geometry",
-        stylers: [{ color: "#17263c" }],
-      }
-    ]
-  }), []);
+    if (stepKey === 'placed' || stepKey === 'payment') return false;
+    if (currentStatus === 'DELIVERED') return stepKey === 'DELIVERED';
+    
+    // Simplistic active logic: it's active if the next target hasn't been reached
+    if (stepKey === 'PENDING' && statesMap[currentStatus] < targetMap['READY']) return true;
+    if (stepKey === 'READY' && statesMap[currentStatus] >= targetMap['READY'] && statesMap[currentStatus] < targetMap['OUT_FOR_DELIVERY']) return true;
+    if (stepKey === 'OUT_FOR_DELIVERY' && statesMap[currentStatus] >= targetMap['OUT_FOR_DELIVERY'] && statesMap[currentStatus] < targetMap['DELIVERED']) return true;
+    
+    return false;
+  };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <Link to="/customer/orders" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--gold)', textDecoration: 'none', marginBottom: '2rem', fontWeight: 600 }}>
-        <ChevronLeft size={16} /> Back to Orders
-      </Link>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-        <div>
-          <h1 className="page-title" style={{ margin: 0 }}>Track Order {order.id}</h1>
-          <p className="page-subtitle" style={{ margin: 0, marginTop: '0.25rem' }}>Estimated Delivery: Today by 6:00 PM</p>
-        </div>
-        <span className={`badge badge-${order.status === 'delivered' ? 'success' : order.status === 'shipped' ? 'info' : 'warning'}`} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-          {order.status.toUpperCase()}
-        </span>
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className="pd-breadcrumb" style={{ marginBottom: '2rem' }}>
+        <Link to="/account/orders" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+          <ChevronLeft size={16} /> Back to My Orders
+        </Link>
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', marginBottom: '2rem', boxShadow: 'var(--shadow-gold)' }}>
-        {isLoaded ? (
-          <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={currentLocation}
-            zoom={12}
-            options={mapOptions}
-          >
-            {/* Store Location */}
-            <Marker position={storeLocation} label={{ text: 'S', color: 'white', fontWeight: 'bold' }} icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }} />
-            
-            {/* Delivery Destination */}
-            <Marker position={deliveryLocation} label={{ text: 'D', color: 'white', fontWeight: 'bold' }} icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }} />
-            
-            {/* Current Vehicle Location */}
-            <Marker position={currentLocation} icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/truck.png', scaledSize: new window.google.maps.Size(32, 32) }} />
-            
-            {/* Route Line */}
-            <Polyline
-              path={[storeLocation, deliveryLocation]}
-              options={{ strokeColor: '#C9A84C', strokeOpacity: 0.8, strokeWeight: 4, borderStyle: 'dashed' }}
-            />
-          </GoogleMap>
-        ) : (
-          <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)' }}>
-            <p style={{ color: 'var(--text-muted)' }}>Loading Maps...</p>
+      <div className="customer-card" style={{ marginBottom: '2rem', padding: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
+          <div>
+            <h1 style={{ margin: '0 0 0.5rem 0' }}>Order <span style={{ fontFamily: 'system-ui, sans-serif' }}>#{order.id.slice(0, 8).toUpperCase()}</span></h1>
+            <div style={{ color: 'var(--text-muted)' }}>Placed on <span style={{ fontFamily: 'system-ui, sans-serif' }}>{new Date(order.createdAt?.seconds * 1000).toLocaleDateString()}</span></div>
           </div>
-        )}
+          <div style={{ textAlign: 'right' }}>
+            <span className={`badge badge-info`} style={{ fontSize: '0.9rem', padding: '0.5rem 1rem', textTransform: 'uppercase' }}>
+              {TIMELINE_STEPS.find(t => t.key === currentStatus)?.label || currentStatus}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem', background: 'var(--surface)', padding: '1.5rem', borderRadius: '8px' }}>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.2rem' }}>Estimated Delivery</div>
+            <div style={{ fontWeight: 600 }}>Expected in 5-7 days</div>
+          </div>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.2rem' }}>Current Location</div>
+            <div style={{ fontWeight: 600 }}>{currentStatus === 'DELIVERED' ? 'Delivered' : 'Mumbai Hub'}</div>
+          </div>
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.2rem' }}>Tracking Number</div>
+            <div style={{ fontWeight: 600, color: 'var(--gold)', fontFamily: 'system-ui, sans-serif' }}>{shipment?.id?.slice(0, 10).toUpperCase() || 'Pending'}</div>
+          </div>
+        </div>
+
+        <h3 style={{ marginBottom: '1.5rem' }}>Order Timeline</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginLeft: '1rem', borderLeft: '2px solid var(--border-color)', paddingLeft: '2rem', position: 'relative' }}>
+          {TIMELINE_STEPS.map((step, idx) => {
+            const isCompleted = isStepCompleted(step.key);
+            const isActive = isStepActive(step.key);
+            
+            return (
+              <div key={idx} style={{ position: 'relative' }}>
+                {/* Timeline Dot */}
+                <div style={{
+                  position: 'absolute',
+                  left: '-2.6rem',
+                  top: '0',
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  background: isActive ? 'var(--gold)' : isCompleted ? 'var(--status-green)' : 'var(--surface)',
+                  border: `2px solid ${isActive ? 'var(--gold)' : isCompleted ? 'var(--status-green)' : 'var(--border-color)'}`,
+                  zIndex: 2
+                }}>
+                  {isCompleted && !isActive && <CheckCircle size={16} color="#000" style={{ position: 'absolute', top: '0', left: '0' }} />}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.2rem 0', color: isActive ? 'var(--gold)' : isCompleted ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {step.label}
+                    </h4>
+                    {isActive && <span style={{ fontSize: '0.8rem', color: 'var(--gold)' }}>Current stage</span>}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontFamily: 'system-ui, sans-serif' }}>
+                    {isCompleted ? (step.key === 'placed' || step.key === 'payment' ? new Date(order.createdAt?.seconds * 1000).toLocaleString() : 'Done') : 'Pending'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="grid-2">
-        <div className="admin-card">
-          <h3 className="card-title">Delivery Status</h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-24px', width: '2px', background: 'var(--gold)' }}></div>
-              <div style={{ background: 'var(--gold)', color: '#000', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                <CheckCircle size={14} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600 }}>Order Confirmed</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{order.date}, 10:00 AM</div>
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '11px', top: '24px', bottom: '-24px', width: '2px', background: order.status === 'shipped' || order.status === 'delivered' ? 'var(--gold)' : 'var(--border)' }}></div>
-              <div style={{ background: order.status === 'shipped' || order.status === 'delivered' ? 'var(--gold)' : 'var(--surface)', color: order.status === 'shipped' || order.status === 'delivered' ? '#000' : 'var(--text-muted)', border: order.status === 'shipped' || order.status === 'delivered' ? 'none' : '2px solid var(--border)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                <Package size={14} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: order.status === 'shipped' || order.status === 'delivered' ? 'var(--text-primary)' : 'var(--text-muted)' }}>Dispatched from Store</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{order.status === 'shipped' || order.status === 'delivered' ? `${order.date}, 2:30 PM` : 'Pending'}</div>
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', position: 'relative' }}>
-              <div style={{ background: order.status === 'delivered' ? 'var(--gold)' : 'var(--surface)', color: order.status === 'delivered' ? '#000' : 'var(--text-muted)', border: order.status === 'delivered' ? 'none' : '2px solid var(--border)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                <MapPin size={14} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, color: order.status === 'delivered' ? 'var(--text-primary)' : 'var(--text-muted)' }}>Out for Delivery</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{order.status === 'delivered' ? `${order.date}, 5:45 PM` : 'In transit'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="admin-card">
-          <h3 className="card-title">Delivery Partner</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--gold), var(--gold-dark))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold' }}>
-              RS
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Ramesh Singh</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                <Truck size={14} /> MH-01-AB-1234
-              </div>
-            </div>
-          </div>
-          
-          <div style={{ marginTop: '1.5rem' }}>
-             <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Delivery PIN</h4>
-             <div style={{ background: 'rgba(201,168,76,0.1)', border: '1px dashed var(--gold)', padding: '1rem', borderRadius: '8px', textAlign: 'center', letterSpacing: '0.5em', fontSize: '1.5rem', fontWeight: 800, color: 'var(--gold)' }}>
-                1234
-             </div>
-             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>Provide this PIN to the delivery partner during handover.</p>
-          </div>
-        </div>
+      <div className="customer-card" style={{ padding: '2rem' }}>
+        <h3 style={{ marginBottom: '1.5rem' }}>Shipment Activity</h3>
+        <table className="customer-table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '1rem', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Time</th>
+              <th style={{ textAlign: 'left', padding: '1rem', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Location</th>
+              <th style={{ textAlign: 'left', padding: '1rem', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="3" style={{ padding: '1rem', textAlign: 'center' }}>Loading...</td></tr>
+            ) : history.length === 0 ? (
+              <tr><td colSpan="3" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>No tracking history available yet.</td></tr>
+            ) : (
+              history.map((h, i) => (
+                <tr key={i}>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontFamily: 'system-ui, sans-serif' }}>{h.timestamp ? new Date(h.timestamp.seconds * 1000).toLocaleString() : 'Just now'}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>{h.locationData?.city || 'Mumbai Hub'}</td>
+                  <td style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>{h.status}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

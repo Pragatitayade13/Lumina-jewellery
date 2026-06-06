@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { useLogistics } from './useLogistics';
 
 export function useOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { shipments, createShipment, updateStatus } = useLogistics();
 
   useEffect(() => {
     if (!db) {
@@ -45,6 +47,8 @@ export function useOrders() {
         ...orderData,
         createdAt: serverTimestamp(),
       });
+      // Shadow write to Centralized Logistics Engine
+      await createShipment(docRef.id, orderData);
       return docRef.id;
     } catch (err) {
       console.error("Error creating order: ", err);
@@ -62,6 +66,18 @@ export function useOrders() {
         status: status,
         updatedAt: serverTimestamp()
       });
+
+      // Shadow write to Logistics Engine
+      const linkedShipment = shipments.find(s => s.orderId === id);
+      if (linkedShipment) {
+        // Map simple order statuses to strict LOGISTICS_STATES
+        let logStatus = status.toUpperCase();
+        if (logStatus === 'SHIPPED' || logStatus === 'IN-TRANSIT') logStatus = 'IN_TRANSIT';
+        if (logStatus === 'PROCESSING') logStatus = 'PENDING';
+        if (logStatus === 'READY_FOR_DISPATCH') logStatus = 'READY';
+        
+        await updateStatus(linkedShipment.id, logStatus, 'admin', 'system', null, true); // true = override flag
+      }
     } catch (err) {
       console.error("Error updating order: ", err);
       throw err;

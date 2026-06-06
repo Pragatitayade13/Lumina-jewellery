@@ -51,7 +51,7 @@ export default function ProductManagement() {
     }
   ]);
   
-  const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
   
   const { products, loading, removeProduct, addProduct, updateProduct } = useProducts();
   const { showToast } = useApp();
@@ -101,7 +101,7 @@ export default function ProductManagement() {
       showToast("Product submitted for manager approval.");
     }
     setIsAddModalOpen(false);
-    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '' });
+    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
   };
 
   const handleEditSubmit = async (e) => {
@@ -500,6 +500,35 @@ export default function ProductManagement() {
                   </label>
                   <input type="text" className="form-input" placeholder="e.g. https://storage.googleapis.com/.../model.glb" value={editingProduct.modelUrl || ''} onChange={e => setEditingProduct({...editingProduct, modelUrl: e.target.value})} />
                 </div>
+                
+                {/* AR Configuration Section */}
+                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--gold)' }}>AR Try-On Configuration</h4>
+                  <div className="form-row mb-1">
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Offset X / Y / Z</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input type="number" step="0.1" className="form-input" placeholder="X" value={editingProduct.arOffsetX || 0} onChange={e => setEditingProduct({...editingProduct, arOffsetX: parseFloat(e.target.value) || 0})} />
+                        <input type="number" step="0.1" className="form-input" placeholder="Y" value={editingProduct.arOffsetY || 0} onChange={e => setEditingProduct({...editingProduct, arOffsetY: parseFloat(e.target.value) || 0})} />
+                        <input type="number" step="0.1" className="form-input" placeholder="Z" value={editingProduct.arOffsetZ || 0} onChange={e => setEditingProduct({...editingProduct, arOffsetZ: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-row mb-1">
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Rotation X / Y / Z (Degrees)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input type="number" className="form-input" placeholder="X" value={editingProduct.arRotX || 0} onChange={e => setEditingProduct({...editingProduct, arRotX: parseFloat(e.target.value) || 0})} />
+                        <input type="number" className="form-input" placeholder="Y" value={editingProduct.arRotY || 0} onChange={e => setEditingProduct({...editingProduct, arRotY: parseFloat(e.target.value) || 0})} />
+                        <input type="number" className="form-input" placeholder="Z" value={editingProduct.arRotZ || 0} onChange={e => setEditingProduct({...editingProduct, arRotZ: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Scale Multiplier</label>
+                      <input type="number" step="0.1" className="form-input" value={editingProduct.arScale || 1} onChange={e => setEditingProduct({...editingProduct, arScale: parseFloat(e.target.value) || 1})} />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setEditingProduct(null)}>Cancel</button>
@@ -599,6 +628,35 @@ export default function ProductManagement() {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Provide a direct URL to a .glb or .gltf file for AR Try-On)</span>
                   </label>
                   <input type="text" className="form-input" placeholder="e.g. https://storage.googleapis.com/.../model.glb" value={newProduct.modelUrl} onChange={e => setNewProduct({...newProduct, modelUrl: e.target.value})} />
+                </div>
+                
+                {/* AR Configuration Section */}
+                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--gold)' }}>AR Try-On Configuration</h4>
+                  <div className="form-row mb-1">
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Offset X / Y / Z</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input type="number" step="0.1" className="form-input" placeholder="X" value={newProduct.arOffsetX || 0} onChange={e => setNewProduct({...newProduct, arOffsetX: parseFloat(e.target.value) || 0})} />
+                        <input type="number" step="0.1" className="form-input" placeholder="Y" value={newProduct.arOffsetY || 0} onChange={e => setNewProduct({...newProduct, arOffsetY: parseFloat(e.target.value) || 0})} />
+                        <input type="number" step="0.1" className="form-input" placeholder="Z" value={newProduct.arOffsetZ || 0} onChange={e => setNewProduct({...newProduct, arOffsetZ: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-row mb-1">
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Rotation X / Y / Z (Degrees)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input type="number" className="form-input" placeholder="X" value={newProduct.arRotX || 0} onChange={e => setNewProduct({...newProduct, arRotX: parseFloat(e.target.value) || 0})} />
+                        <input type="number" className="form-input" placeholder="Y" value={newProduct.arRotY || 0} onChange={e => setNewProduct({...newProduct, arRotY: parseFloat(e.target.value) || 0})} />
+                        <input type="number" className="form-input" placeholder="Z" value={newProduct.arRotZ || 0} onChange={e => setNewProduct({...newProduct, arRotZ: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Scale Multiplier</label>
+                      <input type="number" step="0.1" className="form-input" value={newProduct.arScale || 1} onChange={e => setNewProduct({...newProduct, arScale: parseFloat(e.target.value) || 1})} />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>

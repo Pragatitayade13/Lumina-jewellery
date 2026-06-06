@@ -4,7 +4,7 @@ import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
 import { useCustomers } from '../../hooks/useCustomers';
 
-const statusClass = { assigned: 'badge-new', delivered: 'badge-delivered', shipped: 'badge-shipped', processing: 'badge-pending', confirmed: 'badge-confirmed', pending: 'badge-pending', cancelled: 'badge-cancelled', refund_pending: 'badge-orange' };
+const statusClass = { assigned: 'badge-new', in_transit: 'badge-shipped', out_for_delivery: 'badge-shipped', packed: 'badge-confirmed', delivered: 'badge-delivered', pending: 'badge-pending', cancelled: 'badge-cancelled', returned: 'badge-orange' };
 
 export default function OrderManagement() {
   const { orders: liveOrders, loading, updateOrderStatus, assignOrderToPartner } = useOrders();
@@ -22,15 +22,19 @@ export default function OrderManagement() {
   const [orderToAssign, setOrderToAssign] = useState(null);
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
   
-  const tabs = ['All Orders', 'Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returns/Refunds'];
+  const tabs = ['All Orders', 'Pending', 'Packed', 'Assigned', 'In Transit', 'Out For Delivery', 'Delivered', 'Returned', 'Cancelled'];
   
   const filteredAndSortedOrders = useMemo(() => {
     if (!liveOrders) return [];
     
     let result = activeTab === 'All Orders' 
       ? liveOrders 
-      : activeTab === 'Returns/Refunds' 
-        ? liveOrders.filter(o => o.status === 'refund_pending')
+      : activeTab === 'Returned' 
+        ? liveOrders.filter(o => o.status === 'returned')
+        : activeTab === 'In Transit'
+        ? liveOrders.filter(o => o.status === 'in_transit')
+        : activeTab === 'Out For Delivery'
+        ? liveOrders.filter(o => o.status === 'out_for_delivery')
         : liveOrders.filter(o => o.status && o.status.toLowerCase() === activeTab.toLowerCase());
 
     if (searchTerm) {
@@ -448,12 +452,13 @@ export default function OrderManagement() {
                           onChange={(e) => handleStatusChange(o.id, e.target.value)}
                         >
                           <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="processing">Processing</option>
-                          <option value="shipped">Shipped</option>
+                          <option value="packed">Packed</option>
+                          <option value="assigned">Assigned</option>
+                          <option value="in_transit">In Transit</option>
+                          <option value="out_for_delivery">Out For Delivery</option>
                           <option value="delivered">Delivered</option>
+                          <option value="returned">Returned</option>
                           <option value="cancelled">Cancelled</option>
-                          <option value="refund_pending">Refund Pending</option>
                         </select>
                       </div>
                     </td>
@@ -524,7 +529,7 @@ export default function OrderManagement() {
                 </button>
               )}
 
-              {selectedOrder.status === 'refund_pending' && (
+              {selectedOrder.status === 'returned' && (
                 <>
                   <button className="btn btn-outline" style={{ borderColor: 'var(--status-green)', color: 'var(--status-green)', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
                     handleStatusChange(selectedOrder.id, 'cancelled');
@@ -533,7 +538,7 @@ export default function OrderManagement() {
                     <Check size={16} /> Approve Refund
                   </button>
                   <button className="btn btn-outline" style={{ borderColor: 'var(--status-red)', color: 'var(--status-red)', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
-                    handleStatusChange(selectedOrder.id, 'processing');
+                    handleStatusChange(selectedOrder.id, 'packed');
                     setSelectedOrder(null);
                   }}>
                     <XCircle size={16} /> Reject Request
@@ -543,13 +548,13 @@ export default function OrderManagement() {
 
               {selectedOrder.status === 'pending' && (
                 <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
-                  handleStatusChange(selectedOrder.id, 'processing');
+                  handleStatusChange(selectedOrder.id, 'packed');
                   setSelectedOrder(null);
                 }}>
-                  <PackageOpen size={16} /> Process Order
+                  <PackageOpen size={16} /> Pack Order (Staff)
                 </button>
               )}
-              {selectedOrder.status === 'processing' && (
+              {selectedOrder.status === 'packed' && (
                 <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
                   setOrderToAssign(selectedOrder);
                   setAssignModalOpen(true);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Link } from 'react-router-dom';
@@ -117,7 +117,7 @@ function DonutChart({ data }) {
   );
 }
 
-const statusClass = { delivered: 'badge-delivered', shipped: 'badge-shipped', confirmed: 'badge-confirmed', pending: 'badge-pending', cancelled: 'badge-cancelled' };
+const statusClass = { delivered: 'badge-delivered', in_transit: 'badge-shipped', out_for_delivery: 'badge-shipped', packed: 'badge-confirmed', assigned: 'badge-new', pending: 'badge-pending', cancelled: 'badge-cancelled', returned: 'badge-orange' };
 
 // Removed static aiInsights
 const paymentMethods = [
@@ -363,6 +363,24 @@ export default function Dashboard() {
             ) : (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No recent activity.</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Logistics Overview for Superadmin */}
+      {user?.role === 'superadmin' && (
+        <div className="admin-card mb-15">
+          <div className="card-header">
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Truck size={18} color="var(--gold)" /> Global Logistics Overview
+            </div>
+            <Link to="/admin/delivery" style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>View Logistics Portal →</Link>
+          </div>
+          <div className="stat-grid" style={{ padding: '1.5rem', borderTop: 'none', background: 'transparent' }}>
+            <StatCard icon={<Package size={20} />} iconClass="gold" label="Pending Dispatch" value={firebaseOrders?.filter(o => o.status === 'packed' || o.status === 'assigned').length || 0} trend="Live" trendUp={true} trendNote="awaiting pickup" accentColor="var(--gold)" />
+            <StatCard icon={<Truck size={20} />} iconClass="blue" label="In Transit" value={firebaseOrders?.filter(o => o.status === 'in_transit' || o.status === 'out_for_delivery').length || 0} trend="Live" trendUp={true} trendNote="currently on road" accentColor="#3498db" />
+            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Delivered" value={firebaseOrders?.filter(o => o.status === 'delivered').length || 0} trend="Today" trendUp={true} trendNote="successful handovers" accentColor="#2ecc71" />
+            <StatCard icon={<RotateCcw size={20} />} iconClass="orange" label="Returns" value={firebaseOrders?.filter(o => o.status === 'returned').length || 0} trend="Action Req" trendUp={false} trendNote="processed returns" accentColor="var(--status-orange)" />
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { revenueData, categoryRevenue } from '../data/mockData';
-import { Calendar, Cpu, Download, DownloadCloud, FileText, FileSpreadsheet, TrendingUp, RefreshCcw, Store, Sparkles, PieChart, DollarSign, Package } from 'lucide-react';
+import { Calendar, Cpu, Download, DownloadCloud, FileText, FileSpreadsheet, TrendingUp, RefreshCcw, Store, Sparkles, PieChart, DollarSign, Package, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useOrders } from '../../hooks/useOrders';
 import { useInventory } from '../../hooks/useInventory';
@@ -241,6 +241,15 @@ export default function Analytics() {
               <tr><td>Total Loyalty Points Issued</td><td>${(customers || []).filter(c => c.role === 'customer').reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0).toLocaleString()} pts</td></tr>
               <tr><td>Repeat Purchasers</td><td>${(customers || []).filter(c => c.role === 'customer' && c.totalOrders > 1).length}</td></tr>
             </table>
+            ` : reportType === 'Delivery Report' ? `
+            <table>
+              <tr><th>Logistics Metric</th><th>Value</th></tr>
+              <tr><td>Total Orders Processed</td><td>${orders?.length || 0}</td></tr>
+              <tr><td>Pending Dispatch</td><td>${orders?.filter(o => o.status === 'packed' || o.status === 'assigned').length || 0}</td></tr>
+              <tr><td>In Transit</td><td>${orders?.filter(o => o.status === 'in_transit' || o.status === 'out_for_delivery').length || 0}</td></tr>
+              <tr><td>Successfully Delivered</td><td>${orders?.filter(o => o.status === 'delivered').length || 0}</td></tr>
+              <tr><td>Returned</td><td>${orders?.filter(o => o.status === 'returned').length || 0}</td></tr>
+            </table>
             ` : `
             <table>
               <tr><th>Sales Metric</th><th>Value</th></tr>
@@ -333,6 +342,16 @@ export default function Analytics() {
         ['Total Loyalty Points Issued', custList.reduce((sum, c) => sum + (c.loyaltyPoints || 0), 0)],
         ['Repeat Purchasers', custList.filter(c => c.totalOrders > 1).length],
       ];
+    } else if (reportType === 'Delivery Report') {
+      filename = `Lumina_Delivery_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+      headers = ['Logistics Metric', 'Value'];
+      rows = [
+        ['Total Orders Processed', orders?.length || 0],
+        ['Pending Dispatch', orders?.filter(o => o.status === 'packed' || o.status === 'assigned').length || 0],
+        ['In Transit', orders?.filter(o => o.status === 'in_transit' || o.status === 'out_for_delivery').length || 0],
+        ['Successfully Delivered', orders?.filter(o => o.status === 'delivered').length || 0],
+        ['Returned', orders?.filter(o => o.status === 'returned').length || 0],
+      ];
     }
 
     if (!filename) {
@@ -413,6 +432,7 @@ export default function Analytics() {
                  { label: 'Product Performance',        type: 'Product Performance Report', icon: <Store size={14} /> },
                  { label: 'Inventory',                  type: 'Inventory Report',           icon: <Package size={14} /> },
                  { label: 'Customer Activity',          type: 'Customer Activity Report',   icon: <Sparkles size={14} /> },
+                 { label: 'Delivery Analytics',         type: 'Delivery Report',            icon: <Truck size={14} /> },
                ].map(({ label, type, icon }) => (
                  <div key={type} style={{ display: 'flex', gap: '0', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                    <button
