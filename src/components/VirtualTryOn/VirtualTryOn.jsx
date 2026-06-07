@@ -20,9 +20,23 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
   const [error, setError] = useState('');
   const [isLoadingModel, setIsLoadingModel] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
+  const [useFallback, setUseFallback] = useState(false);
   const [fps, setFps] = useState(0);
   const videoRef = useRef(null);
   const canvasContainerRef = useRef(null);
+
+  // Fallback viewer component
+  const StaticFallbackViewer = ({ product }) => (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#111', color: '#fff', position: 'relative' }}>
+      <img src={product?.image} alt={product?.name} style={{ maxWidth: '80%', maxHeight: '60%', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))' }} />
+      <div style={{ marginTop: '2rem', textAlign: 'center', padding: '0 2rem' }}>
+        <h3 style={{ color: '#c9a84c', marginBottom: '0.5rem' }}>Static Preview</h3>
+        <p style={{ fontSize: '0.9rem', color: '#aaa', maxWidth: '300px', margin: '0 auto' }}>
+          Live AR is currently unavailable or unsupported on this device. Showing 2D preview.
+        </p>
+      </div>
+    </div>
+  );
 
   // Sync prop changes (if any external changes happen)
   useEffect(() => {
@@ -38,6 +52,11 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
     if (isOpen) {
       startCamera();
       
+      // Safety: if model never calls onLoaded, clear loading state after 8s
+      const safetyTimer = setTimeout(() => {
+        setIsLoadingModel(false);
+      }, 8000);
+      
       // FPS Calculation
       let frameCount = 0;
       let lastTime = performance.now();
@@ -52,6 +71,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
         if (isOpen) requestAnimationFrame(calcFps);
       };
       requestAnimationFrame(calcFps);
+      return () => { stopCamera(); clearTimeout(safetyTimer); };
     } else {
       stopCamera();
     }
@@ -74,9 +94,33 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
     }
   };
 
+  const checkCompatibility = () => {
+    try {
+      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      
+      // If WebGL is not supported, or it's a very low-end mobile device
+      if (!gl || (isMobile && navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4)) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false; // Fallback safely
+    }
+  };
+
   const startCamera = async () => {
     setError('');
     setIsLoadingModel(true);
+    setUseFallback(false);
+
+    if (!checkCompatibility()) {
+      setUseFallback(true);
+      setIsLoadingModel(false);
+      return;
+    }
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -88,7 +132,27 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
       }
     } catch (err) {
       console.error("Camera error:", err);
-      setError('Camera access denied or unavailable. Please enable camera permissions to use Virtual Try-On.');
+      // Improve permission denied message
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError('Camera permission denied. Please allow camera access in your browser settings to use Virtual Try-On, or use the static preview.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError('No camera found on this device. Showing static preview.');
+        setUseFallback(true);
+        setError(''); // Clear error to show fallback
+      } else {
+        setError('Camera access unavailable. Showing static preview.');
+        setUseFallback(true);
+        setError(''); // Clear error to show fallback
+      }
+      setIsLoadingModel(false);
+    }
+  };
+
+  const handleModelLoad = (err) => {
+    setIsLoadingModel(false);
+    if (err) {
+      console.warn("AR Model failed to load, switching to fallback.");
+      setUseFallback(true);
     }
   };
 
@@ -190,8 +254,11 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
           {error ? (
             <div className="vto-error">
               <ShieldAlert size={48} style={{ marginBottom: '1rem', color: '#e74c3c' }} />
-              <p>{error}</p>
-              <button className="btn btn-outline mt-1" onClick={startCamera}>Try Again</button>
+              <p style={{ maxWidth: '400px', margin: '0 auto 1.5rem auto', lineHeight: '1.5' }}>{error}</p>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <button className="btn btn-outline" onClick={startCamera}>Try Again</button>
+                <button className="btn btn-gold" onClick={() => { setError(''); setUseFallback(true); }}>Use Static Preview</button>
+              </div>
             </div>
           ) : (
             <div className="vto-viewport" ref={canvasContainerRef}>
@@ -217,16 +284,18 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
                     <Environment preset="city" />
                     
                     <Suspense fallback={null}>
-                      {isFaceProduct && <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />}
-                      {isHandProduct && <ARHandTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />}
+                      {isFaceProduct && <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={handleModelLoad} />}
+                      {isHandProduct && <ARHandTracker videoRef={videoRef} product={activeProduct} onLoaded={handleModelLoad} />}
                       {!isFaceProduct && !isHandProduct && (
                         // Fallback if category doesn't match
-                        <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={() => setIsLoadingModel(false)} />
+                        <ARFaceTracker videoRef={videoRef} product={activeProduct} onLoaded={handleModelLoad} />
                       )}
                     </Suspense>
                   </Canvas>
                 </div>
               )}
+
+              {useFallback && <StaticFallbackViewer product={activeProduct} />}
 
               {isLoadingModel && !error && (
                 <div className="vto-loading-overlay">

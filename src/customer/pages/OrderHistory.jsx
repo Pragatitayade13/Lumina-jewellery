@@ -3,7 +3,7 @@ import { Package, Download, Truck, Edit2, X, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
 import { useApp } from '../../context/AppContext';
-import { useOrders } from '../../hooks/useOrders';
+import { downloadInvoice } from '../../utils/invoiceGenerator';
 
 export default function OrderHistory() {
   const { showToast, user } = useApp();
@@ -18,143 +18,66 @@ export default function OrderHistory() {
   }, [orders, user]);
 
   const handleDownloadInvoice = async (order) => {
-    showToast(`Generating invoice for ${order.id}...`);
-    
-    const orderDate = order.createdAt ? new Date(order.createdAt?.seconds * 1000).toLocaleDateString() : 'Recent';
-    const totalAmount = order.total?.toLocaleString() || order.amount?.toLocaleString() || 0;
-    const isPaid = order.paymentStatus === 'paid' || order.status === 'delivered' || order.paymentMethod?.toLowerCase() === 'card' || order.paymentMethod?.toLowerCase() === 'upi' || order.paymentMethod?.toLowerCase() === 'online';
-    
-    const invoiceHtml = `
-      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; width: 100%; padding: 40px; box-sizing: border-box; background: white;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #c9a84c; padding-bottom: 20px; margin-bottom: 30px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; stroke: #c9a84c;">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            <h1 style="font-size: 24px; margin: 0; letter-spacing: 2px; text-transform: uppercase; color: #111;">Lumina Jewels</h1>
-          </div>
-          <div style="text-align: right;">
-            <h2 style="font-size: 28px; margin: 0; color: #666; font-weight: 300;">TAX INVOICE</h2>
-            <p style="margin: 5px 0 0 0; color: #888; font-family: system-ui, sans-serif;">#${order.id}</p>
-            <p style="margin: 5px 0 0 0; color: #888; font-family: system-ui, sans-serif;">Date: ${orderDate}</p>
-          </div>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
-          <div>
-            <h3 style="font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 5px;">Billed To</h3>
-            <p style="margin: 0 0 5px 0; line-height: 1.5;"><strong>${order.customerName || user?.name || 'Valued Customer'}</strong></p>
-            <p style="margin: 0 0 5px 0; line-height: 1.5;">${order.shippingAddress || order.address || 'Address pending'}</p>
-            <p style="margin: 0 0 5px 0; line-height: 1.5;">${order.customerEmail || user?.email || ''}</p>
-          </div>
-          <div style="text-align: right;">
-            <h3 style="font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 5px;">Payment Info</h3>
-            <p style="margin: 0 0 5px 0; line-height: 1.5;">Method: ${order.paymentMethod || 'Online'}</p>
-            <p style="margin-top: 10px;">
-              <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; ${isPaid ? 'background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;' : 'background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2;'}">
-                ${isPaid ? 'PAID' : 'PENDING'}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-          <thead>
-            <tr>
-              <th style="text-align: left; padding: 12px; border-bottom: 1px solid #ddd; font-weight: 600; text-transform: uppercase; font-size: 12px; color: #888;">Item Description</th>
-              <th style="text-align: center; padding: 12px; border-bottom: 1px solid #ddd; font-weight: 600; text-transform: uppercase; font-size: 12px; color: #888;">Qty</th>
-              <th style="text-align: right; padding: 12px; border-bottom: 1px solid #ddd; font-weight: 600; text-transform: uppercase; font-size: 12px; color: #888;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(order.items || [{ name: order.product || 'Jewellery Item', quantity: 1, price: order.amount || order.total }]).map(item => `
-              <tr>
-                <td style="padding: 15px 12px; border-bottom: 1px solid #eee;"><strong>${item.name}</strong></td>
-                <td style="text-align: center; padding: 15px 12px; border-bottom: 1px solid #eee; font-family: system-ui, sans-serif;">${item.quantity || 1}</td>
-                <td style="text-align: right; padding: 15px 12px; border-bottom: 1px solid #eee; font-family: system-ui, sans-serif;">₹${(item.price * (item.quantity || 1))?.toLocaleString() || totalAmount}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div style="width: 300px; margin-left: auto;">
-          <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-family: system-ui, sans-serif;">
-            <span>Subtotal</span>
-            <span>₹${totalAmount}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-family: system-ui, sans-serif;">
-            <span>Taxes (Included)</span>
-            <span>₹0</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-family: system-ui, sans-serif;">
-            <span>Shipping</span>
-            <span>Free</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 10px; font-size: 18px; font-weight: bold; font-family: system-ui, sans-serif;">
-            <span>Total Amount</span>
-            <span>₹${totalAmount}</span>
-          </div>
-        </div>
-
-        <div style="margin-top: 60px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
-          <p style="margin: 0 0 5px 0;">Thank you for choosing Lumina Jewels!</p>
-          <p style="margin: 0 0 5px 0;">If you have any questions about this invoice, please contact care@luminajewels.com</p>
-          <p style="margin: 10px 0 0 0;">This is a computer-generated document. No signature is required.</p>
-        </div>
-      </div>
-    `;
-    
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = document.createElement('div');
-      element.innerHTML = invoiceHtml;
-      const opt = {
-        margin:       0,
-        filename:     `Lumina_Invoice_${order.id.slice(0,8)}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-      };
-      
-      html2pdf().set(opt).from(element).save().then(() => {
-        showToast('Invoice downloaded successfully!');
-      });
-    } catch (e) {
-      console.error('Failed to generate PDF', e);
-      showToast('Error generating PDF. Download fallback as HTML.', 'error');
-      // Fallback
-      const blob = new Blob([invoiceHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Invoice_${order.id}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+    showToast(`Generating GST Invoice for ${order.id}...`);
+    // Ensure the order has items array mapped properly if needed, but it should already have it from checkout
+    downloadInvoice(order, false, null);
   };
 
   const handleCancelOrder = async (order) => {
     if (!window.confirm(`Are you sure you want to cancel order ${order.id}?`)) return;
     try {
-      const shipment = shipments?.find(s => s.orderId === order.id);
-      if (shipment) {
-        await updateStatus(shipment.id, LOGISTICS_STATES.CANCELLED, 'customer', 'customer-self', { action: 'customer_cancellation' }, true);
-        showToast('Order cancelled successfully.');
-      } else {
-        // If there's no shipment yet, we should at least update the orders collection!
-        const { db } = await import('../../config/firebase');
-        const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
-        await updateDoc(doc(db, 'orders', order.id), {
-          status: 'cancelled',
-          updatedAt: serverTimestamp()
-        });
-        showToast('Order cancelled successfully.');
-      }
+      const { getAuth } = await import('firebase/auth');
+      const auth = getAuth();
+      if (!auth.currentUser) throw new Error("Not logged in");
+      
+      const token = await auth.currentUser.getIdToken();
+      
+      showToast('Cancelling order...');
+      const response = await fetch('/api/orders/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ orderId: order.firebaseId || order.id, newStatus: 'cancelled' })
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Failed to cancel");
+      
+      showToast('Order cancelled successfully.');
     } catch (err) {
       console.error(err);
-      showToast('Error cancelling order. It may have already been processed.');
+      showToast(err.message || 'Error cancelling order. It may have already been processed.', 'error');
+    }
+  };
+
+  const handleReturnOrder = async (order) => {
+    if (!window.confirm(`Are you sure you want to request a return for order ${order.id}?`)) return;
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const auth = getAuth();
+      if (!auth.currentUser) throw new Error("Not logged in");
+      
+      const token = await auth.currentUser.getIdToken();
+      
+      showToast('Requesting return...');
+      const response = await fetch('/api/orders/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ orderId: order.firebaseId || order.id, newStatus: 'return_requested' })
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Failed to request return");
+      
+      showToast('Return requested successfully.');
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || 'Error requesting return.', 'error');
     }
   };
 
@@ -221,10 +144,20 @@ export default function OrderHistory() {
                 <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => handleDownloadInvoice(order)}>
                   <Download size={16} /> Download Invoice
                 </button>
-                {(order.status?.toLowerCase() === 'pending' || order.status?.toUpperCase() === 'PENDING') && (
-                  <button className="btn btn-outline" style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }} onClick={() => handleCancelOrder(order)}>
-                    Cancel Order
+                {(order.status === 'pending' || order.status === 'confirmed') && (
+                  <button className="btn btn-outline" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }} onClick={() => handleCancelOrder(order)}>
+                    <X size={16} /> Cancel Order
                   </button>
+                )}
+                {order.status === 'delivered' && (
+                  <button className="btn btn-outline" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.3)' }} onClick={() => handleReturnOrder(order)}>
+                    <Truck size={16} /> Return Order
+                  </button>
+                )}
+                {order.status === 'return_requested' && (
+                  <div style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '6px' }}>
+                    Return Pending Approval
+                  </div>
                 )}
               </div>
 

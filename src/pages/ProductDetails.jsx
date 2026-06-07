@@ -2,14 +2,17 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ShoppingCart, Heart, Shield, Truck, RotateCcw, ChevronLeft, Star, Edit3, X, Camera } from 'lucide-react';
 import { useInventory } from '../hooks/useInventory';
+import { useProducts } from '../hooks/useProducts';
 import { useReviews } from '../hooks/useReviews';
+import { products as staticProducts } from '../data/products';
 import { useApp } from '../context/AppContext';
 import VirtualTryOn from '../components/VirtualTryOn/VirtualTryOn';
 import './ProductDetails.css';
 
 export default function ProductDetails() {
   const { id } = useParams();
-  const { inventory, loading } = useInventory();
+  const { inventory, loading: invLoading } = useInventory();
+  const { products: fbProducts, loading: prodLoading } = useProducts();
   const { reviews, loading: reviewsLoading, addReview } = useReviews(id);
   const { addToCart, toggleWishlist, isWishlisted, user, showToast, setIsSupportOpen } = useApp();
   
@@ -30,11 +33,20 @@ export default function ProductDetails() {
   }, [reviews]);
 
   useEffect(() => {
-    if (!loading && inventory.length > 0) {
-      const found = inventory.find(item => item.id.toString() === id || item.sku === id);
-      setProduct(found);
+    if (!invLoading && !prodLoading) {
+      let found = inventory.find(item => item.id.toString() === id || item.sku === id);
+      
+      if (!found && fbProducts.length > 0) {
+        found = fbProducts.find(item => item.id.toString() === id || item.sku === id);
+      }
+      
+      if (!found) {
+        found = staticProducts.find(item => item.id.toString() === id || item.sku === id);
+      }
+      
+      setProduct(found || null);
     }
-  }, [id, inventory, loading]);
+  }, [id, inventory, fbProducts, invLoading, prodLoading]);
 
   const handleAddToCart = () => {
     addToCart(product);
@@ -67,7 +79,7 @@ export default function ProductDetails() {
     }
   };
 
-  if (loading) {
+  if (invLoading || prodLoading) {
     return <div className="pd-loading">Loading product details...</div>;
   }
 

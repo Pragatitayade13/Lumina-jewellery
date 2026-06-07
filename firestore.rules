@@ -3,25 +3,30 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper Functions
+    // Helper Functions using Custom Claims (Extremely Fast & Free)
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function isAdminOrSuperAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'superadmin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'superadmin');
     }
     
     function isStaffOrHigher() {
       return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager');
+        (getUserRole() == 'admin' || getUserRole() == 'superadmin' || getUserRole() == 'staff' || getUserRole() == 'manager');
+    }
+
+    function isDeliveryOrHigher() {
+      return isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery');
     }
 
     // Public Read-Only (Products, Categories, CMS)
@@ -37,40 +42,68 @@ service cloud.firestore {
     
     match /cms/{document=**} {
       allow read: if true;
-      allow write: if isAdminOrSuperAdmin();
+      allow write: if isAdmin();
     }
 
     // User Profiles
     match /users/{userId} {
       // Users can read/write their own data. Admins can read/write all.
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
+      // Superadmins are required for assigning roles (which should be done via backend anyway).
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, delete: if isAdmin();
     }
 
     // Orders
     match /orders/{orderId} {
       // Users can read their own orders. Staff can read/write all.
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaffOrHigher());
-      allow write: if isAuthenticated(); // Allow users to create orders
+      // No client can create an order directly anymore! The Backend handles it after verified payment.
+      allow create, update, delete: if isStaffOrHigher();
+    }
+
+    // Logistics & Shipments
+    match /shipments/{shipmentId} {
+      // Delivery partners can only read/update if assigned to them. Staff can read/write all.
+      allow read: if isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery' && resource.data.assignedTo == request.auth.uid);
+      allow update: if isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery' && resource.data.assignedTo == request.auth.uid);
+      allow create, delete: if isStaffOrHigher();
     }
 
     // Security & Login Activity
     match /loginActivity/{docId} {
-      // Users can write their own login activity, but only admins can read all
-      allow create: if true; // We need to allow creation even if auth isn't fully established for failed attempts
+      // Block unauthenticated flooding. Users can log their own activity.
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isStaffOrHigher();
+    }
+    
+    // Inventory & Stock Auditing (Strictly Backend/Staff)
+    match /inventory_transactions/{docId} {
+      // Backend Admin SDK writes these securely during checkout.
+      // Staff can read for dashboards.
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
+    }
+    match /stock_adjustments/{docId} {
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
+    }
+    match /stock_audit_logs/{docId} {
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
     }
     
     // Financial Data (Strictly Admin/SuperAdmin)
     match /tax_transactions/{docId} {
-      allow read, write: if isAdminOrSuperAdmin();
+      allow read, write: if isAdmin();
     }
     match /tax_audit_logs/{docId} {
-      allow read, write: if isAdminOrSuperAdmin();
+      allow read, write: if isAdmin();
     }
 
-    // Catch-all: Restrict anything not explicitly defined
+    // Default Deny Catch-all: Restrict anything not explicitly defined
     match /{document=**} {
-      allow read, write: if isStaffOrHigher();
+      allow read, write: if false;
     }
   }
 }

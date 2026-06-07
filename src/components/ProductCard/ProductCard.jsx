@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Heart, ShoppingBag, Eye, Star, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
@@ -30,7 +31,7 @@ function getDiscount(price, original) {
   return Math.round(((original - price) / original) * 100);
 }
 
-export default function ProductCard({ product }) {
+const ProductCard = memo(function ProductCard({ product }) {
   const { addToCart, toggleWishlist, isWishlisted, setQuickViewProduct, setVtoProduct } = useApp();
   const wishlisted = isWishlisted(product.id);
   const original = product.originalPrice || product.mrp || product.price || 0;
@@ -114,4 +115,6 @@ export default function ProductCard({ product }) {
       </div>
     </TiltCard>
   );
-}
+});
+
+export default ProductCard;

@@ -4,145 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { db } from '../../config/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-const COMPANY = {
-  name: 'Lumina Jewels',
-  address: '412, Jewellers Tower, MG Road, Mumbai – 400 001, Maharashtra',
-  gstin: '27AAACL1234F1Z5',
-  phone: '+91 22 4821 0000',
-  email: 'billing@luminajewels.in',
-  logo: '💎'
-};
-
-const initialInvoices = [
-  { id: 'INV-2026-0041', orderId: '#ORD-88120', customer: 'Priya Sharma', email: 'priya@email.com', phone: '+91 98200 11122', address: 'Flat 12, Andheri West, Mumbai', date: '28 May 2026', dueDate: '07 Jun 2026', items: [{ name: '22K Gold Mangalsutra (8g)', qty: 1, rate: 52800, gst: 3 }, { name: 'Making Charges', qty: 1, rate: 6000, gst: 5 }], status: 'paid', paymentMethod: 'UPI', type: 'invoice' },
-  { id: 'INV-2026-0040', orderId: '#ORD-88101', customer: 'Rajesh Mehta', email: 'rajesh@email.com', phone: '+91 97300 55566', address: '22, Juhu Scheme, Mumbai', date: '27 May 2026', dueDate: '06 Jun 2026', items: [{ name: 'Diamond Solitaire Ring (0.5ct)', qty: 1, rate: 95000, gst: 3 }], status: 'pending', paymentMethod: '—', type: 'invoice' },
-  { id: 'CN-2026-0012', orderId: '#ORD-88091', customer: 'Anjali Desai', email: 'anjali@email.com', phone: '+91 96400 77788', address: '8, Bandra Hill Road, Mumbai', date: '26 May 2026', dueDate: '—', items: [{ name: 'Silver Oxidised Choker (Returned)', qty: 1, rate: -8500, gst: 3 }], status: 'issued', paymentMethod: 'Credit Note', type: 'credit_note' },
-  { id: 'INV-2026-0039', orderId: '#ORD-88080', customer: 'Kavya Nair', email: 'kavya@email.com', phone: '+91 95500 44433', address: 'Block D, Powai, Mumbai', date: '25 May 2026', dueDate: '04 Jun 2026', items: [{ name: '24K Gold Coins (10g x2)', qty: 2, rate: 72800, gst: 3 }, { name: 'Certificate Charges', qty: 1, rate: 500, gst: 18 }], status: 'overdue', paymentMethod: '—', type: 'invoice' },
-  { id: 'INV-2026-0038', orderId: '#ORD-88072', customer: 'Sunita Rao', email: 'sunita@email.com', phone: '+91 94600 33322', address: '5, Dadar East, Mumbai', date: '24 May 2026', dueDate: '03 Jun 2026', items: [{ name: 'Polki Kundan Necklace Set', qty: 1, rate: 185000, gst: 3 }], status: 'paid', paymentMethod: 'Net Banking', type: 'invoice' },
-];
-
-const calcTotals = (items, calculateTax, customerState) => {
-  const subtotal = items.reduce((s, i) => s + i.qty * Math.abs(i.rate), 0);
-  let gstAmt = 0;
-  let cgst = 0;
-  let sgst = 0;
-  let igst = 0;
-
-  items.forEach(i => {
-    // If the item has a specific gst % hardcoded, we can pass it as a special category or override
-    // For simplicity, we'll use calculateTax which handles state logic. 
-    // We'll pass the item's gst property directly if it's a number, or fallback to 'gold'.
-    const rate = Number(i.gst) || 3;
-    const base = i.qty * Math.abs(i.rate);
-    
-    // Quick inline logic for state splitting to reuse calculateTax's internal logic, 
-    // but since we don't have the full hook here, we'll do the splitting.
-    // Or we just call the passed `calculateTax` from the hook!
-    // Since calculateTax takes (baseAmount, category, destinationState)
-    // We will modify useTaxes to accept a raw rate number as category.
-    let taxDetails;
-    if (calculateTax) {
-      taxDetails = calculateTax(base, rate.toString(), customerState || 'Maharashtra', true); // true = isRawRate
-    } else {
-      taxDetails = { total: (base * rate) / 100, cgst: (base * rate) / 200, sgst: (base * rate) / 200, igst: 0 };
-    }
-    gstAmt += taxDetails.total;
-    cgst += taxDetails.cgst || 0;
-    sgst += taxDetails.sgst || 0;
-    igst += taxDetails.igst || 0;
-  });
-
-  return { subtotal, gstAmt, cgst, sgst, igst, total: subtotal + gstAmt };
-};
-
-const statusMeta = {
-  paid: { color: 'var(--status-green)', label: 'PAID' },
-  pending: { color: 'var(--status-orange)', label: 'PENDING' },
-  overdue: { color: 'var(--status-red)', label: 'OVERDUE' },
-  issued: { color: '#88ccff', label: 'ISSUED' },
-  draft: { color: 'var(--text-muted)', label: 'DRAFT' },
-};
-
-function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
-  const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(inv.items, calculateTax, inv.state || 'Maharashtra');
-  const titleColor = isCreditNote ? '#e74c3c' : '#c9a84c';
-  return `<!DOCTYPE html><html><head><title>${isCreditNote ? 'Credit Note' : 'Tax Invoice'} ${inv.id}</title>
-  <style>
-    body{font-family:Arial,sans-serif;margin:0;padding:2rem;color:#222;font-size:13px}
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:3px solid ${titleColor}}
-    .logo{font-size:2rem;margin-bottom:0.2rem}
-    .company-name{font-size:1.4rem;font-weight:800;color:${titleColor};margin:0}
-    .doc-type{font-size:1.2rem;font-weight:700;color:${titleColor};text-align:right}
-    .doc-id{font-size:0.9rem;color:#666;text-align:right}
-    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:1.5rem}
-    .info-box{padding:1rem;background:#f9f9f9;border-radius:6px}
-    .info-label{font-size:0.7rem;text-transform:uppercase;color:#999;margin-bottom:0.3rem;font-weight:600}
-    .info-value{font-size:0.9rem;color:#333}
-    table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
-    th{background:${titleColor};color:#fff;padding:10px;text-align:left;font-size:0.8rem}
-    td{padding:10px;border-bottom:1px solid #eee;font-size:0.85rem}
-    .totals{width:300px;margin-left:auto}
-    .total-row{display:flex;justify-content:space-between;padding:0.4rem 0;font-size:0.9rem}
-    .total-final{font-weight:800;font-size:1.1rem;color:${titleColor};border-top:2px solid ${titleColor};padding-top:0.5rem;margin-top:0.5rem}
-    .footer{text-align:center;margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:0.75rem;color:#999}
-    .badge{display:inline-block;padding:0.3rem 0.8rem;border-radius:12px;font-weight:700;font-size:0.75rem;background:${isCreditNote ? '#fde8e8' : '#e8f5e9'};color:${isCreditNote ? '#c0392b' : '#27ae60'}}
-  </style></head>
-  <body>
-    <div class="header">
-      <div>
-        <div class="logo">${COMPANY.logo}</div>
-        <p class="company-name">${COMPANY.name}</p>
-        <p style="margin:0;color:#666;font-size:0.8rem">${COMPANY.address}</p>
-        <p style="margin:0;color:#666;font-size:0.8rem">GSTIN: ${COMPANY.gstin} | ${COMPANY.phone}</p>
-      </div>
-      <div style="text-align:right">
-        <div class="doc-type">${isCreditNote ? 'CREDIT NOTE' : 'TAX INVOICE'}</div>
-        <div class="doc-id">${inv.id}</div>
-        <div style="color:#666;font-size:0.8rem">Date: ${inv.date}</div>
-        ${!isCreditNote ? `<div style="color:#666;font-size:0.8rem">Due: ${inv.dueDate}</div>` : ''}
-        <span class="badge">${isCreditNote ? 'CREDIT NOTE' : statusMeta[inv.status]?.label}</span>
-      </div>
-    </div>
-    <div class="info-grid">
-      <div class="info-box">
-        <div class="info-label">Bill To</div>
-        <div class="info-value"><strong>${inv.customer}</strong></div>
-        <div class="info-value">${inv.address}</div>
-        <div class="info-value">${inv.email}</div>
-        <div class="info-value">${inv.phone}</div>
-      </div>
-      <div class="info-box">
-        <div class="info-label">Order Reference</div>
-        <div class="info-value"><strong>${inv.orderId}</strong></div>
-        <div class="info-label" style="margin-top:0.8rem">Payment Method</div>
-        <div class="info-value">${inv.paymentMethod}</div>
-      </div>
-    </div>
-    <table>
-      <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>GST %</th><th>GST Type</th><th>GST Amt</th><th>Total</th></tr>
-      ${inv.items.map((item, i) => {
-        const lineTotal = item.qty * Math.abs(item.rate);
-        const rate = Number(item.gst) || 3;
-        let taxDetails;
-        if (calculateTax) {
-          taxDetails = calculateTax(lineTotal, rate.toString(), inv.state || 'Maharashtra', true);
-        } else {
-          taxDetails = { total: (lineTotal * rate) / 100, type: 'CGST+SGST' };
-        }
-        return `<tr><td>${i + 1}</td><td>${item.name}</td><td>${item.qty}</td><td>₹${Math.abs(item.rate).toLocaleString('en-IN')}</td><td>${rate}%</td><td><span class="badge" style="background:#f0f0f0;color:#555">${taxDetails.type}</span></td><td>₹${taxDetails.total.toFixed(2)}</td><td>₹${(lineTotal + taxDetails.total).toFixed(2)}</td></tr>`;
-      }).join('')}
-    </table>
-    <div class="totals">
-      <div class="total-row"><span>Subtotal:</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
-      ${igst > 0 ? `<div class="total-row"><span>IGST:</span><span>₹${igst.toFixed(2)}</span></div>` : ''}
-      ${cgst > 0 ? `<div class="total-row"><span>CGST:</span><span>₹${cgst.toFixed(2)}</span></div>` : ''}
-      ${sgst > 0 ? `<div class="total-row"><span>SGST:</span><span>₹${sgst.toFixed(2)}</span></div>` : ''}
-      <div class="total-row total-final"><span>${isCreditNote ? 'Credit Amount:' : 'Grand Total:'}</span><span>${isCreditNote ? '-' : ''}₹${total.toFixed(2)}</span></div>
-    </div>
-    <div class="footer">Thank you for choosing ${COMPANY.name} | Computer Generated ${isCreditNote ? 'Credit Note' : 'Invoice'} — No Signature Required</div>
-  </body></html>`;
-}
-
+import { generateInvoiceHTML, calcInvoiceTotals as calcTotals, downloadInvoice } from '../../utils/invoiceGenerator';
 import { useTaxes } from '../../hooks/useTaxes';
 
 export default function InvoiceBilling() {
@@ -185,13 +47,7 @@ export default function InvoiceBilling() {
 
   const handleDownload = (inv) => {
     showToast(`Generating ${inv.type === 'credit_note' ? 'Credit Note' : 'Invoice'} PDF...`);
-    setTimeout(() => {
-      const w = window.open('', '_blank');
-      w.document.write(generateInvoiceHTML(inv, inv.type === 'credit_note', calculateTax));
-      w.document.close();
-      w.print();
-      showToast('Document ready for download/print!');
-    }, 500);
+    downloadInvoice(inv, inv.type === 'credit_note', calculateTax);
   };
 
   const handleMarkPaid = async (inv) => {
@@ -347,7 +203,6 @@ export default function InvoiceBilling() {
               ) : filtered.map(inv => {
                 const { total } = calcTotals(inv.items, calculateTax, inv.state || 'Maharashtra');
                 const isCN = inv.type === 'credit_note';
-                const sm = statusMeta[inv.status] || statusMeta.pending;
                 return (
                   <tr key={inv.id}>
                     <td>
@@ -370,8 +225,8 @@ export default function InvoiceBilling() {
                       </span>
                     </td>
                     <td>
-                      <span style={{ padding: '0.3rem 0.7rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, background: `${sm.color}22`, color: sm.color }}>
-                        {sm.label}
+                      <span style={{ padding: '0.3rem 0.7rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, background: inv.status === 'paid' ? 'rgba(39, 174, 96, 0.15)' : inv.status === 'overdue' ? 'rgba(231, 76, 60, 0.15)' : 'rgba(243, 156, 18, 0.15)', color: inv.status === 'paid' ? '#27ae60' : inv.status === 'overdue' ? '#c0392b' : '#f39c12' }}>
+                        {inv.status?.toUpperCase() || 'PENDING'}
                       </span>
                     </td>
                     <td>
@@ -422,15 +277,13 @@ export default function InvoiceBilling() {
                 {/* Company Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface)', borderRadius: '8px' }}>
                   <div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accentColor }}>{COMPANY.logo} {COMPANY.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>{COMPANY.address}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GSTIN: {COMPANY.gstin}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: accentColor }}>Lumina Jewels</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, color: accentColor }}>{isCN ? 'CREDIT NOTE' : 'TAX INVOICE'}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>#{previewInv.id}</div>
-                    <span style={{ padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, background: `${statusMeta[previewInv.status]?.color}22`, color: statusMeta[previewInv.status]?.color }}>
-                      {statusMeta[previewInv.status]?.label}
+                    <span style={{ padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, background: previewInv.status === 'paid' ? 'rgba(39, 174, 96, 0.15)' : previewInv.status === 'overdue' ? 'rgba(231, 76, 60, 0.15)' : 'rgba(243, 156, 18, 0.15)', color: previewInv.status === 'paid' ? '#27ae60' : previewInv.status === 'overdue' ? '#c0392b' : '#f39c12' }}>
+                      {previewInv.status?.toUpperCase() || 'PENDING'}
                     </span>
                   </div>
                 </div>

@@ -3,7 +3,9 @@ import { LifeBuoy, Search, Reply, CheckCircle, Clock, X, Send, Package, Gem, Rot
 import { useSupportTickets } from '../../hooks/useSupportTickets';
 import { useOrders } from '../../hooks/useOrders';
 import { useProducts } from '../../hooks/useProducts';
-import { useApp } from '../../context/AppContext';
+import { useAdminApp } from '../../context/AdminContext';
+import { getAuth } from 'firebase/auth';
+import './AdminPages.css';
 
 export default function SupportManagement() {
   const [activeTab, setActiveTab] = useState('Tickets');
@@ -55,9 +57,14 @@ export default function SupportManagement() {
       let emailSuccess = false;
       
       try {
-        const emailRes = await fetch('/api/support/reply', {
+        const auth = getAuth();
+        const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
+        const emailRes = await fetch('/api/support-reply', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             email: respondModal.ticket.email,
             customer: respondModal.ticket.customer,

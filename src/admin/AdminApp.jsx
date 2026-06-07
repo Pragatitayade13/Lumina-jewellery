@@ -34,19 +34,40 @@ import './admin.css';
 
 // A simple protective wrapper for roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user } = useApp();
-  // Allow superadmin fallback for dev purposes if no user is set
-  const role = user?.role || 'superadmin';
+  const { user, authLoading } = useApp();
   
+  if (authLoading) return null;
+  
+  // If no user is logged in, redirect to store frontend (login)
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const role = user.role;
+  
+  // Prevent unauthorized access
   if (allowedRoles && !allowedRoles.includes(role)) {
+    // If they have some role but not the right one, send to their appropriate dashboard
+    if (role === 'customer') return <Navigate to="/account" replace />;
+    if (role === 'delivery') return <Navigate to="/admin/delivery" replace />;
+    // Otherwise just send them to the root admin page which handles default routing
     return <Navigate to="/admin" replace />;
   }
   return children;
 };
 
 export default function AdminApp() {
-  const { user } = useApp();
-  const role = user?.role || 'superadmin';
+  const { user, authLoading } = useApp();
+  
+  if (authLoading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Checking authentication...</div>;
+  }
+
+  if (!user || user.role === 'customer') {
+    return <Navigate to="/" replace />;
+  }
+
+  const role = user.role;
 
   return (
     <div className="admin-root">

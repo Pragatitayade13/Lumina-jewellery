@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
+import { withRateLimit, withCSRF } from './middleware/security.js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       },
     });
 
-    const fromEmail = process.env.SMTP_FROM || process.env.VITE_SMTP_FROM || `"Lumina Jewels" <${process.env.SMTP_USER}>`;
+    const fromEmail = process.env.SMTP_FROM || `"Lumina Jewels" <${process.env.SMTP_USER}>`;
 
     const htmlContent = `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; overflow: hidden; background: #fafafa;">
@@ -75,5 +75,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error sending welcome email:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
-  }
 }
+
+export default withCSRF(withRateLimit(handler, 3, 60000));

@@ -75,3 +75,39 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'Server error during login' });
   }
 };
+
+const admin = require('firebase-admin');
+const { ROLE_PERMISSIONS } = require('../utils/rbac');
+
+exports.setRole = async (req, res) => {
+  try {
+    const { targetUid, role, customPermissions } = req.body;
+
+    if (!targetUid || !role) {
+      return res.status(400).json({ message: 'Target UID and role are required' });
+    }
+
+    // Default to the role's intrinsic permissions if custom ones aren't provided
+    const permissions = customPermissions || ROLE_PERMISSIONS[role] || [];
+
+    // Set custom claims on Firebase Auth
+    await admin.auth().setCustomUserClaims(targetUid, { role, permissions });
+
+    // Ensure Firestore `users` collection stays in sync
+    const userRef = db.collection('users').doc(targetUid);
+    
+    // We use set with merge to avoid overwriting existing profile data like email/name
+    await userRef.set({
+      uid: targetUid,
+      role: role,
+      permissions: permissions,
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    res.status(200).json({ message: `Successfully assigned role ${role} to user ${targetUid}`, role, permissions });
+  } catch (error) {
+    console.error('Error setting custom claims:', error);
+    res.status(500).json({ message: 'Server error assigning role', details: error.message });
+  }
+};

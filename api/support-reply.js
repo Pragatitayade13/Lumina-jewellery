@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
+import { withAuth, withRateLimit } from './middleware/security.js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       },
     });
 
-    const fromEmail = process.env.SMTP_FROM || process.env.VITE_SMTP_FROM || `"Lumina Support" <${process.env.SMTP_USER}>`;
+    const fromEmail = process.env.SMTP_FROM || `"Lumina Support" <${process.env.SMTP_USER}>`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
@@ -66,5 +66,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error sending support reply:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
-  }
 }
+
+export default withAuth(withRateLimit(handler, 10, 60000), ['superadmin', 'admin', 'support']);

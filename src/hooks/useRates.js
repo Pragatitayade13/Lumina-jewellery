@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 
-const GOLD_API_KEY = import.meta.env.VITE_GOLD_API_KEY || 'goldapi-d95171e4eac03debe7f9d0c61b0c98bb-io';
-
 // Global shared state for the Live Gold API simulation
 let globalRates = {
   gold24k: 7250,
@@ -21,7 +19,10 @@ const fetchLiveRates = async () => {
     let goldRes, silverRes, goldData, silverData;
 
     if (import.meta.env.DEV) {
-      const headers = { 'x-access-token': GOLD_API_KEY, 'Content-Type': 'application/json' };
+      // In dev, we proxy to GoldAPI via vite.config.js
+      // We no longer pass the API key from the client to prevent leakage.
+      // If it fails (403), it will just safely keep the mock globalRates.
+      const headers = { 'Content-Type': 'application/json' };
       goldRes = await fetch('/api/goldapi/XAU/INR', { headers });
       silverRes = await fetch('/api/goldapi/XAG/INR', { headers });
     } else {

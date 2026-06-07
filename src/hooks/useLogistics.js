@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, getDocs, where } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 // Strict State Machine Rules
 export const LOGISTICS_STATES = {
@@ -30,7 +31,8 @@ const STATE_TRANSITIONS = {
 };
 
 // Centralized API Hook
-export function useLogistics() {
+
+export function useLogistics(deliveryPartnerId = null) {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,13 @@ export function useLogistics() {
       return;
     }
     
-    const shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
+    let shipmentsQuery;
+    if (deliveryPartnerId) {
+      // Securely filter assigned tasks
+      shipmentsQuery = query(collection(db, 'shipments'), where('assignedTo', '==', deliveryPartnerId), orderBy('createdAt', 'desc'));
+    } else {
+      shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
+    }
     
     const unsubscribe = onSnapshot(shipmentsQuery, (snapshot) => {
       const data = snapshot.docs.map(d => ({
@@ -69,9 +77,14 @@ export function useLogistics() {
 
     // Real Notification via API
     try {
+      const auth = getAuth();
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       await fetch('/api/send-order-alert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           shipmentId,
           status,

@@ -1,7 +1,7 @@
 import Razorpay from 'razorpay';
+import { withAuth, withRateLimit } from '../middleware/security.js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
@@ -33,5 +33,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error("Razorpay order creation failed:", error);
     res.status(500).json({ message: 'Failed to create order', error: error.message });
-  }
 }
+
+export default withAuth(withRateLimit(handler, 10, 60000));

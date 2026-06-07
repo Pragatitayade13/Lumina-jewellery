@@ -3,8 +3,8 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import ModelRenderer from './ModelRenderer';
 
-const Hands = window.Hands;
-const Camera = window.Camera;
+// NOTE: Do NOT read window.Hands / window.Camera at module level.
+// They are loaded by CDN scripts and must be accessed lazily inside useEffect.
 
 // Exponential Moving Average filter
 class EMAFilter {
@@ -57,36 +57,75 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
   const quatFilter = useRef(new QuatFilter(0.3));
   const scaleFilter = useRef(new EMAFilter(0.2));
 
-  // Initialize MediaPipe once
+  // Initialize MediaPipe once — access window globals lazily inside useEffect
   useEffect(() => {
     if (!videoRef.current) return;
 
-    handsRef.current = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
+    const HandsClass = window.Hands;
+    const CameraClass = window.Camera;
 
-    handsRef.current.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    cameraUtilsRef.current = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (handsRef.current && videoRef.current) {
-          try {
-            await handsRef.current.send({ image: videoRef.current });
-          } catch (e) {
-            console.error("Hands Error:", e);
-          }
+    if (!HandsClass || !CameraClass) {
+      console.warn('MediaPipe Hands/Camera not available on window. Retrying in 500ms...');
+      const timer = setTimeout(() => {
+        if (window.Hands && window.Camera) {
+          initHands();
+        } else {
+          console.error('MediaPipe Hands not available after retry. Falling back.');
+          if (onLoaded) onLoaded(new Error('MediaPipe Hands unavailable'));
         }
-      },
-      width: 1280,
-      height: 720
-    });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
 
-    cameraUtilsRef.current.start();
+    initHands();
+
+    function initHands() {
+      const HandsCls = window.Hands;
+      const CameraCls = window.Camera;
+      if (!HandsCls || !CameraCls) {
+        if (onLoaded) onLoaded(new Error('MediaPipe unavailable'));
+        return;
+      }
+      try {
+        handsRef.current = new HandsCls({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        handsRef.current.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+
+        let lastFrameTime = 0;
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        const fpsLimit = isMobile ? 20 : 60;
+        const frameInterval = 1000 / fpsLimit;
+
+        cameraUtilsRef.current = new CameraCls(videoRef.current, {
+          onFrame: async () => {
+            const now = performance.now();
+            if (now - lastFrameTime < frameInterval) return;
+            lastFrameTime = now;
+            if (handsRef.current && videoRef.current) {
+              try {
+                await handsRef.current.send({ image: videoRef.current });
+              } catch (e) {
+                console.error('Hands Error:', e);
+              }
+            }
+          },
+          width: 1280,
+          height: 720
+        });
+
+        cameraUtilsRef.current.start();
+      } catch (err) {
+        console.error('Failed to initialize Hands dependencies:', err);
+        if (onLoaded) onLoaded(err);
+      }
+    }
 
     return () => {
       if (cameraUtilsRef.current) cameraUtilsRef.current.stop();
@@ -106,6 +145,12 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
     };
 
     handsRef.current.onResults((results) => {
+      if (!hasLoadedRef.current) {
+        hasLoadedRef.current = true;
+        setIsReady(true);
+        if (onLoaded) onLoaded();
+      }
+
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
         const cat = (product?.category || '').toLowerCase();
@@ -165,11 +210,7 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
         const occPosArray = occFilter.current.update([occTarget.x, occTarget.y, occTarget.z]);
         fingerOccluderPose.current = { position: occPosArray, quaternion: smoothQuatArray, scaleFactor: smoothScale, visible: true };
 
-        if (!hasLoadedRef.current) {
-          hasLoadedRef.current = true;
-          setIsReady(true);
-          onLoaded();
-        }
+        fingerOccluderPose.current = { position: occPosArray, quaternion: smoothQuatArray, scaleFactor: smoothScale, visible: true };
       } else {
         // Hide model when no hands are detected
         targetPose.current.visible = false;
@@ -182,16 +223,18 @@ export default function ARHandTracker({ videoRef, product, onLoaded }) {
 
   return (
     <>
-      <ModelRenderer 
-        poseRef={fingerOccluderPose} 
-        isOccluder={true} 
-        occluderType="finger" 
-      />
+      {/* Render jewellery FIRST before occluder — depth order matters */}
       <ModelRenderer 
         poseRef={targetPose}
         modelUrl={product?.modelUrl} 
         fallbackColor="gold"
         product={product}
+      />
+      {/* Finger occluder rendered AFTER jewellery */}
+      <ModelRenderer 
+        poseRef={fingerOccluderPose} 
+        isOccluder={true} 
+        occluderType="finger" 
       />
     </>
   );

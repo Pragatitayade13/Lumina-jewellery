@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
+import { withRateLimit, withCSRF } from './middleware/security.js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -24,11 +24,11 @@ export default async function handler(req, res) {
       },
     });
 
-    const adminEmail = process.env.SUPERADMIN_EMAIL || process.env.VITE_SUPERADMIN_EMAIL || process.env.SMTP_USER || process.env.VITE_SMTP_USER;
-    const shopEmail = process.env.SHOP_EMAIL || process.env.VITE_SHOP_EMAIL;
+    const adminEmail = process.env.SUPERADMIN_EMAIL || process.env.SMTP_USER;
+    const shopEmail = process.env.SHOP_EMAIL;
     
     const toEmails = [...new Set([adminEmail, shopEmail].filter(Boolean))].join(', ');
-    const fromEmail = process.env.SMTP_FROM || process.env.VITE_SMTP_FROM || `"Security Alert" <${process.env.SMTP_USER || process.env.VITE_SMTP_USER}>`;
+    const fromEmail = process.env.SMTP_FROM || `"Security Alert" <${process.env.SMTP_USER}>`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
@@ -62,5 +62,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error sending login alert:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
-  }
 }
+
+export default withCSRF(withRateLimit(handler, 5, 60000));

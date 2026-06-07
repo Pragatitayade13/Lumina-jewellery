@@ -42,9 +42,9 @@ function ImageFallback({ imageUrl, isNecklace, isEarring }) {
   const h = isNecklace ? 4.5 : isEarring ? 1.5 : 3;
   
   return (
-    <mesh position={[0, isNecklace ? -1.5 : 0, 0.5]}>
+    <mesh position={[0, isNecklace ? -1.5 : 0, 0.5]} renderOrder={999}>
       <planeGeometry args={[w, h]} />
-      <meshBasicMaterial map={texture} transparent={true} side={THREE.DoubleSide} alphaTest={0.05} depthWrite={false} />
+      <meshBasicMaterial map={texture} transparent={true} side={THREE.DoubleSide} alphaTest={0.05} depthWrite={false} depthTest={false} />
     </mesh>
   );
 }

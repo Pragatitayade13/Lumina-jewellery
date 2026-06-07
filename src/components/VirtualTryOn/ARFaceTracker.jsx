@@ -3,8 +3,8 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import ModelRenderer from './ModelRenderer';
 
-const FaceMesh = window.FaceMesh;
-const Camera = window.Camera;
+// NOTE: Do NOT read window.FaceMesh / window.Camera at module level.
+// They are loaded by CDN scripts and must be accessed lazily inside useEffect.
 
 // Exponential Moving Average filter for smooth tracking
 class EMAFilter {
@@ -69,36 +69,78 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
   const quatFilter = useRef(new QuatFilter(0.3));
   const scaleFilter = useRef(new EMAFilter(0.2));
 
-  // Initialize MediaPipe once
+  // Initialize MediaPipe once — access window globals lazily inside useEffect
   useEffect(() => {
     if (!videoRef.current) return;
 
-    faceMeshRef.current = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
+    // Lazy access: CDN scripts must be loaded before this effect runs
+    const FaceMeshClass = window.FaceMesh;
+    const CameraClass = window.Camera;
 
-    faceMeshRef.current.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    cameraUtilsRef.current = new Camera(videoRef.current, {
-      onFrame: async () => {
-        if (faceMeshRef.current && videoRef.current) {
-          try {
-            await faceMeshRef.current.send({ image: videoRef.current });
-          } catch (e) {
-            console.error("FaceMesh Error:", e);
-          }
+    if (!FaceMeshClass || !CameraClass) {
+      console.warn('MediaPipe FaceMesh/Camera not available on window. Retrying in 500ms...');
+      // Retry after a delay to give CDN scripts time to load
+      const timer = setTimeout(() => {
+        if (window.FaceMesh && window.Camera) {
+          // Re-trigger by updating state; simpler: just call init directly
+          initFaceMesh();
+        } else {
+          console.error('MediaPipe not available after retry. Falling back.');
+          if (onLoaded) onLoaded(new Error('MediaPipe unavailable'));
         }
-      },
-      width: 1280,
-      height: 720
-    });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
 
-    cameraUtilsRef.current.start();
+    initFaceMesh();
+
+    function initFaceMesh() {
+      const FaceMeshCls = window.FaceMesh;
+      const CameraCls = window.Camera;
+      if (!FaceMeshCls || !CameraCls) {
+        if (onLoaded) onLoaded(new Error('MediaPipe unavailable'));
+        return;
+      }
+      try {
+        faceMeshRef.current = new FaceMeshCls({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMeshRef.current.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+
+        let lastFrameTime = 0;
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        const fpsLimit = isMobile ? 20 : 60;
+        const frameInterval = 1000 / fpsLimit;
+
+        cameraUtilsRef.current = new CameraCls(videoRef.current, {
+          onFrame: async () => {
+            const now = performance.now();
+            if (now - lastFrameTime < frameInterval) return;
+            lastFrameTime = now;
+            if (faceMeshRef.current && videoRef.current) {
+              try {
+                await faceMeshRef.current.send({ image: videoRef.current });
+              } catch (e) {
+                console.error('FaceMesh Error:', e);
+              }
+            }
+          },
+          width: 1280,
+          height: 720
+        });
+
+        cameraUtilsRef.current.start();
+      } catch (err) {
+        console.error('Failed to initialize FaceMesh dependencies:', err);
+        if (onLoaded) onLoaded(err);
+      }
+    }
 
     return () => {
       if (cameraUtilsRef.current) cameraUtilsRef.current.stop();
@@ -118,6 +160,12 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
     };
 
     faceMeshRef.current.onResults((results) => {
+      if (!hasLoadedRef.current) {
+        hasLoadedRef.current = true;
+        setIsReady(true);
+        if (onLoaded) onLoaded();
+      }
+
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
         
@@ -190,12 +238,6 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
         // We push it significantly back on the Z axis so it doesn't swallow forehead geometry
         const hPos = posFilterHead.current.update([nose.x, nose.y, nose.z - (4 * smoothScale)]);
         headOccluderPose.current = { position: hPos, quaternion: smoothQuatArray, scaleFactor: smoothScale, visible: true };
-        
-        if (!hasLoadedRef.current) {
-          hasLoadedRef.current = true;
-          setIsReady(true);
-          onLoaded();
-        }
       } else {
         // Hide models when no face is detected
         leftEarPose.current.visible = false;
@@ -211,13 +253,7 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
 
   return (
     <>
-      {/* Invisible mask to hide geometry behind the head/neck */}
-      <ModelRenderer 
-        poseRef={headOccluderPose} 
-        isOccluder={true} 
-        occluderType="head" 
-      />
-
+      {/* Render jewellery FIRST, then occluder — order matters for depth buffer */}
       {isEarring ? (
         <>
           <ModelRenderer poseRef={leftEarPose} modelUrl={product?.modelUrl} fallbackColor="gold" product={product} />
@@ -228,6 +264,13 @@ export default function ARFaceTracker({ videoRef, product, onLoaded }) {
       ) : (
         <ModelRenderer poseRef={neckPose} modelUrl={product?.modelUrl} fallbackColor="silver" product={product} />
       )}
+
+      {/* Invisible head mask — rendered AFTER jewellery so it occludes correctly */}
+      <ModelRenderer 
+        poseRef={headOccluderPose} 
+        isOccluder={true} 
+        occluderType="head" 
+      />
     </>
   );
 }

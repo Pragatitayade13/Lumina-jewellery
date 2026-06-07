@@ -143,10 +143,13 @@ export default function CartModal({ isOpen, onClose }) {
         return;
       }
 
-      // Create Order on Backend
-      const orderResponse = await fetch('/api/razorpay/create-order', {
+      const token = await user.getIdToken();
+      const orderResponse = await fetch('/api/payment/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ amount: total, currency: 'INR' })
       });
       
@@ -168,23 +171,24 @@ export default function CartModal({ isOpen, onClose }) {
         order_id: orderJson.id,
         handler: async function (response) {
           try {
-            const verifyRes = await fetch('/api/razorpay/verify', {
+            const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
+                razorpay_signature: response.razorpay_signature,
+                orderData: orderData
               })
             });
 
             const verifyJson = await verifyRes.json();
 
             if (verifyJson.success) {
-              orderData.paymentId = response.razorpay_payment_id;
-              orderData.status = 'confirmed';
-              const orderId = await createOrder(orderData);
-              setLastOrderId(orderId);
+              setLastOrderId(verifyJson.orderId);
               clearCart();
               setStep(3);
             } else {

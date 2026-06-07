@@ -1,6 +1,20 @@
 import { Truck, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
 
 export default function Dashboard() {
+  const { user } = useApp();
+  const { shipments, loading } = useLogistics(user?.uid);
+
+  const pendingCount = shipments.filter(s => s.status === LOGISTICS_STATES.READY || s.status === LOGISTICS_STATES.ASSIGNED).length;
+  const transitCount = shipments.filter(s => s.status === LOGISTICS_STATES.IN_TRANSIT || s.status === LOGISTICS_STATES.OUT_FOR_DELIVERY).length;
+  
+  // Delivered today
+  const today = new Date().toDateString();
+  const deliveredCount = shipments.filter(s => 
+    s.status === LOGISTICS_STATES.DELIVERED && 
+    new Date(s.updatedAt || s.createdAt).toDateString() === today
+  ).length;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
@@ -12,7 +26,7 @@ export default function Dashboard() {
               <Truck size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>12</div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>{loading ? '-' : pendingCount}</div>
           <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>Ready at Warehouse HQ</div>
         </div>
 
@@ -23,7 +37,7 @@ export default function Dashboard() {
               <MapPin size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>5</div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>{loading ? '-' : transitCount}</div>
           <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>Currently en route</div>
         </div>
 
@@ -34,7 +48,7 @@ export default function Dashboard() {
               <CheckCircle size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>8</div>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a' }}>{loading ? '-' : deliveredCount}</div>
           <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>100% success rate</div>
         </div>
 

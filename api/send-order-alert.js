@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
+import { withAuth, withRateLimit } from './middleware/security.js';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     });
 
     const toEmail = customerEmail || 'customer@example.com';
-    const fromEmail = process.env.SMTP_FROM || process.env.VITE_SMTP_FROM || `"Lumina Logistics" <${process.env.SMTP_USER || process.env.VITE_SMTP_USER}>`;
+    const fromEmail = process.env.SMTP_FROM || `"Lumina Logistics" <${process.env.SMTP_USER}>`;
 
     const isOutForDelivery = status === 'OUT_FOR_DELIVERY';
     
@@ -72,5 +72,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error sending order alert:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
-  }
 }
+
+export default withAuth(withRateLimit(handler, 10, 60000));

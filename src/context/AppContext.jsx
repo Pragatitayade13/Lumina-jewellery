@@ -38,12 +38,42 @@ export function AppProvider({ children }) {
           try {
             const { doc, getDoc } = await import('firebase/firestore');
             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            let userData = { uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: firebaseUser.displayName || 'Customer' };
             if (userDoc.exists()) {
-              setUser({ uid: firebaseUser.uid, email: firebaseUser.email, ...userDoc.data() });
-            } else {
-              // Fallback if document doesn't exist yet
-              setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: firebaseUser.displayName || 'Customer' });
+              userData = { ...userData, ...userDoc.data() };
             }
+
+            // --- DEV BOOTSTRAP: Auto-grant superadmin to owner ---
+            if (firebaseUser.email === 'luminajewels.app@gmail.com') {
+              userData.role = 'superadmin';
+              userData.permissions = ['all'];
+              
+              // Automatically write this to Firestore so it persists
+              try {
+                const { setDoc } = await import('firebase/firestore');
+                await setDoc(doc(db, 'users', firebaseUser.uid), {
+                  role: 'superadmin',
+                  permissions: ['all'],
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              } catch (e) {
+                console.warn("Bootstrap write failed (might be expected depending on security rules):", e);
+              }
+            }
+            // -----------------------------------------------------
+
+            // Sync custom claims: if Firestore role differs from token claim, force refresh
+            try {
+              const tokenResult = await firebaseUser.getIdTokenResult();
+              if (tokenResult.claims.role !== userData.role) {
+                console.log('Role mismatch detected, refreshing token claims...');
+                await firebaseUser.getIdToken(true); // Force refresh
+              }
+            } catch (err) {
+              console.warn("Failed to verify token claims:", err);
+            }
+
+            setUser(userData);
 
             // Log activity to Firestore
             try {
