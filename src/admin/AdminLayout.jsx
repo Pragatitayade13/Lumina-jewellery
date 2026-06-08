@@ -17,11 +17,11 @@ const allNavItems = [
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'admin', 'delivery'] },
-  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['delivery'] },
-  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['delivery'] },
-  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['delivery'] },
-  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['delivery'] },
-  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['admin', 'finance', 'delivery'] },
+  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'admin', 'finance', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager', 'admin'] },
@@ -205,7 +205,17 @@ export default function AdminLayout({ children }) {
                 key={item.path}
                 to={item.path}
                 end={item.exact}
-                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                className={({ isActive }) => {
+                  let isCurrentlyActive = isActive;
+                  // Handle exact matching for query params
+                  if (item.path.includes('?')) {
+                    const [pathPart, queryPart] = item.path.split('?');
+                    if (location.pathname === pathPart) {
+                      isCurrentlyActive = location.search.includes(queryPart);
+                    }
+                  }
+                  return `nav-item${isCurrentlyActive ? ' active' : ''}`;
+                }}
               >
                 <span className="nav-icon">{item.icon}</span>
                 <span style={{ flex: 1 }}>{item.label}</span>
