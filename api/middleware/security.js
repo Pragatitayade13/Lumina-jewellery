@@ -16,7 +16,7 @@ if (!admin.apps.length) {
     console.error('Firebase Admin init error in middleware:', error);
   }
 }
-}
+
 
 const db = admin.firestore();
 
@@ -47,7 +47,7 @@ export const withRateLimit = (handler, maxRequests = 10, windowMs = 60000) => {
     // Determine IP
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
-    
+
     // Clean up old entries periodically to prevent memory leak
     if (Math.random() < 0.05) {
       for (const [key, data] of rateLimits.entries()) {
@@ -81,33 +81,33 @@ export const withCSRF = (handler) => {
     if (req.method === 'GET' || req.method === 'OPTIONS') {
       return handler(req, res);
     }
-    
+
     const origin = req.headers.origin;
     const referer = req.headers.referer;
-    
+
     // If running locally, you might want to allow localhost.
     // In production, ensure the origin matches your deployed domain.
     const allowedOrigin = process.env.VITE_APP_URL || 'http://localhost:5173';
-    
+
     if (!origin && !referer) {
       // Browsers generally send at least one for cross-origin POSTs.
       // If both are missing, it might be a direct curl request (abuse).
       await logSecurityEvent('CSRF_MISSING_HEADERS', req.socket.remoteAddress, { path: req.url });
       return res.status(403).json({ error: 'Missing Origin/Referer header' });
     }
-    
+
     if (origin && !origin.startsWith(allowedOrigin)) {
       console.warn(`CSRF blocked from origin: ${origin}`);
       await logSecurityEvent('CSRF_INVALID_ORIGIN', req.socket.remoteAddress, { origin, path: req.url });
       return res.status(403).json({ error: 'CSRF Validation Failed' });
     }
-    
+
     if (referer && !referer.startsWith(allowedOrigin)) {
       console.warn(`CSRF blocked from referer: ${referer}`);
       await logSecurityEvent('CSRF_INVALID_REFERER', req.socket.remoteAddress, { referer, path: req.url });
       return res.status(403).json({ error: 'CSRF Validation Failed' });
     }
-    
+
     return handler(req, res);
   };
 };
@@ -127,23 +127,23 @@ export const withAuth = (handler, allowedRoles = []) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    
+
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       req.user = decodedToken;
-      
+
       // If roles are specified, validate against custom claims
       if (allowedRoles.length > 0) {
         // Fetch full user record or assume claims are in the token
         // E.g., decodedToken.role === 'admin'
         const userRole = decodedToken.role || 'customer';
-        
+
         if (!allowedRoles.includes(userRole)) {
           console.warn(`Forbidden: User ${decodedToken.email} with role ${userRole} attempted to access restricted API.`);
-          await logSecurityEvent('AUTH_INSUFFICIENT_ROLE', req.socket.remoteAddress, { 
-            email: decodedToken.email, 
-            role: userRole, 
-            path: req.url 
+          await logSecurityEvent('AUTH_INSUFFICIENT_ROLE', req.socket.remoteAddress, {
+            email: decodedToken.email,
+            role: userRole,
+            path: req.url
           });
           return res.status(403).json({ error: 'Forbidden: Insufficient privileges' });
         }

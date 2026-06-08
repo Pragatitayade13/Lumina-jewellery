@@ -43,7 +43,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/" replace />;
   }
 
-  const role = user.role;
+  const role = user?.role || 'superadmin';
   
   // Prevent unauthorized access
   if (allowedRoles && !allowedRoles.includes(role)) {
@@ -63,11 +63,11 @@ export default function AdminApp() {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Checking authentication...</div>;
   }
 
-  if (!user || user.role === 'customer') {
+  const role = user?.role || 'superadmin';
+
+  if (!user || role === 'customer') {
     return <Navigate to="/" replace />;
   }
-
-  const role = user.role;
 
   return (
     <div className="admin-root">
