@@ -77,6 +77,10 @@ export function useLogistics(deliveryPartnerId = null) {
 
     // Real Notification via API
     try {
+      const shipment = shipments.find(s => s.id === shipmentId);
+      const customerEmail = shipment?.orderDetails?.customerEmail || shipment?.orderDetails?.email || shipment?.customerEmail || shipment?.email || 'customer@example.com';
+      const customerName = shipment?.orderDetails?.customerName || shipment?.orderDetails?.customer || shipment?.customerName || shipment?.customer || 'Customer';
+
       const auth = getAuth();
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       await fetch('/api/send-order-alert', {
@@ -88,8 +92,8 @@ export function useLogistics(deliveryPartnerId = null) {
         body: JSON.stringify({
           shipmentId,
           status,
-          customerEmail: 'customer@example.com', // Replace with dynamic email if available
-          customerName: 'Customer',
+          customerEmail,
+          customerName,
           otp: locationData?.otp // Pass OTP if it exists in locationData for this event
         })
       });
