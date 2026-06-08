@@ -68,15 +68,16 @@ export default function Hero() {
   ];
 
   // Map CMS data if available, otherwise use defaults
-  const slides = cmsSlides && cmsSlides[0]?.title ? cmsSlides.map((s, i) => ({
+  const hasCmsContent = cmsSlides && cmsSlides.some(s => s.title || s.subtitle || s.bgImage);
+  const slides = hasCmsContent ? cmsSlides.map((s, i) => ({
     id: i + 1,
     badgeKey: 'hero.slide1.badge', // Default badge
     title: s.title,
-    titleAccent: s.subtitle,
-    subtitle: '', 
+    titleAccent: '',
+    subtitle: s.subtitle, 
     bg: s.bgImage || defaultSlides[i]?.bg || heroBg1,
     ctas: [
-      { label: s.ctaText, href: s.ctaLink || '#categories', primary: true }
+      { label: s.ctaText || 'Shop Now', href: s.ctaLink || '#categories', primary: true }
     ],
     isCms: true
   })) : defaultSlides;
