@@ -3,9 +3,8 @@ import { LifeBuoy, Search, Reply, CheckCircle, Clock, X, Send, Package, Gem, Rot
 import { useSupportTickets } from '../../hooks/useSupportTickets';
 import { useOrders } from '../../hooks/useOrders';
 import { useProducts } from '../../hooks/useProducts';
-import { useAdminApp } from '../../context/AdminContext';
+import { useApp } from '../../context/AppContext';
 import { getAuth } from 'firebase/auth';
-import './AdminPages.css';
 
 export default function SupportManagement() {
   const [activeTab, setActiveTab] = useState('Tickets');

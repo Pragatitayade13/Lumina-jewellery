@@ -125,16 +125,16 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
           taxDetails = { total: (lineTotal * ratePercentage) / 100, type: 'CGST+SGST' };
         }
         
-        return \`<tr>
-          <td>\${i + 1}</td>
-          <td>\${item.name}</td>
-          <td>\${lineQty}</td>
-          <td>₹\${lineRate.toLocaleString('en-IN')}</td>
-          <td>\${ratePercentage}%</td>
-          <td><span class="badge" style="background:#f0f0f0;color:#555">\${taxDetails.type}</span></td>
-          <td>₹\${taxDetails.total.toFixed(2)}</td>
-          <td>₹\${(lineTotal + taxDetails.total).toFixed(2)}</td>
-        </tr>\`;
+        return `<tr>
+          <td>${i + 1}</td>
+          <td>${item.name}</td>
+          <td>${lineQty}</td>
+          <td>₹${lineRate.toLocaleString('en-IN')}</td>
+          <td>${ratePercentage}%</td>
+          <td><span class="badge" style="background:#f0f0f0;color:#555">${taxDetails.type}</span></td>
+          <td>₹${taxDetails.total.toFixed(2)}</td>
+          <td>₹${(lineTotal + taxDetails.total).toFixed(2)}</td>
+        </tr>`;
       }).join('')}
     </table>
     <div class="totals">
