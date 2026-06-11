@@ -30,13 +30,20 @@ export default function QuickViewModal() {
   if (!quickViewProduct) return null;
   const product = quickViewProduct;
   const wishlisted = isWishlisted(product.id);
-  const discount = Math.round(((product.originalPrice || product.price - product.price) / (product.originalPrice || product.price)) * 100) || 0;
+  const original = product.originalPrice || product.mrp || product.price || 0;
+  const current = product.price || 0;
+  const discount = original > 0 ? Math.round(((original - current) / original) * 100) : 0;
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true" style={{ zIndex: 9999 }} data-lenis-prevent="true">
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ display: 'flex', maxWidth: '800px', background: 'var(--surface)', borderRadius: 'var(--radius-xl)' }} data-lenis-prevent="true">
         <div style={{ flex: '0 0 45%' }}>
-          <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)' }} />
+          <img 
+            src={product.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80'} 
+            alt={product.name} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-xl) 0 0 var(--radius-xl)' }} 
+            onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80'; }}
+          />
         </div>
         <div style={{ flex: 1, padding: '2.5rem', position: 'relative' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
@@ -60,10 +67,10 @@ export default function QuickViewModal() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.8rem', color: 'var(--gold)', fontWeight: 700 }}>₹{(product.price || 0).toLocaleString('en-IN')}</span>
-            {product.originalPrice && product.originalPrice > product.price && (
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.8rem', color: 'var(--gold)', fontWeight: 700 }}>₹{current.toLocaleString('en-IN')}</span>
+            {original > current && (
               <>
-                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{original.toLocaleString('en-IN')}</span>
                 <span style={{ color: '#2ecc71', fontSize: '0.8rem', fontWeight: 700 }}>{discount}% OFF</span>
               </>
             )}

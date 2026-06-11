@@ -12,7 +12,7 @@ const DEFAULT_TAX_SETTINGS = {
   storeOriginState: 'Maharashtra'
 };
 
-export function useTaxes() {
+export function useTaxes(activeStoreId = null) {
   const [taxSettings, setTaxSettings] = useState(DEFAULT_TAX_SETTINGS);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +22,16 @@ export function useTaxes() {
       return;
     }
     
-    const docRef = doc(db, 'cms', 'taxSettings');
+    if (!activeStoreId || activeStoreId === 'NONE') {
+      console.debug(`Data fetch aborted: No active store selected for tax settings.`);
+      setTaxSettings(DEFAULT_TAX_SETTINGS);
+      setLoading(false);
+      return;
+    }
+    
+    // Per-store tax settings document, falls back to global if not store-specific
+    const docKey = activeStoreId !== 'GLOBAL' ? `taxSettings_${activeStoreId}` : 'taxSettings';
+    const docRef = doc(db, 'cms', docKey);
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -39,12 +48,13 @@ export function useTaxes() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeStoreId]);
 
   const updateTaxSettings = async (newSettings, user) => {
     if (!db) return false;
     try {
-      const docRef = doc(db, 'cms', 'taxSettings');
+      const docKey = activeStoreId && activeStoreId !== 'GLOBAL' ? `taxSettings_${activeStoreId}` : 'taxSettings';
+      const docRef = doc(db, 'cms', docKey);
       await setDoc(docRef, newSettings, { merge: true });
       
       // Audit log
@@ -52,6 +62,7 @@ export function useTaxes() {
         await addDoc(collection(db, 'tax_audit_logs'), {
           action: 'UPDATE_TAX_BRACKETS',
           updatedBy: user.email || user.uid,
+          storeId: activeStoreId || 'GLOBAL',
           updatedAt: serverTimestamp(),
           changes: newSettings
         });

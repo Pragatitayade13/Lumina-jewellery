@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import AdminLayout from './AdminLayout';
+import StoreSelectionModal from '../components/StoreSelectionModal/StoreSelectionModal';
 import './admin.css';
 
 // Lazy loading all admin pages
@@ -18,6 +19,7 @@ const LandingPageCMS = lazy(() => import('./pages/LandingPageCMS'));
 const SocialMediaSettings = lazy(() => import('./pages/SocialMediaSettings'));
 const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
 const SystemSettings = lazy(() => import('./pages/SystemSettings'));
+const StoreManagement = lazy(() => import('./pages/StoreManagement'));
 const LoginActivity = lazy(() => import('./pages/LoginActivity'));
 const CommunicationManagement = lazy(() => import('./pages/CommunicationManagement'));
 const StoreAppointments = lazy(() => import('./pages/StoreAppointments'));
@@ -30,7 +32,7 @@ const StaffProfile = lazy(() => import('./pages/StaffProfile'));
 const VendorManagement = lazy(() => import('./pages/VendorManagement'));
 const InvoiceBilling = lazy(() => import('./pages/InvoiceBilling'));
 const FinanceDashboard = lazy(() => import('./pages/FinanceDashboard'));
-import './admin.css';
+const ApprovalDashboard = lazy(() => import('./pages/ApprovalDashboard'));
 
 // A simple protective wrapper for roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -87,6 +89,7 @@ export default function AdminApp() {
 
             {/* Superadmin only routes */}
             <Route path="settings" element={<ProtectedRoute allowedRoles={['superadmin']}><SystemSettings /></ProtectedRoute>} />
+            <Route path="stores" element={<ProtectedRoute allowedRoles={['superadmin']}><StoreManagement /></ProtectedRoute>} />
             <Route path="landing-cms" element={<ProtectedRoute allowedRoles={['superadmin']}><LandingPageCMS /></ProtectedRoute>} />
             <Route path="social-media" element={<ProtectedRoute allowedRoles={['superadmin']}><SocialMediaSettings /></ProtectedRoute>} />
             <Route path="login-activity" element={<ProtectedRoute allowedRoles={['superadmin']}><LoginActivity /></ProtectedRoute>} />
@@ -113,11 +116,13 @@ export default function AdminApp() {
             <Route path="vendors" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><VendorManagement /></ProtectedRoute>} />
             <Route path="invoices" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><InvoiceBilling /></ProtectedRoute>} />
             <Route path="finance" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'manager']}><FinanceDashboard /></ProtectedRoute>} />
+            <Route path="approvals" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'manager']}><ApprovalDashboard /></ProtectedRoute>} />
             
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </Suspense>
       </AdminLayout>
+      <StoreSelectionModal />
     </div>
   );
 }

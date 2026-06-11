@@ -8,8 +8,14 @@ import './CartModal.css';
 
 export default function CartModal({ isOpen, onClose }) {
   useScrollLock(isOpen);
-  const { cart, removeFromCart, updateQuantity, clearCart, user, setIsAuthOpen } = useApp();
-  const { createOrder } = useOrders();
+  const { cart, removeFromCart, updateQuantity, clearCart, user, setIsAuthOpen, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
+  const { createOrder } = useOrders(customerSelectedStore);
+  
+  // Resolve store data for UI display and payload
+  const activeStoreObj = customerSelectedStore
+    ? allPublicStores.find(s => s.id === customerSelectedStore)
+    : null;
+  const activeStoreName = activeStoreObj?.name || null;
   
   const [step, setStep] = useState(0); // 0: Cart, 1: Address, 2: Payment, 3: Success
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -103,6 +109,8 @@ export default function CartModal({ isOpen, onClose }) {
 
     setIsCheckingOut(true);
     try {
+      let finalStoreId = customerSelectedStore || 'eoNjBBBlw1edDfPWufPD';
+
       const orderData = {
         customerId: user.uid,
         customer: shippingDetails.name,
@@ -123,6 +131,12 @@ export default function CartModal({ isOpen, onClose }) {
         amount: total,
         paymentMethod: paymentMethod,
         status: 'pending',
+        storeName: activeStoreName || 'Lumina Jewels (HQ)',
+        storeId: finalStoreId,
+        storeCode: activeStoreObj?.code || 'HQ-01',
+        storeAddress: activeStoreObj?.address || '',
+        storeContact: activeStoreObj?.contact || activeStoreObj?.phone || '',
+        storeGst: activeStoreObj?.gst || activeStoreObj?.gstin || '',
         date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
       };
       
@@ -249,6 +263,34 @@ export default function CartModal({ isOpen, onClose }) {
         {step === 0 && (
           <>
             <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', paddingRight: '0.5rem' }}>
+              {/* Store Context Banner */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.65rem 1rem',
+                marginBottom: '1rem',
+                borderRadius: '8px',
+                background: activeStoreName ? 'rgba(201,168,76,0.08)' : 'rgba(255,165,0,0.06)',
+                border: `1px solid ${activeStoreName ? 'rgba(201,168,76,0.25)' : 'rgba(255,165,0,0.25)'}`,
+                fontSize: '0.82rem',
+                color: 'var(--text-secondary)'
+              }}>
+                {activeStoreName ? (
+                  <>
+                    <span style={{ color: 'var(--gold)' }}>✦</span>
+                    <span>Shipping from <strong style={{ color: 'var(--text-primary)' }}>{activeStoreName}</strong></span>
+                    <button onClick={() => setIsCustomerStorePromptOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.78rem', padding: '0 0 0 0.5rem', fontWeight: 600, textDecoration: 'underline' }}>Change</button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: 'orange' }}>⚠</span>
+                    <span>No store selected — order will be processed centrally.</span>
+                    <button onClick={() => setIsCustomerStorePromptOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.78rem', padding: '0 0 0 0.5rem', fontWeight: 600, textDecoration: 'underline' }}>Select Store</button>
+                  </>
+                )}
+              </div>
+
               {cart.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
                   <ShoppingBag size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />

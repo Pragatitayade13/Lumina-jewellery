@@ -8,21 +8,58 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    server: {
-      proxy: {
-        '/api/goldapi': {
-          target: 'https://www.goldapi.io/api',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/goldapi/, ''),
-          configure: (proxy, _options) => {
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              if (env.GOLD_API_KEY) {
-                proxyReq.setHeader('x-access-token', env.GOLD_API_KEY);
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url && req.url.includes('/api/goldapi')) {
+          const parts = req.url.split('?')[0].split('/');
+          const symbol = parts[parts.length - 2];
+          const currency = parts[parts.length - 1];
+          const apiKey = env.GOLD_API_KEY;
+
+          const getMock = () => {
+            if (symbol === 'XAU') {
+              return { price: 7250, price_gram_24k: 7250, price_gram_22k: 6650, price_gram_18k: 5450, timestamp: Date.now() / 1000, metal: 'XAU' };
+            } else if (symbol === 'XAG') {
+              return { price: 92, price_gram_24k: 92, price_gram_22k: 85, price_gram_18k: 70, timestamp: Date.now() / 1000, metal: 'XAG' };
+            }
+            return { price: 100, price_gram_24k: 100, timestamp: Date.now() / 1000 };
+          };
+
+          if (!apiKey || apiKey === 'your_gold_api_key_here') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(getMock()));
+            return;
+          }
+
+          try {
+            const apiRes = await fetch(`https://www.goldapi.io/api/${symbol}/${currency}`, {
+              headers: {
+                'x-access-token': apiKey,
+                'Content-Type': 'application/json'
               }
             });
+
+            if (apiRes.ok) {
+              const data = await apiRes.json();
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(data));
+            } else {
+              console.warn(`GoldAPI returned ${apiRes.status} in dev. Serving mock fallback.`);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify(getMock()));
+            }
+          } catch (err) {
+            console.warn(`GoldAPI fetch failed in dev: ${err.message}. Serving mock fallback.`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(getMock()));
           }
-        },
-      },
+          return;
+        }
+        next();
+      });
+    },
+    server: {
+      proxy: {},
     },
     build: {
       chunkSizeWarningLimit: 3000,

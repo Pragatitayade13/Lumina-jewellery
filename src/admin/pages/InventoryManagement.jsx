@@ -5,8 +5,9 @@ import { useApp } from '../../context/AppContext';
 import { Check } from 'lucide-react';
 
 export default function InventoryManagement() {
-  const { inventory, purchaseOrders, stockTransfers, loading, updateStock, addPurchaseOrder, addStockTransfer, receivePurchaseOrder } = useInventory();
-  const { showToast } = useApp();
+  const { showToast, user, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { inventory, purchaseOrders, stockTransfers, loading, updateStock, addPurchaseOrder, addStockTransfer, receivePurchaseOrder } = useInventory(activeStoreId);
   
   const [activeTab, setActiveTab] = useState('Inventory List');
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,9 +38,18 @@ export default function InventoryManagement() {
   };
 
   const filteredInventory = inventory.filter(item => {
-    const searchString = searchTerm.toLowerCase();
-    const matchesSearch = item.sku?.toLowerCase().includes(searchString) || 
-                          item.name?.toLowerCase().includes(searchString);
+    let matchesSearch = true;
+    const s = searchTerm.trim();
+    if (s) {
+      try {
+        const regex = new RegExp(`\\b${s}`, 'i');
+        matchesSearch = regex.test(String(item.sku || '')) || regex.test(String(item.name || ''));
+      } catch (e) {
+        const searchString = s.toLowerCase();
+        matchesSearch = String(item.sku || '').toLowerCase().includes(searchString) || 
+                        String(item.name || '').toLowerCase().includes(searchString);
+      }
+    }
     
     let matchesWarehouse = true;
     if (warehouseFilter !== 'Warehouse: All') matchesWarehouse = item.warehouse === warehouseFilter;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useAudit } from '../../hooks/useAudit';
 import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, ClipboardList, Diamond, Key, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../config/firebase';
@@ -25,6 +26,9 @@ export default function AuthModal() {
   const [error, setError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [availableStores, setAvailableStores] = useState([]);
+  const [selectedStoreForLogin, setSelectedStoreForLogin] = useState('');
+  const { logAudit } = useAudit(selectedStoreForLogin || 'GLOBAL');
 
   // Reset state when modal closes
   useEffect(() => {
@@ -41,6 +45,20 @@ export default function AuthModal() {
       setAddress('');
       setConfirmPassword('');
       setShowPassword(false);
+      setSelectedStoreForLogin('');
+    } else {
+      // Fetch available stores when modal opens
+      const fetchStores = async () => {
+        try {
+          const q = query(collection(db, 'stores'), where('status', '==', 'active'));
+          const snapshot = await getDocs(q);
+          const storesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setAvailableStores(storesList);
+        } catch (err) {
+          console.error("Error fetching stores for login dropdown:", err);
+        }
+      };
+      fetchStores();
     }
   }, [isAuthOpen]);
 
@@ -162,8 +180,18 @@ export default function AuthModal() {
             });
             
             setUser({ uid: userCredential.user.uid, email, ...data, status: 'online' });
+            
+            // Set the explicitly selected store for AppContext to pick up immediately
+            if (selectedStoreForLogin) {
+              localStorage.setItem('jw_currentStore', selectedStoreForLogin);
+            } else {
+              // Ensure old sessions don't bypass the store prompt on a new login
+              localStorage.removeItem('jw_currentStore');
+            }
+            
             // Record successful login
             await recordLoginActivity(data, userCredential.user.uid, email, 'success');
+            await logAudit('USER_LOGIN', 'Auth', userCredential.user.uid, null, { email, role: data.role });
           }
         }
         
@@ -469,6 +497,25 @@ export default function AuthModal() {
                    {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                  </button>
                </div>
+
+               {!isSignUp && selectedOption?.id !== 'customer' && selectedOption?.id !== 'superadmin' && availableStores.length > 0 && (
+                 <div className="glass-form-group" style={{ marginTop: '0.5rem' }}>
+                   <Briefcase className="glass-input-icon" size={18} />
+                   <select 
+                     className="glass-input" 
+                     value={selectedStoreForLogin} 
+                     onChange={e => setSelectedStoreForLogin(e.target.value)}
+                     style={{ cursor: 'pointer', appearance: 'none' }}
+                   >
+                     <option value="">Select Store Location (Optional)</option>
+                     {availableStores.map(store => (
+                       <option key={store.id} value={store.id} style={{ color: '#000' }}>
+                         {store.name} ({store.code})
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+               )}
 
                {isSignUp && (
                  <div className="glass-form-group">

@@ -5,11 +5,12 @@ import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
 
 export default function CustomerManagement() {
+  const { user, showToast, globalSearch, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { customers, loading, updateCustomerStatus } = useCustomers(activeStoreId);
+  const { orders } = useOrders(activeStoreId);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('Customer Type');
-  const { customers, loading, updateCustomerStatus } = useCustomers();
-  const { orders } = useOrders();
-  const { user, showToast } = useApp();
   
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editStatus, setEditStatus] = useState('');
@@ -18,8 +19,9 @@ export default function CustomerManagement() {
   // Loyalty Management State
   const [loyaltyInput, setLoyaltyInput] = useState('');
 
-  // Dynamic KPIs (Only count actual customers)
-  const actualCustomers = customers.filter(c => c.role === 'customer');
+  // Dynamic KPIs
+  const nonCustomerRoles = ['superadmin', 'admin', 'manager', 'staff', 'finance', 'delivery'];
+  const actualCustomers = customers.filter(c => !nonCustomerRoles.includes((c.role || 'customer').toLowerCase()));
   const totalCustomers = actualCustomers.length;
   const vipMembers = actualCustomers.filter(c => c.status === 'vip').length;
   
@@ -34,13 +36,15 @@ export default function CustomerManagement() {
   else aovDisplay = `₹${Math.round(avgOrderValue)}`;
 
   const filteredCustomers = customers.filter(c => {
-    // Only show actual customers, filter out staff members
-    if (c.role !== 'customer') return false;
-    
-    const searchString = searchTerm.toLowerCase();
-    const matchesSearch = c.name?.toLowerCase().includes(searchString) || 
-                          c.email?.toLowerCase().includes(searchString) ||
-                          c.phone?.includes(searchTerm);
+    // Only show actual customers, filter out staff/admin roles
+    const nonCustomerRoles = ['superadmin', 'admin', 'manager', 'staff', 'finance', 'delivery'];
+    if (c.role && nonCustomerRoles.includes(c.role.toLowerCase())) return false;
+
+    const effectiveSearchTerm = globalSearch || searchTerm;
+    const searchString = effectiveSearchTerm.toLowerCase();
+    const matchesSearch = String(c.name || '').toLowerCase().includes(searchString) ||
+                          String(c.email || '').toLowerCase().includes(searchString) ||
+                          String(c.phone || '').toLowerCase().includes(searchString);
     let matchesType = true;
     if (typeFilter === 'VIP Members') matchesType = c.status === 'vip';
     if (typeFilter === 'Active Customers') matchesType = c.status === 'active';
@@ -140,7 +144,11 @@ export default function CustomerManagement() {
               ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    No customers found matching your filters.
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '2rem' }}>👥</span>
+                      <strong>No customers found for this store.</strong>
+                      <span style={{ fontSize: '0.8rem' }}>Customers who register or place orders from this store will appear here.</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -152,6 +160,18 @@ export default function CustomerManagement() {
                         <div>
                           <div className="user-name">{c.name}</div>
                           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Joined {c.joinDate}</div>
+                          {c.totalOrders > 0 && (
+                            <div style={{ fontSize: '0.62rem', color: 'var(--gold)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />
+                              Purchased from this store
+                            </div>
+                          )}
+                          {c.totalOrders === 0 && c.storeId && (
+                            <div style={{ fontSize: '0.62rem', color: '#3498db', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#3498db' }} />
+                              Registered at this store
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

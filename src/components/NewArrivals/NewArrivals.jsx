@@ -26,7 +26,8 @@ export default function NewArrivals() {
   
   const displayProducts = fbProducts.length > 0 ? fbProducts : staticProducts;
   const filteredNew = displayProducts.filter(p => p.isNew === true || p.isNew === 'true' || (p.badge && p.badge.toLowerCase() === 'new'));
-  const newProducts = hasCustomItems ? na.items : [...filteredNew].reverse().concat(displayProducts).slice(0, 8);
+  const automaticItems = [...filteredNew].reverse().concat(displayProducts);
+  const newProducts = hasCustomItems ? [...na.items, ...automaticItems].slice(0, 8) : automaticItems.slice(0, 8);
 
   return (
     <section className="new-arrivals-section" id="new-arrivals">

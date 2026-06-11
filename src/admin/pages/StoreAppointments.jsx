@@ -11,8 +11,8 @@ export default function StoreAppointments() {
   const [form, setForm] = useState({ customer: '', type: 'Bridal Consultation', date: '', time: '10:00', location: 'Mumbai HQ (VIP Lounge)' });
 
   const filteredAppointments = appointmentsList.filter(a => 
-    a.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.type.toLowerCase().includes(searchTerm.toLowerCase())
+    String(a.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(a.type || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleConfirm = (id) => {

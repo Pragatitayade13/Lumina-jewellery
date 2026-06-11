@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { getStoreQuery } from '../utils/storeQuery';
 
-export function useSchemes(userId) {
+export function useSchemes(userId, activeStoreId = null) {
   const [adminSchemes, setAdminSchemes] = useState([]);
   const [userSchemes, setUserSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch available plans set by Admin
+  // 1. Fetch available plans — include global schemes + store-specific ones
   useEffect(() => {
     if (!db) return;
+    // Always load all admin_schemes; filtering for store-specific is done by storeId field presence
     const unsubAdmin = onSnapshot(collection(db, 'admin_schemes'), (snapshot) => {
       let plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
+      // If store context is active, show global schemes + this store's schemes
+      if (activeStoreId && activeStoreId !== 'GLOBAL') {
+        plans = plans.filter(p => !p.storeId || p.storeId === activeStoreId || p.storeId === 'DEFAULT');
+      }
+
       // Seed default schemes if empty for demo purposes
       if (plans.length === 0) {
         const defaultSchemes = [
@@ -27,7 +34,7 @@ export function useSchemes(userId) {
     });
 
     return () => unsubAdmin();
-  }, []);
+  }, [activeStoreId]);
 
   // 2. Fetch enrolled schemes for specific customer
   useEffect(() => {
@@ -35,14 +42,19 @@ export function useSchemes(userId) {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, 'user_schemes'), where('customerId', '==', userId));
-    const unsubUser = onSnapshot(q, (snapshot) => {
-      const active = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUserSchemes(active);
-      setLoading(false);
-    });
+    try {
+      const q = getStoreQuery(db, 'user_schemes', activeStoreId, [where('customerId', '==', userId)]);
+      const unsubUser = onSnapshot(q, (snapshot) => {
+        const active = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setUserSchemes(active);
+        setLoading(false);
+      });
 
-    return () => unsubUser();
+      return () => unsubUser();
+    } catch (err) {
+      console.warn("User schemes listener error:", err);
+      setLoading(false);
+    }
   }, [userId]);
 
   // 3. Enroll in a Scheme
@@ -56,6 +68,7 @@ export function useSchemes(userId) {
         installment: plan.installment,
         durationMonths: plan.durationMonths,
         monthsPaid: 0,
+        storeId: activeStoreId && activeStoreId !== 'GLOBAL' ? activeStoreId : 'DEFAULT',
         startDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         status: 'active',
         createdAt: serverTimestamp()

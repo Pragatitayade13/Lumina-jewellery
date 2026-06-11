@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X, Moon, Sun } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X, Moon, Sun, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { useCMS } from '../../context/CMSContext';
@@ -24,7 +24,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme } = useApp();
+  const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme, user, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
+  
+  // Resolve store name for customer chip
+  const customerStoreName = customerSelectedStore
+    ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || null)
+    : null;
+  const isCustomer = user?.role === 'customer' || (!user?.role && !!user);
   const { socialMediaData, landingPageData, systemSettingsData } = useCMS();
   const { rates } = useRates();
   const navigate = useNavigate();
@@ -160,22 +166,47 @@ export default function Header({ onCartClick, onWishlistClick }) {
                       }}
                     >
                       {products.filter(p => {
-                        const sq = searchQuery.toLowerCase();
-                        return (p.name && p.name.toLowerCase().includes(sq)) || 
-                               (p.category && p.category.toLowerCase().includes(sq)) ||
-                               (p.subcategory && p.subcategory.toLowerCase().includes(sq)) ||
-                               (p.purity && p.purity.toLowerCase().includes(sq)) ||
-                               (p.price && p.price.toString().includes(sq));
+                        const sq = searchQuery.trim();
+                        if (!sq) return false;
+                        
+                        try {
+                          const regex = new RegExp(`\\b${sq}`, 'i');
+                          return regex.test(p.name) || 
+                                 regex.test(p.category) ||
+                                 regex.test(p.subcategory) ||
+                                 regex.test(p.purity) ||
+                                 regex.test(p.price.toString());
+                        } catch (e) {
+                          // Fallback if regex fails (e.g. invalid chars)
+                          const sqLower = sq.toLowerCase();
+                          return (p.name && p.name.toLowerCase().includes(sqLower)) || 
+                                 (p.category && p.category.toLowerCase().includes(sqLower)) ||
+                                 (p.subcategory && p.subcategory.toLowerCase().includes(sqLower)) ||
+                                 (p.purity && p.purity.toLowerCase().includes(sqLower)) ||
+                                 (p.price && p.price.toString().includes(sqLower));
+                        }
                       }).length > 0 ? (
                         products.filter(p => {
-                          const sq = searchQuery.toLowerCase();
-                          return (p.name && p.name.toLowerCase().includes(sq)) || 
-                                 (p.category && p.category.toLowerCase().includes(sq)) ||
-                                 (p.subcategory && p.subcategory.toLowerCase().includes(sq)) ||
-                                 (p.purity && p.purity.toLowerCase().includes(sq)) ||
-                                 (p.price && p.price.toString().includes(sq));
+                          const sq = searchQuery.trim();
+                          if (!sq) return false;
+                          
+                          try {
+                            const regex = new RegExp(`\\b${sq}`, 'i');
+                            return regex.test(p.name) || 
+                                   regex.test(p.category) ||
+                                   regex.test(p.subcategory) ||
+                                   regex.test(p.purity) ||
+                                   regex.test(p.price.toString());
+                          } catch (e) {
+                            const sqLower = sq.toLowerCase();
+                            return (p.name && p.name.toLowerCase().includes(sqLower)) || 
+                                   (p.category && p.category.toLowerCase().includes(sqLower)) ||
+                                   (p.subcategory && p.subcategory.toLowerCase().includes(sqLower)) ||
+                                   (p.purity && p.purity.toLowerCase().includes(sqLower)) ||
+                                   (p.price && p.price.toString().includes(sqLower));
+                          }
                         }).map(product => (
-                          <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={() => { setSearchQuery(''); handleNavClick('#new-arrivals'); }}>
+                          <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={() => { setSearchQuery(''); handleNavClick(`/product/${product.id}`); }}>
                             <img src={product.image} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
                             <div>
                               <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: '500' }}>{product.name}</div>
@@ -190,6 +221,36 @@ export default function Header({ onCartClick, onWishlistClick }) {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Customer Store Chip — visible for guests & customers, hidden for admin roles */}
+              {(!user || !['superadmin','admin','manager','staff','finance','logistics','delivery'].includes(user?.role)) && allPublicStores.length > 0 && (
+                <button
+                  onClick={() => setIsCustomerStorePromptOpen(true)}
+                  title={customerStoreName ? `Shopping at ${customerStoreName}` : 'Select a store'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    background: customerStoreName ? 'rgba(201,168,76,0.1)' : 'rgba(201,168,76,0.06)',
+                    border: `1px solid ${customerStoreName ? 'rgba(201,168,76,0.35)' : 'rgba(201,168,76,0.2)'}`,
+                    borderRadius: '20px',
+                    padding: '0.35rem 0.85rem',
+                    color: 'var(--gold)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                    animation: !customerStoreName ? 'pulse 2s infinite' : 'none',
+                  }}
+                >
+                  <Store size={13} />
+                  <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {customerStoreName || 'Select Store'}
+                  </span>
+                </button>
+              )}
+
 
               <button
                 className="icon-btn hide-on-mobile"

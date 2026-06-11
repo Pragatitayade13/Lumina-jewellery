@@ -15,8 +15,9 @@ export default function BestSellers() {
     items: []
   };
 
+  const automaticItems = products.filter(p => p.isBestSeller);
   const hasCustomItems = bs.items && bs.items.length > 0;
-  const bestsellers = hasCustomItems ? bs.items : products.filter(p => p.isBestSeller);
+  const bestsellers = hasCustomItems ? [...bs.items, ...automaticItems].slice(0, 8) : automaticItems;
 
   return (
     <section className="bestsellers-section" id="best-sellers">

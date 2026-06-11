@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment, writeBatch } from 'firebase/firestore';
 import { inventory as mockInventory, products as mockProducts } from '../admin/data/mockData';
+import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
+import { onSnapshot } from 'firebase/firestore';
+import { useAudit } from './useAudit';
+import { useApprovals } from './useApprovals';
+import { useApp } from '../context/AppContext';
 
-export function useInventory() {
+export function useInventory(activeStoreId = null) {
   const [inventory, setInventory] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [stockTransfers, setStockTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { logAudit } = useAudit(activeStoreId);
+  const { submitApprovalRequest } = useApprovals(activeStoreId);
+  const { user } = useApp();
+  const userRole = user?.role || 'staff';
 
   const getFallbackData = () => {
     if (!mockInventory || !mockProducts) return [];
@@ -19,30 +28,67 @@ export function useInventory() {
   };
 
   useEffect(() => {
+    setLoading(true);
+
     if (!db) {
       setInventory(getFallbackData());
       setLoading(false);
       return;
     }
 
-    const q = query(collection(db, 'inventory'));
+    let q;
+    let poQuery;
+    let transferQuery;
+
+    try {
+      q = getStoreQuery(db, 'inventory', activeStoreId);
+      poQuery = getStoreQuery(db, 'purchase_orders', activeStoreId);
+      transferQuery = getStoreQuery(db, 'stock_transfers', activeStoreId);
+    } catch (err) {
+      if (err instanceof StoreIsolationError) {
+        console.warn(err.message);
+        setInventory([]);
+        setPurchaseOrders([]);
+        setStockTransfers([]);
+        setLoading(false);
+        return;
+      }
+      throw err;
+    }
     
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // Ensure all mock items exist in Firebase (seed missing items)
+      // Ensure mock items exist in Firebase (seed missing items)
       if (mockInventory) {
         try {
+          const currentStoreId = activeStoreId && activeStoreId !== 'GLOBAL' ? activeStoreId : 'DEFAULT';
           const existingSkus = new Set(snapshot.docs.map(doc => doc.id));
-          const missingItems = mockInventory.filter(item => !existingSkus.has(item.sku));
+          
+          // Show different products for different stores based on storeId hash,
+          // except DEFAULT/GLOBAL which get all items.
+          const targetMockItems = mockInventory.filter(item => {
+            if (currentStoreId === 'DEFAULT' || currentStoreId === 'GLOBAL') return true;
+            const hash = (currentStoreId + item.sku).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+            return hash % 2 === 0; // ~50% of items per store
+          });
+
+          const missingItems = targetMockItems.filter(item => !existingSkus.has(`${currentStoreId}_${item.sku}`));
           
           if (missingItems.length > 0) {
-            console.log("Seeding missing items...", missingItems.length);
-            for (const item of missingItems) {
-              await setDoc(doc(db, 'inventory', item.sku), {
+            console.log("Seeding missing items for store:", currentStoreId, missingItems.length);
+            const batch = writeBatch(db);
+            missingItems.forEach(item => {
+              const compositeId = `${currentStoreId}_${item.sku}`;
+              const docRef = doc(db, 'inventory', compositeId);
+              batch.set(docRef, {
                 ...item,
                 price: item.price || Math.floor(Math.random() * 50000) + 10000,
+                storeId: currentStoreId,
                 updatedAt: serverTimestamp()
               });
-            }
+            });
+            await batch.commit();
+            // Let the subsequent snapshot handle the update to avoid partial states
+            return;
           }
         } catch (e) {
           console.error("Error seeding missing inventory:", e);
@@ -87,7 +133,7 @@ export function useInventory() {
 
         return {
           id: doc.id,
-          sku: data.sku || doc.id,
+          sku: data.sku || doc.id.split('_').pop(),
           name: data.name || 'Unknown Item',
           category: data.category || 'Uncategorized',
           stock: data.stock || 0,
@@ -101,7 +147,8 @@ export function useInventory() {
           subcategory: subcategory,
           badge: data.badge || null,
           lastUpdated: formatTime(data.updatedAt?.toDate()),
-          status: status
+          status: status,
+          storeId: data.storeId || 'DEFAULT'
         };
       });
       setInventory(inventoryData);
@@ -114,7 +161,6 @@ export function useInventory() {
       setError(err);
     });
 
-    const poQuery = query(collection(db, 'purchase_orders'));
     const unsubscribePO = onSnapshot(poQuery, (snapshot) => {
       const poData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -124,7 +170,6 @@ export function useInventory() {
       setPurchaseOrders(poData);
     }, (err) => console.error("Error fetching POs:", err));
 
-    const transferQuery = query(collection(db, 'stock_transfers'));
     const unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
       const transferData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -139,16 +184,22 @@ export function useInventory() {
       unsubscribePO();
       unsubscribeTransfers();
     };
-  }, []);
+  }, [activeStoreId]);
 
   const updateStock = async (id, updateData) => {
     if (!db) throw new Error("Firebase not initialized");
     try {
+      if (userRole === 'staff') {
+        await submitApprovalRequest('INVENTORY_ADJUSTMENT', updateData, id, 'Inventory');
+        return { status: 'pending' };
+      }
+      
       const docRef = doc(db, 'inventory', id);
       await updateDoc(docRef, {
         ...updateData,
         updatedAt: serverTimestamp()
       });
+      await logAudit('INVENTORY_ADJUSTED', 'Inventory', id, null, updateData);
     } catch (err) {
       console.error("Error updating stock:", err);
       throw err;
@@ -158,9 +209,13 @@ export function useInventory() {
   const addPurchaseOrder = async (poData) => {
     if (!db) throw new Error("Firebase not initialized");
     try {
+      if (!activeStoreId || activeStoreId === 'NONE') {
+        throw new Error("Cannot add purchase order without active store context");
+      }
       const docRef = await addDoc(collection(db, 'purchase_orders'), {
         ...poData,
         status: 'pending',
+        storeId: activeStoreId,
         createdAt: serverTimestamp()
       });
       return docRef.id;
@@ -177,9 +232,13 @@ export function useInventory() {
         status: 'received',
         updatedAt: serverTimestamp()
       });
-      await updateDoc(doc(db, 'inventory', sku), {
-        stock: increment(quantity)
+      const currentStoreId = activeStoreId && activeStoreId !== 'GLOBAL' ? activeStoreId : 'DEFAULT';
+      const compositeId = `${currentStoreId}_${sku}`;
+      await updateDoc(doc(db, 'inventory', compositeId), {
+        stock: increment(quantity),
+        updatedAt: serverTimestamp()
       });
+      await logAudit('INVENTORY_ADJUSTED', 'Inventory', compositeId, null, { stockIncrement: quantity, reason: 'PO Received' });
     } catch (err) {
       console.error("Error receiving PO:", err);
       throw err;
@@ -189,17 +248,32 @@ export function useInventory() {
   const addStockTransfer = async (transferData) => {
     if (!db) throw new Error("Firebase not initialized");
     try {
+      if (!activeStoreId || activeStoreId === 'NONE') {
+        throw new Error("Cannot add stock transfer without active store context");
+      }
+      
+      if (userRole === 'staff') {
+        await submitApprovalRequest('STOCK_TRANSFER', transferData, transferData.sku, 'Inventory');
+        return { status: 'pending' };
+      }
+
       const docRef = await addDoc(collection(db, 'stock_transfers'), {
         ...transferData,
         status: 'completed',
+        storeId: activeStoreId,
         createdAt: serverTimestamp()
       });
       
+      const currentStoreId = activeStoreId;
+      const compositeId = `${currentStoreId}_${transferData.sku}`;
+      
       // Update the warehouse of the existing SKU to reflect the transfer
-      await updateDoc(doc(db, 'inventory', transferData.sku), {
+      await updateDoc(doc(db, 'inventory', compositeId), {
         warehouse: transferData.to,
         updatedAt: serverTimestamp()
       });
+      
+      await logAudit('STOCK_TRANSFERRED', 'Inventory', compositeId, { warehouse: transferData.from }, { warehouse: transferData.to });
       
       return docRef.id;
     } catch (err) {

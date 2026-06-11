@@ -1,11 +1,19 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Package, Truck, LayoutDashboard, LogOut, Bell, RotateCcw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useAudit } from '../hooks/useAudit';
 import './DeliveryLayout.css';
 
 export default function DeliveryLayout() {
-  const { user, setUser } = useApp();
+  const { user, setUser, currentStore, setCurrentStore, assignedStores } = useApp();
+  const { logAudit } = useAudit();
   const navigate = useNavigate();
+
+  const activeStoreObj = assignedStores?.find(s => s.id === currentStore);
+  const activeStoreName = activeStoreObj?.name || activeStoreObj?.storeName || null;
+  const storeNameDisplay = currentStore && currentStore !== 'GLOBAL' && currentStore !== 'NONE' && activeStoreName 
+    ? activeStoreName 
+    : 'Lumina Logistics';
 
   const handleLogout = async () => {
     if (user?.uid) {
@@ -19,10 +27,13 @@ export default function DeliveryLayout() {
              lastCheckOut: serverTimestamp(),
              status: 'offline'
            });
+           await logAudit('USER_LOGOUT', 'Auth', user.uid, null, null, currentStore);
         }
         if (auth) await signOut(auth);
       } catch (e) { console.error("Logout error", e); }
     }
+    localStorage.removeItem('jw_currentStore'); // Force prompt on next login
+    setCurrentStore(null);
     setUser(null);
     navigate('/');
   };
@@ -33,7 +44,7 @@ export default function DeliveryLayout() {
       <aside className="delivery-sidebar">
         <div className="delivery-brand">
           <Truck size={28} color="var(--gold)" />
-          <span>Lumina Logistics</span>
+          <span style={{ fontSize: '0.95rem' }}>{storeNameDisplay}</span>
         </div>
         
         <nav className="delivery-nav">

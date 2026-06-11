@@ -103,10 +103,16 @@ export default function OrderHistory() {
                   <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>
                     {order.items?.map(i => `${i.quantity || 1}x ${i.name}`).join(', ') || order.product || 'Jewellery Items'}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', fontFamily: 'system-ui, sans-serif' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem', fontFamily: 'system-ui, sans-serif', flexWrap: 'wrap' }}>
                     <span>Order ID: {order.id.slice(0, 8).toUpperCase()}</span>
                     <span>•</span>
                     <span>{order.createdAt ? new Date(order.createdAt?.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
+                    {order.storeName && (
+                      <>
+                        <span>•</span>
+                        <span style={{ color: 'var(--gold)', fontWeight: 600 }}>✦ {order.storeName}</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <span className={`badge badge-${order.status === 'delivered' ? 'success' : 'info'}`} style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', textTransform: 'uppercase' }}>
@@ -133,6 +139,12 @@ export default function OrderHistory() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Delivery</div>
                   <div style={{ fontWeight: 500 }}>Expected in 5-7 days</div>
                 </div>
+                {order.storeName && (
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Store</div>
+                    <div style={{ fontWeight: 600, color: 'var(--gold)', fontSize: '0.9rem' }}>✦ {order.storeName}</div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>

@@ -90,7 +90,7 @@ export default function ContentManagement() {
     }
   };
 
-  const filteredPosts = posts.filter(p => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredPosts = posts.filter(p => String(p.title || '').toLowerCase().includes(searchTerm.toLowerCase()));
   return (
     <div>
       <div className="page-header">

@@ -32,8 +32,8 @@ export default function LoginActivity() {
 
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = 
-      activity.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(activity.userName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(activity.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       activity.ipAddress?.includes(searchTerm);
       
     const matchesRole = roleFilter === 'all' || activity.role === roleFilter;

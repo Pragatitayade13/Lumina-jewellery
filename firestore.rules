@@ -9,30 +9,69 @@ service cloud.firestore {
     }
     
     function getUserRole() {
-      return request.auth.token.role;
+      // First try custom claims, fallback to database read if custom claims are not set by a backend
+      return ('role' in request.auth.token) ? request.auth.token.role : 
+        (isAuthenticated() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null);
     }
 
     function isSuperAdmin() {
-      return isAuthenticated() && getUserRole() == 'superadmin';
+      return isAuthenticated() && (getUserRole() == 'superadmin' || getUserRole() == 'super admin');
     }
 
     function isAdmin() {
-      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'superadmin');
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'superadmin' || getUserRole() == 'super admin');
+    }
+
+    function isCompanyAdmin() {
+      return isAuthenticated() && (getUserRole() == 'companyadmin' || getUserRole() == 'company admin' || getUserRole() == 'company_admin');
+    }
+
+    function isStoreAdmin() {
+      return isAuthenticated() && (getUserRole() == 'storeadmin' || getUserRole() == 'store admin' || getUserRole() == 'store_admin');
+    }
+
+    function isFinance() {
+      return isAuthenticated() && getUserRole() == 'finance';
+    }
+
+    function isLogistics() {
+      return isAuthenticated() && getUserRole() == 'logistics';
+    }
+
+    function isDeliveryPartner() {
+      return isAuthenticated() && (getUserRole() == 'delivery' || getUserRole() == 'delivery partner' || getUserRole() == 'delivery_partner');
     }
     
     function isStaffOrHigher() {
       return isAuthenticated() && 
-        (getUserRole() == 'admin' || getUserRole() == 'superadmin' || getUserRole() == 'staff' || getUserRole() == 'manager');
+        (getUserRole() == 'admin' || 
+         getUserRole() == 'superadmin' || 
+         getUserRole() == 'staff' || 
+         getUserRole() == 'manager' ||
+         isStoreAdmin() ||
+         isCompanyAdmin()
+        );
     }
 
-    function isDeliveryOrHigher() {
-      return isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery');
+    function isAssignedToStore(storeId) {
+      return isAuthenticated() && (
+        isSuperAdmin() || 
+        isCompanyAdmin() ||
+        exists(/databases/$(database)/documents/userStores/$(request.auth.uid + '_' + storeId))
+      );
     }
 
     // Public Read-Only (Products, Categories, CMS)
     match /products/{productId} {
       allow read: if true;
-      allow write: if isStaffOrHigher();
+      // Staff/Manager: must be assigned to the store the product belongs to
+      // Admins/SuperAdmins: can also assign storeId to unassigned products (bulk assignment)
+      allow create: if isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId);
+      allow update: if isStaffOrHigher() && (
+        isAssignedToStore(request.resource.data.storeId) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin() && isAssignedToStore(resource.data.storeId);
     }
     
     match /categories/{categoryId} {
@@ -47,58 +86,164 @@ service cloud.firestore {
 
     // User Profiles
     match /users/{userId} {
-      // Users can read/write their own data. Admins can read/write all.
-      // Superadmins are required for assigning roles (which should be done via backend anyway).
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher() || isFinance());
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create, delete: if isAdmin();
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
+      allow delete: if isStaffOrHigher();
     }
 
     // Orders
     match /orders/{orderId} {
-      // Users can read their own orders. Staff can read/write all.
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaffOrHigher());
-      // No client can create an order directly anymore! The Backend handles it after verified payment.
-      allow create, update, delete: if isStaffOrHigher();
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid || 
+        isStaffOrHigher() ||
+        isFinance()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid || 
+        (isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId))
+      );
+      allow update, delete: if isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId);
     }
 
     // Logistics & Shipments
     match /shipments/{shipmentId} {
-      // Delivery partners can only read/update if assigned to them. Staff can read/write all.
-      allow read: if isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery' && resource.data.assignedTo == request.auth.uid);
-      allow update: if isStaffOrHigher() || (isAuthenticated() && getUserRole() == 'delivery' && resource.data.assignedTo == request.auth.uid);
-      allow create, delete: if isStaffOrHigher();
+      allow read: if (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)) || 
+                   (isLogistics() && isAssignedToStore(resource.data.storeId)) ||
+                   (isDeliveryPartner() && resource.data.assignedTo == request.auth.uid && isAssignedToStore(resource.data.storeId)) ||
+                   (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow update: if (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)) || 
+                    (isLogistics() && isAssignedToStore(resource.data.storeId)) ||
+                    (isDeliveryPartner() && resource.data.assignedTo == request.auth.uid && isAssignedToStore(resource.data.storeId));
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid || 
+        (isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId)) ||
+        (isLogistics() && isAssignedToStore(request.resource.data.storeId))
+      );
+      allow delete: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
     }
 
     // Security & Login Activity
     match /loginActivity/{docId} {
-      // Block unauthenticated flooding. Users can log their own activity.
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isStaffOrHigher();
     }
     
-    // Inventory & Stock Auditing (Strictly Backend/Staff)
-    match /inventory_transactions/{docId} {
-      // Backend Admin SDK writes these securely during checkout.
-      // Staff can read for dashboards.
-      allow read: if isStaffOrHigher();
-      allow write: if isAdmin();
-    }
-    match /stock_adjustments/{docId} {
-      allow read: if isStaffOrHigher();
-      allow write: if isAdmin();
-    }
-    match /stock_audit_logs/{docId} {
-      allow read: if isStaffOrHigher();
-      allow write: if isAdmin();
+    // Inventory
+    match /inventory/{itemId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId || resource.data.storeId);
     }
     
-    // Financial Data (Strictly Admin/SuperAdmin)
+    // Inventory & Stock Auditing (Strictly Backend/Staff)
+    match /inventory_transactions/{docId} {
+      allow read: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+      allow write: if isAdmin() && isAssignedToStore(request.resource.data.storeId);
+    }
+    match /stock_adjustments/{docId} {
+      allow read: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+      allow write: if isAdmin() && isAssignedToStore(request.resource.data.storeId);
+    }
+    match /stock_audit_logs/{docId} {
+      allow read: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+      allow write: if isAdmin() && isAssignedToStore(request.resource.data.storeId);
+    }
+    
+    // Financial Data (Strictly Admin/SuperAdmin/Finance)
     match /tax_transactions/{docId} {
-      allow read, write: if isAdmin();
+      allow read, write: if (isAdmin() || isFinance()) && isAssignedToStore(resource.data.storeId);
     }
     match /tax_audit_logs/{docId} {
-      allow read, write: if isAdmin();
+      allow read, write: if (isAdmin() || isFinance()) && isAssignedToStore(resource.data.storeId);
+    }
+    
+    // Finance & Accounting (Transactions, Expenses, Vendor Payments)
+    match /transactions/{docId} {
+      allow read: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+      allow create: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(request.resource.data.storeId);
+      allow update, delete: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+    }
+    match /expenses/{docId} {
+      allow read: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+      allow create: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(request.resource.data.storeId);
+      allow update, delete: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+    }
+    match /vendor_payments/{docId} {
+      allow read: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+      allow create: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(request.resource.data.storeId);
+      allow update, delete: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
+    }
+
+    // Store Management
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+    
+    // User-Store Assignments
+    match /userStores/{docId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaffOrHigher());
+      allow write: if isStaffOrHigher();
+    }
+
+    // Tracking History
+    match /tracking_history/{docId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+    }
+
+    // Logs & Metrics
+    match /audit_logs/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+    match /error_logs/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    match /system_metrics/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // Approval Workflow Engine
+    match /approvals/{docId} {
+      allow read: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+      allow create: if isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId);
+      allow update, delete: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+    }
+
+    // Appointments
+    match /appointments/{docId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)));
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId)));
+      allow update, delete: if isAuthenticated() && (request.auth.uid == resource.data.userId || (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)));
+    }
+
+    // Support Tickets
+    match /support_tickets/{docId} {
+      allow read: if isAuthenticated() && (resource.data.customerId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)));
+      allow create: if isAuthenticated() && (request.resource.data.customerId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId)));
+      allow update, delete: if isAuthenticated() && (request.auth.uid == resource.data.customerId || (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)));
+    }
+
+    // Product Reviews
+    match /product_reviews/{docId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+    }
+
+    // Schemes
+    match /user_schemes/{docId} {
+      allow read: if isAuthenticated() && (resource.data.customerId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(resource.data.storeId)));
+      allow create: if isAuthenticated() && (request.resource.data.customerId == request.auth.uid || (isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId)));
+      allow update: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId);
+    }
+    match /admin_schemes/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
     }
 
     // Default Deny Catch-all: Restrict anything not explicitly defined

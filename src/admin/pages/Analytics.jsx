@@ -82,10 +82,11 @@ function SimpleLineChart({ data }) {
 }
 
 export default function Analytics() {
-  const { user, showToast } = useApp();
-  const { orders } = useOrders();
-  const { inventory } = useInventory();
-  const { customers } = useCustomers();
+  const { user, showToast, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { orders } = useOrders(activeStoreId);
+  const { inventory } = useInventory(activeStoreId);
+  const { customers } = useCustomers(activeStoreId);
   const [timeframe, setTimeframe] = useState('Monthly');
   const [isGeneratingForecast, setIsGeneratingForecast] = useState(false);
   const [forecastData, setForecastData] = useState(null);

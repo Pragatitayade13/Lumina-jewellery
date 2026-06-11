@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { products as mockProducts } from '../data/mockData';
 import { useProducts } from '../../hooks/useProducts';
 import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
 import { Gem, Edit2, Trash2, Search, FileCheck, PieChart, Database, Plus, AlertTriangle, CheckCircle, XCircle, Percent } from 'lucide-react';
 
 export default function ProductManagement() {
@@ -53,8 +54,9 @@ export default function ProductManagement() {
   
   const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
   
-  const { products, loading, removeProduct, addProduct, updateProduct } = useProducts();
-  const { showToast } = useApp();
+  const { user, showToast, globalSearch, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { products, loading, error, removeProduct, addProduct, updateProduct, bulkAssignStore } = useProducts(activeStoreId);
 
   const handleSeedDatabase = async () => {
     if (!confirm("This will upload all mock products to your live Firebase database. Proceed?")) return;
@@ -144,10 +146,23 @@ export default function ProductManagement() {
     showToast(`Product listing rejected.`, "error");
   };
 
-  const displayProducts = [...localProducts, ...(products.length > 0 ? products : mockProducts)];
+  // Products from Firebase (with fallback for unassigned products)
+  const displayProducts = [...localProducts, ...products];
+  const unassignedCount = products.filter(p => p._needsStoreAssignment).length;
+
+  const effectiveSearchTerm = globalSearch || searchTerm;
 
   const filteredProducts = displayProducts.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+    let matchesSearch = true;
+    const s = effectiveSearchTerm.trim();
+    if (s) {
+      try {
+        const regex = new RegExp(`\\b${s}`, 'i');
+        matchesSearch = regex.test(String(p.name || '')) || regex.test(String(p.sku || ''));
+      } catch (e) {
+        matchesSearch = String(p.name || '').toLowerCase().includes(s.toLowerCase()) || String(p.sku || '').toLowerCase().includes(s.toLowerCase());
+      }
+    }
     const matchesCategory = categoryFilter === 'All Categories' || p.category === categoryFilter || p.subcategory === categoryFilter;
     let matchesStock = true;
     if (stockFilter === 'In Stock') matchesStock = p.status === 'active';
@@ -177,6 +192,36 @@ export default function ProductManagement() {
           </button>
         </div>
       </div>
+
+      {/* Store Assignment Banner */}
+      {unassignedCount > 0 && activeStoreId && activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem',
+          background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.3)',
+          borderRadius: '10px', padding: '0.875rem 1.25rem', marginBottom: '1.25rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <AlertTriangle size={16} color="var(--gold)" />
+            <span style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+              <strong>{unassignedCount} products</strong> exist in the database but aren't assigned to this store.
+            </span>
+          </div>
+          <button
+            className="btn btn-gold"
+            style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold', fontSize: '0.8rem' }}
+            onClick={async () => {
+              try {
+                await bulkAssignStore();
+                showToast(`✅ ${unassignedCount} products assigned to this store!`);
+              } catch(e) {
+                showToast('Failed to assign products: ' + e.message, 'error');
+              }
+            }}
+          >
+            Assign All to This Store
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>

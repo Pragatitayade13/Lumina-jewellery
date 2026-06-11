@@ -1,5 +1,10 @@
 /* src/components/Header/Header.css */
 
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(201,168,76,0); }
+}
+
 /* ─── Contact Strip ─── */
 .contact-strip {
   position: relative;
@@ -54,8 +59,9 @@
 }
 
 .header-inner {
-  background: transparent;
-  border-bottom: 1px solid transparent;
+  background: rgba(13, 8, 0, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
   transition: background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 

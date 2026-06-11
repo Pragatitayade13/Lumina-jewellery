@@ -5,6 +5,8 @@ import { useOrders } from '../../hooks/useOrders';
 import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
 import { useDeliveryLocation } from '../../hooks/useDeliveryLocation';
 import { useApp } from '../../context/AppContext';
+import { db } from '../../config/firebase';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, accentColor }) {
   return (
@@ -236,12 +238,36 @@ export default function DeliveryOperations() {
   const searchParams = new URLSearchParams(location.search);
   const currentTab = searchParams.get('tab') || 'dashboard';
   
-  const { orders: liveOrders } = useOrders();
-  const { shipments, updateStatus: updateLogisticsStatus, verifyDeliveryOTP } = useLogistics();
-  const { user, showToast } = useApp();
+  const { user, showToast, currentStore, assignedStores } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const storeName = assignedStores?.find(s => s.id === activeStoreId)?.name || 'Store';
+  const { orders: liveOrders, updateOrderStatus } = useOrders(activeStoreId);
+  const { shipments, updateStatus: updateLogisticsStatus, verifyDeliveryOTP, sendDeliveryOTP } = useLogistics(null, activeStoreId);
   const isSuperAdmin = user?.role === 'superadmin';
   const prevAssignedCountRef = useRef(0);
   const [optimisticStatuses, setOptimisticStatuses] = useState({});
+  const [migrationStatus, setMigrationStatus] = useState('');
+
+  const runMigration = async () => {
+    if (!window.confirm("Run logistics data migration? This will enforce active Store ID on all historical shipments.")) return;
+    setMigrationStatus('Starting migration...');
+    try {
+      const snap = await getDocs(collection(db, 'shipments'));
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        const data = docSnap.data();
+        if (!data.storeId) {
+          await updateDoc(doc(db, 'shipments', docSnap.id), { storeId: activeStoreId || 'GLOBAL' });
+          count++;
+        }
+      }
+      setMigrationStatus(`Done! Migrated ${count} legacy shipments.`);
+      showToast('Logistics Migration Complete');
+    } catch (e) {
+      console.error(e);
+      setMigrationStatus('Migration failed: ' + e.message);
+    }
+  };
 
   useEffect(() => {
     if (!liveOrders) return;
@@ -264,7 +290,8 @@ export default function DeliveryOperations() {
   }, [liveOrders, showToast]);
     const { isTracking, myPosition, myTrail, startTracking, stopTracking, partnerLocations } = useDeliveryLocation(
     user?.uid,
-    user?.name || user?.email
+    user?.name || user?.email,
+    activeStoreId
   );
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpInputs, setOtpInputs] = useState(['', '', '', '', '', '']);
@@ -359,9 +386,9 @@ export default function DeliveryOperations() {
   const earnings = deliveredOrders * 50;
 
   const staticReturns = [
-    { id: '#RET-4402', customer: 'Anjali Desai', address: 'Andheri East, Mumbai', type: 'Old Gold Exchange', estValue: '₹80,000', instructions: 'Verify 22k hallmark before sealing.', isMock: true },
-    { id: '#RET-4405', customer: 'Vikram Mehta', address: 'Colaba, Mumbai', type: 'Return', estValue: '₹35,000', instructions: 'Check for physical damage.', isMock: true }
-  ];
+    { id: '#RET-4402', customer: 'Anjali Desai', address: 'Andheri East, Mumbai', type: 'Old Gold Exchange', estValue: '₹80,000', instructions: 'Verify 22k hallmark before sealing.', isMock: true, storeId: 'OCoSBsKDGGOT5NOqZpP1' },
+    { id: '#RET-4405', customer: 'Vikram Mehta', address: 'Colaba, Mumbai', type: 'Return', estValue: '₹35,000', instructions: 'Check for physical damage.', isMock: true, storeId: 'eoNjBBBlw1edDfPWufPD' }
+  ].filter(ret => activeStoreId === 'GLOBAL' || ret.storeId === activeStoreId);
 
   const dynamicReturns = allAssigned
     .filter(o => ['cancelled', 'returned'].includes(o.status))
@@ -416,6 +443,23 @@ export default function DeliveryOperations() {
       }
     } catch (err) {
       alert('Failed to verify OTP or update delivery status in database.');
+    }
+  };
+
+  const handleSendAdminOTP = async () => {
+    if (!selectedOrder) return;
+    try {
+      const linkedShipment = shipments.find(s => s.orderId === selectedOrder.id);
+      if (linkedShipment) {
+        showToast('Generating and sending OTP...', 'info');
+        const generatedOtp = await sendDeliveryOTP(linkedShipment.id);
+        showToast(`OTP Sent to customer! (For demo, OTP is: ${generatedOtp})`);
+      } else {
+        showToast('No shipment found for this order.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to send OTP.', 'error');
     }
   };
 
@@ -572,29 +616,97 @@ export default function DeliveryOperations() {
             <strong>Instruction:</strong> {pickup.instructions}
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {photos[pickup.id] ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <img src={photos[pickup.id]} alt="Proof" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--gold)' }} />
-                  <span style={{ fontSize: '0.75rem', color: 'var(--status-green)', fontWeight: 600 }}>Captured</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+            {isSuperAdmin ? (
+              <>
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Assign Return Custody</div>
+                  {pickup.assignedPartner ? (
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>🚚 {pickup.assignedPartner}</span>
+                  ) : (
+                    <select 
+                      className="form-input" 
+                      style={{ 
+                        width: 'auto', 
+                        minWidth: '165px',
+                        padding: '0 0.5rem', 
+                        fontSize: '0.8rem', 
+                        height: '32px', 
+                        background: 'rgba(255,255,255,0.05)', 
+                        color: 'var(--text-primary)', 
+                        border: '1px solid var(--admin-border)', 
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
+                      onChange={(e) => {
+                        const partnerName = e.target.value;
+                        if (partnerName) {
+                          showToast(`Assigned return ${pickup.id} to ${partnerName}`);
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Select Partner</option>
+                      <option value="Ramesh Singh">Ramesh Singh</option>
+                      <option value="Amit Patel">Amit Patel</option>
+                      <option value="Suresh Kumar">Suresh Kumar</option>
+                    </select>
+                  )}
                 </div>
-              ) : (
-                <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => setCameraModal({ isOpen: true, pickupId: pickup.id })}><Camera size={14} /> Photo Proof</button>
-              )}
-              <button 
-                className="btn btn-sm" 
-                style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
-                onClick={() => {
-                  if (!pickup.isMock) {
-                    updateOrderStatus(pickup.id, 'returned_to_store');
-                  }
-                  showToast(`📦 Return initiated for ${pickup.id}. Seal & custody transferred!`);
-                }}
-              >
-                Seal & Collect
-              </button>
-            </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {photos[pickup.id] ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
+                      <img src={photos[pickup.id]} alt="Proof" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--gold)' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--status-green)', fontWeight: 600 }}>Proof Attached</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', marginRight: '0.5rem' }}>Awaiting Agent Proof</span>
+                  )}
+                  <button 
+                    className="btn btn-sm" 
+                    style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
+                    onClick={() => {
+                      if (!pickup.isMock) {
+                        updateOrderStatus(pickup.id, 'returned');
+                      }
+                      showToast(`✅ Return verified & stock restored for ${pickup.id}`);
+                    }}
+                  >
+                    Verify & Close Return
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Custody Action Required
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {photos[pickup.id] ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <img src={photos[pickup.id]} alt="Proof" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--gold)' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--status-green)', fontWeight: 600 }}>Captured</span>
+                    </div>
+                  ) : (
+                    <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => setCameraModal({ isOpen: true, pickupId: pickup.id })}><Camera size={14} /> Photo Proof</button>
+                  )}
+                  <button 
+                    className="btn btn-sm" 
+                    style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
+                    onClick={() => {
+                      if (!pickup.isMock) {
+                        updateOrderStatus(pickup.id, 'returned_to_store');
+                      }
+                      showToast(`📦 Return initiated for ${pickup.id}. Seal & custody transferred!`);
+                    }}
+                  >
+                    Seal & Collect
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -603,13 +715,35 @@ export default function DeliveryOperations() {
 
   const renderDashboard = () => {
     if (isSuperAdmin) {
+      const isGlobal = activeStoreId === 'GLOBAL';
+      const scopeLabel = isGlobal ? 'System' : 'Store';
+      const prefixLabel = isGlobal ? 'Global' : 'Store';
+      const noteLabel = isGlobal ? 'All orders' : `For ${storeName}`;
+
+      const partners = [
+        { name: 'Ramesh Singh', zone: 'South Mumbai', status: 'Online', statusClass: 'success', storeId: 'OCoSBsKDGGOT5NOqZpP1' },
+        { name: 'Suresh Kumar', zone: 'Andheri East', status: 'On Break', statusClass: 'warning', storeId: 'OCoSBsKDGGOT5NOqZpP1' },
+        { name: 'Amit Patel', zone: 'Bandra West', status: 'Online', statusClass: 'success', storeId: 'eoNjBBBlw1edDfPWufPD' },
+        { name: 'Vikram Desai', zone: 'Navi Mumbai', status: 'Offline', statusClass: 'danger', storeId: 'eoNjBBBlw1edDfPWufPD' }
+      ];
+
+      const filteredPartners = partners.filter(p => isGlobal || p.storeId === activeStoreId);
+
+      const getActiveDeliveriesCount = (partnerName) => {
+        if (!liveOrders) return 0;
+        return liveOrders.filter(o => 
+          o.deliveryPartnerName === partnerName && 
+          ['assigned', 'in_transit', 'out_for_delivery', 'delayed'].includes(o.status)
+        ).length;
+      };
+
       return (
         <>
           <div className="stat-grid mb-15">
-            <StatCard icon={<Package size={20} />} iconClass="gold" label="Total System Orders" value={liveOrders?.length || 0} trend="Live" trendUp={true} trendNote="All orders" accentColor="var(--gold)" />
-            <StatCard icon={<Truck size={20} />} iconClass="blue" label="System-wide Transits" value={liveOrders?.filter(o => ['in_transit', 'out_for_delivery'].includes(o.status)).length || 0} trend="Live" trendUp={true} trendNote="Active across all partners" accentColor="#3498db" />
-            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Global Delivered" value={liveOrders?.filter(o => o.status === 'delivered').length || 0} trend="Real-Time" trendUp={true} trendNote="Total successful handovers" accentColor="#2ecc71" />
-            <StatCard icon={<XCircle size={20} />} iconClass="red" label="Global Exceptions" value={liveOrders?.filter(o => ['cancelled', 'returned'].includes(o.status)).length || 0} trend="Live" trendUp={false} trendNote="Requires admin review" accentColor="#e74c3c" />
+            <StatCard icon={<Package size={20} />} iconClass="gold" label={`Total ${scopeLabel} Orders`} value={liveOrders?.length || 0} trend="Live" trendUp={true} trendNote={noteLabel} accentColor="var(--gold)" />
+            <StatCard icon={<Truck size={20} />} iconClass="blue" label={`${scopeLabel}-wide Transits`} value={liveOrders?.filter(o => ['in_transit', 'out_for_delivery'].includes(o.status)).length || 0} trend="Live" trendUp={true} trendNote="Active transits" accentColor="#3498db" />
+            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label={`${prefixLabel} Delivered`} value={liveOrders?.filter(o => o.status === 'delivered').length || 0} trend="Real-Time" trendUp={true} trendNote="Successful handovers" accentColor="#2ecc71" />
+            <StatCard icon={<XCircle size={20} />} iconClass="red" label={`${prefixLabel} Exceptions`} value={liveOrders?.filter(o => ['cancelled', 'returned'].includes(o.status)).length || 0} trend="Live" trendUp={false} trendNote="Requires attention" accentColor="#e74c3c" />
           </div>
           
           <div className="grid-2-1 mb-15">
@@ -622,22 +756,31 @@ export default function DeliveryOperations() {
                  <table className="admin-table" style={{ fontSize: '0.85rem' }}>
                    <thead><tr><th>Partner Name</th><th>Zone</th><th>Status</th><th>Active Deliveries</th></tr></thead>
                    <tbody>
-                     <tr><td style={{ fontWeight: 600 }}>Ramesh Singh</td><td>South Mumbai</td><td><span className="badge badge-success">Online</span></td><td>4</td></tr>
-                     <tr><td style={{ fontWeight: 600 }}>Suresh Kumar</td><td>Andheri East</td><td><span className="badge badge-warning">On Break</span></td><td>0</td></tr>
-                     <tr><td style={{ fontWeight: 600 }}>Amit Patel</td><td>Bandra West</td><td><span className="badge badge-success">Online</span></td><td>7</td></tr>
-                     <tr><td style={{ fontWeight: 600 }}>Vikram Desai</td><td>Navi Mumbai</td><td><span className="badge badge-danger">Offline</span></td><td>0</td></tr>
+                     {filteredPartners.map(partner => (
+                       <tr key={partner.name}>
+                         <td style={{ fontWeight: 600 }}>{partner.name}</td>
+                         <td>{partner.zone}</td>
+                         <td><span className={`badge badge-${partner.statusClass}`}>{partner.status}</span></td>
+                         <td>{getActiveDeliveriesCount(partner.name)}</td>
+                       </tr>
+                     ))}
+                     {filteredPartners.length === 0 && (
+                       <tr>
+                         <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No delivery partners assigned to this store.</td>
+                       </tr>
+                     )}
                    </tbody>
                  </table>
               </div>
             </div>
             <div className="admin-card">
               <div className="card-header">
-                <div className="card-title">Delivery Analytics Overview</div>
+                <div className="card-title">{`${prefixLabel} Delivery Analytics`}</div>
               </div>
               <div style={{ padding: '1.5rem' }}>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Detailed analytics available in Report Generation Studio.</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>System On-Time Rate</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{`${prefixLabel} On-Time Rate`}</span>
                   <span style={{ fontWeight: 700, color: 'var(--status-green)' }}>94.2%</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1.5rem' }}>
@@ -645,7 +788,7 @@ export default function DeliveryOperations() {
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>System Failure Ratio</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{`${prefixLabel} Failure Ratio`}</span>
                   <span style={{ fontWeight: 700, color: 'var(--status-red)' }}>{liveOrders?.length > 0 ? ((liveOrders.filter(o => ['cancelled', 'returned'].includes(o.status)).length / liveOrders.length) * 100).toFixed(1) : '0.0'}%</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'var(--admin-border)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -780,7 +923,7 @@ export default function DeliveryOperations() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.4rem' }}>
-            {currentTab === 'dashboard' && (isSuperAdmin ? 'Global Logistics Overview' : 'Logistics Dashboard')}
+            {currentTab === 'dashboard' && (isSuperAdmin ? (activeStoreId === 'GLOBAL' ? 'Global Logistics Overview' : `${storeName} Logistics Overview`) : 'Logistics Dashboard')}
             {currentTab === 'assigned' && 'Assigned Orders'}
             {currentTab === 'pickups' && 'Pickup Confirmation'}
             {currentTab === 'status' && 'Delivery Status Update'}
@@ -788,10 +931,19 @@ export default function DeliveryOperations() {
             {currentTab === 'map' && 'Route Navigation'}
           </h1>
           <p className="page-subtitle" style={{ fontSize: '0.8rem' }}>
-            {isSuperAdmin ? 'System-wide Logistics Tracking & Partner Management' : 'Vehicle: MH-01-AB-1234 • Mumbai South Zone'}
+            {isSuperAdmin ? (activeStoreId === 'GLOBAL' ? 'System-wide Logistics Tracking & Partner Management' : `${storeName} Logistics Tracking & Supervision`) : 'Vehicle: MH-01-AB-1234 • Mumbai South Zone'}
           </p>
         </div>
+        <button className="btn btn-outline" onClick={runMigration} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--status-orange)', color: 'var(--status-orange)' }}>
+          Migrate Legacy Logistics Data
+        </button>
       </div>
+
+      {migrationStatus && (
+        <div style={{ padding: '1rem', background: 'rgba(243, 156, 18, 0.1)', color: 'var(--status-orange)', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold' }}>
+          {migrationStatus}
+        </div>
+      )}
 
       {currentTab === 'dashboard' && renderDashboard()}
       {currentTab === 'assigned' && renderOrderList(assignedOrders, "No orders currently assigned to you.")}
@@ -817,7 +969,10 @@ export default function DeliveryOperations() {
              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                 <CheckCircle size={40} color="var(--gold)" style={{ margin: '0 auto 1rem' }} />
                 <h3 style={{ margin: '0 0 0.5rem 0' }}>Secure Handover</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Ask customer for the 4-digit delivery PIN sent to their phone.</p>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Ask customer for the 6-digit delivery PIN sent to their phone.</p>
+                <button type="button" onClick={handleSendAdminOTP} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#2563eb', fontSize: '0.85rem', cursor: 'pointer', fontWeight: '600' }}>
+                  Send / Resend OTP
+                </button>
              </div>
 
              <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>

@@ -1,11 +1,12 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Package, Heart, LifeBuoy, 
-  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck
+  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck, Store
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
 import { useRates } from '../hooks/useRates';
+import { useAudit } from '../hooks/useAudit';
 import { useCMS } from '../context/CMSContext';
 
 const navItems = [
@@ -39,12 +40,21 @@ const pageTitles = {
 export default function CustomerLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, setUser, theme, toggleTheme } = useApp();
+  const { user, setUser, theme, toggleTheme, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
+  const { logAudit } = useAudit();
   const { systemSettingsData, landingPageData } = useCMS();
   const { rates } = useRates();
   
-  const storeName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || 'Lumina Jewels';
+  const globalStoreName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || 'Lumina Jewels';
   const pageTitle = pageTitles[location.pathname] || 'My Account';
+  
+  const activeStoreName = customerSelectedStore
+    ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || 'Selected Store')
+    : null;
+
+  const storeName = customerSelectedStore && activeStoreName 
+    ? activeStoreName 
+    : globalStoreName;
 
   const handleLogout = async () => {
     if (user?.uid) {
@@ -77,6 +87,7 @@ export default function CustomerLayout({ children }) {
            } catch (err) {
              console.error("Error closing login session", err);
            }
+           await logAudit('USER_LOGOUT', 'Auth', user.uid, null, null, 'GLOBAL');
         }
         if (auth) await signOut(auth);
       } catch (e) { console.error("Logout error", e); }
@@ -123,6 +134,31 @@ export default function CustomerLayout({ children }) {
         </nav>
 
         <div className="sidebar-footer">
+          {/* Active store context pill */}
+          <div
+            onClick={() => setIsCustomerStorePromptOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.55rem 0.85rem',
+              marginBottom: '0.75rem',
+              borderRadius: '8px',
+              background: activeStoreName ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${activeStoreName ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.08)'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontSize: '0.8rem',
+              color: activeStoreName ? 'var(--gold)' : 'var(--text-muted)',
+              fontWeight: 600,
+            }}
+          >
+            <Store size={13} />
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeStoreName || 'Select Store'}
+            </span>
+            <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Change</span>
+          </div>
           <div className="sidebar-customer-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <div className="customer-avatar">{user?.name ? user.name.substring(0, 2).toUpperCase() : 'CU'}</div>

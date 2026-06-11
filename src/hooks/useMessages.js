@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, query, onSnapshot, addDoc, serverTimestamp, where, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, serverTimestamp, where, orderBy } from 'firebase/firestore';
+import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
 
-export function useMessages(userId1, userId2) {
+export function useMessages(userId1, userId2, activeStoreId = null) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,11 +15,24 @@ export function useMessages(userId1, userId2) {
       return;
     }
 
-    const conversationId = [userId1, userId2].sort().join('_');
-    const q = query(
-      collection(db, 'messages'),
-      where('conversationId', '==', conversationId)
-    );
+    // Scope conversations to a store by including storeId in the conversationId
+    const storePrefix = activeStoreId && activeStoreId !== 'GLOBAL' ? activeStoreId : 'global';
+    const conversationId = storePrefix + '_' + [userId1, userId2].sort().join('_');
+    
+    let q;
+    try {
+      q = getStoreQuery(db, 'messages', activeStoreId, [
+        where('conversationId', '==', conversationId)
+      ]);
+    } catch (err) {
+      if (err instanceof StoreIsolationError) {
+        console.warn(err.message);
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
+      throw err;
+    }
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const messagesData = [];
@@ -65,11 +79,16 @@ export function useMessages(userId1, userId2) {
     });
 
     return () => unsubscribe();
-  }, [userId1, userId2]);
+  }, [userId1, userId2, activeStoreId]);
 
   const sendMessage = async (senderId, senderName, text) => {
     if (!db || !userId1 || !userId2) throw new Error("Missing chat configuration");
-    const conversationId = [userId1, userId2].sort().join('_');
+    if (!activeStoreId || activeStoreId === 'NONE') {
+      throw new Error("Cannot send message without an active store context.");
+    }
+    
+    const storePrefix = activeStoreId !== 'GLOBAL' ? activeStoreId : 'global';
+    const conversationId = storePrefix + '_' + [userId1, userId2].sort().join('_');
     
     try {
       await addDoc(collection(db, 'messages'), {
@@ -77,6 +96,7 @@ export function useMessages(userId1, userId2) {
         senderId,
         senderName,
         text,
+        storeId: activeStoreId,
         createdAt: serverTimestamp()
       });
     } catch (err) {

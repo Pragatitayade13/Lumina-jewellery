@@ -4,6 +4,7 @@ import {
   doc, setDoc, deleteDoc, collection,
   onSnapshot, serverTimestamp
 } from 'firebase/firestore';
+import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
 
 /**
  * useDeliveryLocation
@@ -18,22 +19,35 @@ import {
  * Admin / customer side (always active):
  *   - partnerLocations → real-time array of all active partner docs
  */
-export function useDeliveryLocation(userId, partnerName) {
+export function useDeliveryLocation(userId, partnerName, activeStoreId = null) {
   const [isTracking, setIsTracking] = useState(false);
   const [myPosition, setMyPosition] = useState(null);
   const [myTrail, setMyTrail] = useState([]);
   const [partnerLocations, setPartnerLocations] = useState([]);
   const watchIdRef = useRef(null);
 
-  // ─── Subscribe to ALL active partner locations (admin/customer view) ───────
+  // ─── Subscribe to active partner locations, scoped to store if set ───────
   useEffect(() => {
     if (!db) return;
-    const unsub = onSnapshot(collection(db, 'locations'), (snap) => {
-      const locs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    let q;
+    try {
+      q = getStoreQuery(db, 'locations', activeStoreId);
+    } catch (err) {
+      if (err instanceof StoreIsolationError) {
+        console.warn(err.message);
+        setPartnerLocations([]);
+        return;
+      }
+      throw err;
+    }
+    
+    const unsub = onSnapshot(q, (snap) => {
+      let locs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setPartnerLocations(locs);
     });
     return () => unsub();
-  }, []);
+  }, [activeStoreId]);
 
   // ─── Auto-start tracking when user is logged in ────────────────────────────
   useEffect(() => {
@@ -67,13 +81,17 @@ export function useDeliveryLocation(userId, partnerName) {
           return d > 0.00005 ? [...prev, point] : prev;
         });
 
-        // Write to Firestore
         if (db && userId) {
+          if (!activeStoreId || activeStoreId === 'NONE') {
+            console.warn("Cannot broadcast location without an active store context.");
+            return;
+          }
           await setDoc(doc(db, 'locations', userId), {
             lat,
             lng,
             accuracy,
             partnerName: partnerName || 'Delivery Partner',
+            storeId: activeStoreId,
             status: 'active',
             updatedAt: serverTimestamp(),
           }, { merge: true });

@@ -2,10 +2,10 @@
 
 .hero {
   position: relative;
-  height: 100vh;
-  min-height: 680px;
+  height: calc(100vh - 115px);
+  min-height: 600px;
   overflow: hidden;
-  margin-top: -115px;
+  background: #000000; /* Ensure letterboxing blends into a black background */
 }
 
 
@@ -21,9 +21,11 @@
 
 .hero-slide-bg {
   position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
+  top: -25%;
+  left: 0;
+  width: 100%;
+  height: 125%;
+  object-fit: cover;
 }
 
 .hero-slide-bg.zoom-in {
@@ -38,12 +40,8 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to right,
-    rgba(13, 8, 0, 0.9) 0%,
-    rgba(13, 8, 0, 0.6) 50%,
-    rgba(13, 8, 0, 0.2) 100%
-  );
+  background: linear-gradient(to top, rgba(10, 10, 10, 0.7) 0%, transparent 40%);
+  pointer-events: none;
 }
 
 /* ─── Content ─── */
@@ -51,8 +49,10 @@
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  padding: 90px 2rem 0 2rem;
+  padding: 0 2rem 100px 2rem;
 }
 
 .hero-container {
@@ -120,14 +120,17 @@
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  justify-content: center;
+  margin-top: auto;
 }
 
 .hero-stats {
   display: flex;
   gap: 2.5rem;
-  margin-top: 3rem;
+  margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(201, 168, 76, 0.3);
+  justify-content: center;
 }
 
 .hero-stat-value {

@@ -6,9 +6,10 @@ import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverT
 
 import { generateInvoiceHTML, calcInvoiceTotals as calcTotals, downloadInvoice } from '../../utils/invoiceGenerator';
 import { useTaxes } from '../../hooks/useTaxes';
+import { getStoreQuery } from '../../utils/storeQuery';
 
 export default function InvoiceBilling() {
-  const { showToast } = useApp();
+  const { showToast, activeStoreId, allPublicStores } = useApp();
   const { calculateTax } = useTaxes();
   const [invoices, setInvoices] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
@@ -25,23 +26,29 @@ export default function InvoiceBilling() {
       setDbLoading(false);
       return;
     }
-    const q = query(collection(db, 'invoices'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setInvoices(snap.docs.map(d => ({ ...d.data(), _docId: d.id })));
+    
+    try {
+      const q = getStoreQuery(db, 'invoices', activeStoreId, [orderBy('createdAt', 'desc')]);
+      const unsub = onSnapshot(q, (snap) => {
+        setInvoices(snap.docs.map(d => ({ ...d.data(), _docId: d.id })));
+        setDbLoading(false);
+      }, (err) => {
+        console.error('Error loading invoices:', err);
+        setDbLoading(false);
+      });
+      return () => unsub();
+    } catch (err) {
+      setInvoices([]);
       setDbLoading(false);
-    }, (err) => {
-      console.error('Error loading invoices:', err);
-      setDbLoading(false);
-    });
-    return () => unsub();
-  }, []);
+    }
+  }, [activeStoreId]);
 
   const filtered = useMemo(() => {
     let list = invoices;
     if (activeTab === 'invoice') list = list.filter(i => i.type === 'invoice');
     if (activeTab === 'credit_note') list = list.filter(i => i.type === 'credit_note');
     if (activeTab === 'overdue') list = list.filter(i => i.status === 'overdue');
-    if (search) list = list.filter(i => i.id.toLowerCase().includes(search.toLowerCase()) || i.customer.toLowerCase().includes(search.toLowerCase()) || i.orderId.toLowerCase().includes(search.toLowerCase()));
+    if (search) list = list.filter(i => String(i.id || '').toLowerCase().includes(search.toLowerCase()) || String(i.customer || '').toLowerCase().includes(search.toLowerCase()) || String(i.orderId || '').toLowerCase().includes(search.toLowerCase()));
     return list;
   }, [invoices, activeTab, search]);
 
@@ -78,6 +85,10 @@ export default function InvoiceBilling() {
     const mappedItems = newInv.items.map(i => ({ ...i, qty: Number(i.qty), rate: isCN ? -Math.abs(Number(i.rate)) : Number(i.rate), gst: Number(i.gst) }));
     const { subtotal, gstAmt, cgst, sgst, igst, total } = calcTotals(mappedItems, calculateTax, newInv.state);
 
+    const activeStoreObj = activeStoreId && activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE'
+      ? allPublicStores.find(s => s.id === activeStoreId)
+      : null;
+
     const invoice = {
       id,
       orderId: newInv.orderId,
@@ -92,6 +103,12 @@ export default function InvoiceBilling() {
       status: isCN ? 'issued' : 'pending',
       paymentMethod: isCN ? 'Credit Note' : newInv.paymentMethod,
       type: newInvType,
+      storeId: activeStoreId && activeStoreId !== 'NONE' ? activeStoreId : 'GLOBAL',
+      storeName: activeStoreObj?.name || 'Lumina Jewels (HQ)',
+      storeCode: activeStoreObj?.code || 'HQ-01',
+      storeAddress: activeStoreObj?.address || '',
+      storeContact: activeStoreObj?.contact || activeStoreObj?.phone || '',
+      storeGst: activeStoreObj?.gst || activeStoreObj?.gstin || '',
       createdAt: serverTimestamp()
     };
 
@@ -187,6 +204,7 @@ export default function InvoiceBilling() {
             <thead>
               <tr>
                 <th>Invoice / CN #</th>
+                {activeStoreId === 'GLOBAL' && <th>Store</th>}
                 <th>Order Ref</th>
                 <th>Customer</th>
                 <th>Date</th>
@@ -209,6 +227,11 @@ export default function InvoiceBilling() {
                       <div style={{ fontWeight: 700, fontFamily: 'monospace', color: isCN ? '#88ccff' : 'var(--gold)' }}>{inv.id}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{isCN ? 'Credit Note' : 'Tax Invoice'}</div>
                     </td>
+                    {activeStoreId === 'GLOBAL' && (
+                      <td>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{inv.storeName || 'All Stores'}</div>
+                      </td>
+                    )}
                     <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{inv.orderId}</td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{inv.customer}</div>
@@ -312,14 +335,15 @@ export default function InvoiceBilling() {
                   </thead>
                   <tbody>
                     {previewInv.items.map((item, i) => {
-                      const lineTotal = item.qty * Math.abs(item.rate);
+                      const rate = Number(item.rate) || Number(item.price) || Number(item.cost) || 0;
+                      const lineTotal = item.qty * Math.abs(rate);
                       const lineGST = lineTotal * item.gst / 100;
                       return (
                         <tr key={i}>
                           <td>{i + 1}</td>
                           <td>{item.name}</td>
                           <td>{item.qty}</td>
-                          <td>₹{Math.abs(item.rate).toLocaleString('en-IN')}</td>
+                          <td>₹{Math.abs(rate).toLocaleString('en-IN')}</td>
                           <td>{item.gst}%</td>
                           <td style={{ fontWeight: 700 }}>₹{(lineTotal + lineGST).toFixed(2)}</td>
                         </tr>

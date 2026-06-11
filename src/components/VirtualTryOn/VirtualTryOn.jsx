@@ -13,7 +13,7 @@ import './VirtualTryOn.css';
 
 export default function VirtualTryOn({ isOpen, onClose, product }) {
   useScrollLock(isOpen);
-  const { addToCart, toggleWishlist, isWishlisted, user, showToast } = useApp();
+  const { addToCart, toggleWishlist, isWishlisted, user, showToast } = useApp() || {};
   const { products } = useProducts();
   const [activeProduct, setActiveProduct] = useState(product);
   const [stream, setStream] = useState(null);
@@ -22,6 +22,8 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
   const [showDebug, setShowDebug] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [fps, setFps] = useState(0);
+  const [scriptsLoaded, setScriptsLoaded] = useState(false);
+  const [scriptsLoading, setScriptsLoading] = useState(false);
   const videoRef = useRef(null);
   const canvasContainerRef = useRef(null);
 
@@ -37,6 +39,46 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
       </div>
     </div>
   );
+
+  // Lazy script loading helper
+  useEffect(() => {
+    if (isOpen && !scriptsLoaded && !scriptsLoading) {
+      setScriptsLoading(true);
+      
+      const loadScript = (src) => {
+        return new Promise((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = src;
+          script.crossOrigin = 'anonymous';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      };
+
+      const loadAll = async () => {
+        try {
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js');
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+          setScriptsLoaded(true);
+        } catch (err) {
+          console.error("Failed to load MediaPipe scripts:", err);
+          setError("Failed to load AR camera dependencies.");
+        } finally {
+          setScriptsLoading(false);
+        }
+      };
+
+      loadAll();
+    }
+  }, [isOpen, scriptsLoaded, scriptsLoading]);
 
   // Sync prop changes (if any external changes happen)
   useEffect(() => {
@@ -271,7 +313,7 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
                 style={{ transform: 'scaleX(-1)' }} // Mirror video
               />
               
-              {stream && (
+              {stream && scriptsLoaded && (
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 10 }}>
                   <Canvas
                     shadows
@@ -297,10 +339,10 @@ export default function VirtualTryOn({ isOpen, onClose, product }) {
 
               {useFallback && <StaticFallbackViewer product={activeProduct} />}
 
-              {isLoadingModel && !error && (
+              {(isLoadingModel || !scriptsLoaded) && !error && (
                 <div className="vto-loading-overlay">
                   <div className="spinner"></div>
-                  <p>Loading AR Model...</p>
+                  <p>{!scriptsLoaded ? "Loading AR dependencies..." : "Loading AR Model..."}</p>
                 </div>
               )}
             </div>

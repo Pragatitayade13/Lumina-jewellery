@@ -3,24 +3,26 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Gem, Package, UsersRound, 
   Store, CreditCard, BarChart3, BarChart2, FileText, Shield, 
-  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin, User, ChevronUp
+  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin, User, ChevronUp, ClipboardCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
 import ProfileDropdown from '../components/ProfileDropdown/ProfileDropdown';
 import QuickActionsDropdown from '../components/QuickActionsDropdown/QuickActionsDropdown';
+import StoreSwitcherDropdown from '../components/StoreSwitcherDropdown/StoreSwitcherDropdown';
 import LanguageSwitcher from '../components/LanguageSwitcher/LanguageSwitcher';
 import { useCMS } from '../context/CMSContext';
+import { useAudit } from '../hooks/useAudit';
 
 const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
   { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'admin', 'delivery'] },
-  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['superadmin', 'delivery'] },
+  { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['delivery'] },
+  { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['delivery'] },
   { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'admin', 'finance', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
@@ -29,6 +31,7 @@ const allNavItems = [
   { path: '/admin/orders', label: 'Order Management', icon: <Package size={18} />, badge: '5', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/customers', label: 'Customers', icon: <UsersRound size={18} />, roles: ['superadmin', 'admin', 'manager', 'staff'] },
   { path: '/admin/inventory', label: 'Inventory', icon: <Store size={18} />, badge: '3', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
+  { path: '/admin/approvals', label: 'Approvals', icon: <ClipboardCheck size={18} />, badgeType: 'danger', roles: ['superadmin', 'admin', 'manager'] },
   
   { section: 'Customer Services', roles: ['superadmin', 'admin', 'staff', 'manager', 'finance'] },
   { path: '/admin/support', label: 'Customer Support', icon: <LifeBuoy size={18} />, badge: 'new', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
@@ -45,6 +48,7 @@ const allNavItems = [
   { path: '/admin/invoices', label: 'Invoice & Billing', icon: <FileText size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
   
   { section: 'System', roles: ['superadmin', 'admin'] },
+  { path: '/admin/stores', label: 'Store Management', icon: <Store size={18} />, roles: ['superadmin'] },
   { path: '/admin/content', label: 'Content Management', icon: <FileText size={18} />, roles: ['superadmin', 'admin'] },
   { path: '/admin/security', label: 'Security & Access', icon: <Shield size={18} />, roles: ['superadmin', 'admin'] },
   { path: '/admin/login-activity', label: 'Security Logs', icon: <Shield size={18} />, roles: ['superadmin'] },
@@ -73,23 +77,34 @@ const pageTitles = {
   '/admin/analytics': 'Analytics & AI Reports',
   '/admin/vendors': 'Vendor & Commission Management',
   '/admin/invoices': 'Invoice & Billing System',
+  '/admin/approvals': 'Approval Workflow Engine',
   '/admin/content': 'Content Management',
   '/admin/security': 'Security & Access Control',
   '/admin/settings': 'System Settings',
+  '/admin/stores': 'Store Management',
   '/admin/landing-cms': 'Landing Page CMS',
   '/admin/social-media': 'Social Media Settings',
 };
 
 export default function AdminLayout({ children }) {
-  const { user, setUser, theme, toggleTheme } = useApp();
+  const { user, setUser, theme, toggleTheme, globalSearch, setGlobalSearch, setCurrentStore, currentStore, assignedStores } = useApp();
   const { systemSettingsData, landingPageData } = useCMS();
   const location = useLocation();
   const navigate = useNavigate();
+  const { logAudit } = useAudit();
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
   const [isSidebarMenuOpen, setIsSidebarMenuOpen] = useState(false);
   const sidebarAvatarRef = useRef(null);
 
-  const storeName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
+  const globalStoreName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
+  
+  // Find the currently active store details
+  const activeStoreObj = assignedStores?.find(s => s.id === currentStore);
+  const activeStoreName = activeStoreObj?.name || activeStoreObj?.storeName || null;
+  
+  const storeName = currentStore && currentStore !== 'GLOBAL' && currentStore !== 'NONE' && activeStoreName 
+    ? activeStoreName 
+    : globalStoreName;
 
   // Close sidebar avatar dropdown when clicking outside
   useEffect(() => {
@@ -169,10 +184,13 @@ export default function AdminLayout({ children }) {
            } catch (err) {
              console.error("Error closing login session", err);
            }
+           await logAudit('USER_LOGOUT', 'Auth', user.uid, null, null, currentStore);
         }
         if (auth) await signOut(auth);
       } catch (e) { console.error("Logout error", e); }
     }
+    localStorage.removeItem('jw_currentStore'); // Force prompt on next login
+    setCurrentStore(null); // Clear context state so it doesn't re-save to localStorage
     setUser(null);
     navigate('/');
   };
@@ -195,7 +213,7 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
 
-        <nav className="sidebar-nav" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
+        <nav className="sidebar-nav" style={{ overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain' }} data-lenis-prevent="true">
           {navItems.map((item, i) => {
             if (item.section) {
               return <div key={`sec-${i}`} className="nav-section-label">{item.section}</div>;
@@ -205,6 +223,11 @@ export default function AdminLayout({ children }) {
                 key={item.path}
                 to={item.path}
                 end={item.exact}
+                onClick={() => {
+                  if (window.innerWidth <= 1024) {
+                    setIsSidebarHidden(false);
+                  }
+                }}
                 className={({ isActive }) => {
                   let isCurrentlyActive = isActive;
                   // Handle exact matching for query params
@@ -258,7 +281,11 @@ export default function AdminLayout({ children }) {
                 {/* Menu items */}
                 <div style={{ padding: '0.5rem' }}>
                   <button
-                    onClick={() => { setIsSidebarMenuOpen(false); navigate('/admin/profile'); }}
+                    onClick={() => { 
+                      setIsSidebarMenuOpen(false); 
+                      if (window.innerWidth <= 1024) setIsSidebarHidden(false);
+                      navigate('/admin/profile'); 
+                    }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
                       padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
@@ -273,7 +300,11 @@ export default function AdminLayout({ children }) {
 
                   {isSuperAdmin && (
                     <button
-                      onClick={() => { setIsSidebarMenuOpen(false); navigate('/admin/settings'); }}
+                      onClick={() => { 
+                        setIsSidebarMenuOpen(false); 
+                        if (window.innerWidth <= 1024) setIsSidebarHidden(false);
+                        navigate('/admin/settings'); 
+                      }}
                       style={{
                         width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
@@ -290,7 +321,11 @@ export default function AdminLayout({ children }) {
                   <div style={{ height: '1px', background: 'var(--border)', margin: '0.3rem 0' }} />
 
                   <button
-                    onClick={() => { setIsSidebarMenuOpen(false); handleLogout(); }}
+                    onClick={() => { 
+                      setIsSidebarMenuOpen(false); 
+                      if (window.innerWidth <= 1024) setIsSidebarHidden(false);
+                      handleLogout(); 
+                    }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
                       padding: '0.75rem', borderRadius: '8px', background: 'none', border: 'none',
@@ -329,6 +364,14 @@ export default function AdminLayout({ children }) {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Overlay Backdrop */}
+      {isSidebarHidden && (
+        <div 
+          className="admin-sidebar-overlay" 
+          onClick={() => setIsSidebarHidden(false)}
+        />
+      )}
+
       {/* ─── Topbar ─── */}
       <header className="admin-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -349,10 +392,15 @@ export default function AdminLayout({ children }) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
-          <input placeholder="Search products, orders, customers…" />
+          <input 
+            placeholder="Search products, orders, customers…" 
+            value={globalSearch}
+            onChange={e => setGlobalSearch(e.target.value)}
+          />
         </div>
 
         <div className="topbar-actions">
+          <StoreSwitcherDropdown />
           <NotificationDropdown userRole={userRole} />
           <QuickActionsDropdown userRole={userRole} />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>

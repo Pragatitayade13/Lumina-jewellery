@@ -5,9 +5,9 @@ import { useOrders } from '../../hooks/useOrders';
 import { useMemo } from 'react';
 
 export default function Dashboard() {
-  const { user, wishlist } = useApp();
+  const { user, wishlist, customerSelectedStore } = useApp();
   const navigate = useNavigate();
-  const { orders, loading } = useOrders();
+  const { orders, loading } = useOrders(customerSelectedStore);
 
   const customerOrders = useMemo(() => {
     if (!user) return [];

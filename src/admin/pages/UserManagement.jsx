@@ -2,19 +2,29 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminUsers } from '../data/mockData';
 import { Info, Edit, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText, RefreshCw } from 'lucide-react';
 import { db } from '../../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useApp } from '../../context/AppContext';
 import { useCustomers } from '../../hooks/useCustomers';
 import { useMessages } from '../../hooks/useMessages';
+import { useStores } from '../../hooks/useStores';
+import { useAudit } from '../../hooks/useAudit';
 
 export default function StaffManagement() {
-  const { user, showToast } = useApp();
+  const { user, showToast, globalSearch, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
   const userRole = (user?.role || 'superadmin').toLowerCase();
   const canManageStaff = ['superadmin', 'admin', 'manager', 'super admin'].includes(userRole);
   const [activeTab, setActiveTab] = useState('directory');
   const [attendanceFilter, setAttendanceFilter] = useState('today'); // 'today' | 'week' | 'month'
   const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [liveTime, setLiveTime] = useState(new Date());
+
+  // Tick every second so active staff show real-time clock-out and hours-worked
+  useEffect(() => {
+    const timer = setInterval(() => setLiveTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleRefreshAttendance = useCallback(() => {
     setIsRefreshing(true);
@@ -26,18 +36,31 @@ export default function StaffManagement() {
   // Directory State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { customers: firebaseUsers, loading: usersLoading, updateUserSchedule, updateUserPermissions, updateCustomerStatus } = useCustomers();
+  const { customers: firebaseUsers, loading: usersLoading, error: usersError, updateUserSchedule, updateUserPermissions, updateCustomerStatus, updateUserStores } = useCustomers(activeStoreId);
+  const { stores: allStores, userStores: allUserStores } = useStores();
   const [users, setUsers] = useState([]);
+  const { logAudit } = useAudit(activeStoreId);
 
   useEffect(() => {
     if (!usersLoading) {
-      const staffOnly = firebaseUsers.filter(u => u.role?.toLowerCase() !== 'customer');
+      let staffOnly = firebaseUsers.filter(u => u.role?.toLowerCase() !== 'customer');
+      if (activeStoreId && activeStoreId !== 'GLOBAL') {
+        const assignedUserIds = allUserStores.filter(us => us.storeId === activeStoreId).map(us => us.userId);
+        staffOnly = staffOnly.filter(u => assignedUserIds.includes(u.id));
+      }
       setUsers(staffOnly);
     }
-  }, [firebaseUsers, usersLoading]);
+  }, [firebaseUsers, usersLoading, allUserStores, activeStoreId]);
 
-  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'staff', department: 'Sales' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [editingUserStores, setEditingUserStores] = useState([]);
+
+  const handleEditClick = (usr) => {
+    setEditingUser(usr);
+    setEditingUserStores(allUserStores.filter(us => us.userId === usr.id).map(us => us.storeId));
+  };
 
   // Tasks State
   const [tasks, setTasks] = useState([
@@ -115,9 +138,17 @@ export default function StaffManagement() {
         role: editingUser.role,
         department: editingUser.department
       });
+      await updateUserStores(editingUser.id, editingUserStores);
+      
+      await logAudit('USER_ROLE_CHANGED', 'Users', editingUser.id, null, {
+        role: editingUser.role,
+        department: editingUser.department,
+        storeIds: editingUserStores
+      });
+
       // The local state will be automatically updated via the useCustomers snapshot listener
       setEditingUser(null);
-      showToast("User permissions updated successfully.");
+      showToast("User permissions and stores updated successfully.");
     } catch (err) {
       showToast("Failed to update user permissions.");
     }
@@ -125,22 +156,69 @@ export default function StaffManagement() {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
+    if (!newUser.email || !newUser.name) {
+      showToast('Name and email are required.', 'error');
+      return;
+    }
+    const password = newUser.password || Math.random().toString(36).slice(-8) + 'A1!';
+    setIsCreatingUser(true);
     try {
-      await addDoc(collection(db, 'users'), {
+      // Step 1: Create Firebase Auth account via REST API (does NOT sign out the current admin)
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+      if (!apiKey) throw new Error('Firebase API key not configured.');
+
+      const authRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: newUser.email,
+            password,
+            returnSecureToken: true
+          })
+        }
+      );
+      const authData = await authRes.json();
+      if (authData.error) {
+        throw new Error(authData.error.message || 'Failed to create auth account.');
+      }
+
+      const newUid = authData.localId;
+
+      // Step 2: Write Firestore user doc using the real uid
+      await setDoc(doc(db, 'users', newUid), {
+        uid: newUid,
         name: newUser.name,
         email: newUser.email,
         phone: newUser.phone || 'N/A',
         role: newUser.role,
         department: newUser.department,
         status: 'active',
+        storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
         createdAt: serverTimestamp()
       });
+
+      // Step 3: Assign stores
+      if (newUser.storeIds && newUser.storeIds.length > 0) {
+        await updateUserStores(newUid, newUser.storeIds);
+      }
+
+      await logAudit('USER_CREATED', 'Users', newUid, null, { email: newUser.email, role: newUser.role });
+
       setIsAddUserModalOpen(false);
-      setNewUser({ name: '', email: '', phone: '', role: 'staff', department: 'Sales' });
-      showToast("New staff member added to database.");
+      setNewUser({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
+      showToast(`✅ Account created! Share these credentials: Email: ${newUser.email} | Password: ${password}`);
     } catch (err) {
-      console.error(err);
-      showToast("Failed to add staff member.");
+      console.error('Create account error:', err);
+      const msg = err.message.includes('EMAIL_EXISTS')
+        ? 'This email is already registered.'
+        : err.message.includes('WEAK_PASSWORD')
+        ? 'Password must be at least 6 characters.'
+        : err.message;
+      showToast('Failed to create account: ' + msg, 'error');
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -177,11 +255,13 @@ export default function StaffManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.department?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const effectiveSearchTerm = globalSearch || searchTerm;
+    const searchString = effectiveSearchTerm.toLowerCase();
+    return String(user.name || '').toLowerCase().includes(searchString) || 
+           String(user.role || '').toLowerCase().includes(searchString) ||
+           String(user.department || '').toLowerCase().includes(searchString);
+  });
 
   const handleDownloadAttendance = () => {
     let csv = 'Staff Name,Department,Date,Status,Check-In,Check-Out\n';
@@ -288,15 +368,14 @@ export default function StaffManagement() {
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
-                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>
-                    No users found. <br/>
-                    <span style={{ fontSize: '0.7rem', color: 'red' }}>
-                      Debug Info: Loading: {usersLoading ? 'Yes' : 'No'} | 
-                      Total DB Users: {firebaseUsers.length} | 
-                      Staff Count: {users.length} | 
-                      Search Term: "{searchTerm}"
-                    </span>
-                  </td></tr>
+                  <tr><td colSpan="5">
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No users found.<br/>
+                <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>
+                  Debug Info: Loading: {usersLoading ? 'Yes' : 'No'} | Total DB Users: {firebaseUsers.length} | Staff Count: {users.length} | Search Term: '{searchTerm}' | Error: {usersError ? usersError.message : 'None'}
+                  <br/>User Role: {user?.role || 'null'} | ActiveStoreId: {activeStoreId} | UID: {user?.uid || 'null'} | DB: {db ? 'Defined' : 'UNDEFINED'}
+                </span>
+              </div>    </td></tr>
                 ) : (
                   filteredUsers.map(user => (
                     <tr key={user.id}>
@@ -319,7 +398,7 @@ export default function StaffManagement() {
                       <td>
                         {canManageStaff ? (
                           <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            <button className="btn btn-icon btn-outline" title="Edit Permissions" onClick={() => setEditingUser(user)}><Edit size={14} /></button>
+                            <button className="btn btn-icon btn-outline" title="Edit Permissions" onClick={() => handleEditClick(user)}><Edit size={14} /></button>
                             {user.role !== 'superadmin' && (
                               <button className="btn btn-icon btn-danger" onClick={() => handleToggleBlock(user.id)}>
                                 {user.status === 'blocked' ? <Check size={14} /> : <Ban size={14} />}
@@ -327,7 +406,7 @@ export default function StaffManagement() {
                             )}
                           </div>
                         ) : (
-                          <button className="btn btn-sm btn-outline" onClick={() => setEditingUser(user)}>View Profile</button>
+                          <button className="btn btn-sm btn-outline" onClick={() => handleEditClick(user)}>View Profile</button>
                         )}
                       </td>
                     </tr>
@@ -486,9 +565,34 @@ export default function StaffManagement() {
                         <td>{rec.dateStr}</td>
                         <td><span className={`badge ${rec.badgeClass}`}>{rec.status}</span></td>
                         <td style={{ color: rec.checkIn !== '--' ? '#2ecc71' : 'var(--text-muted)', fontWeight: 600 }}>{rec.checkIn}</td>
-                        <td style={{ color: rec.checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>{rec.checkOut}</td>
+                        <td style={{ color: rec.status === 'Active' ? 'var(--gold)' : rec.checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>
+                          {rec.status === 'Active' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animation: 'pulse-live 1.2s ease-in-out infinite' }} />
+                              {liveTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                            </span>
+                          ) : rec.checkOut !== '--' ? rec.checkOut : '--'}
+                        </td>
                         <td style={{ color: rec.hoursWorked === 'In progress...' ? 'var(--gold)' : 'var(--text-primary)', fontSize: '0.875rem' }}>
-                          {rec.hoursWorked === 'In progress...' ? (
+                          {rec.status === 'Active' && rec.checkIn !== '--' ? (() => {
+                            try {
+                              const todayStr = new Date().toLocaleDateString('en-US');
+                              const checkInDate = new Date(`${todayStr} ${rec.checkIn}`);
+                              const diffMs = liveTime - checkInDate;
+                              if (diffMs > 0) {
+                                const h = Math.floor(diffMs / 3600000);
+                                const m = Math.floor((diffMs % 3600000) / 60000);
+                                const s = Math.floor((diffMs % 60000) / 1000);
+                                return (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--gold)', fontWeight: 700 }}>
+                                    <Clock size={12} style={{ color: 'var(--gold)' }} />
+                                    {h}h {String(m).padStart(2,'0')}m {String(s).padStart(2,'0')}s
+                                  </span>
+                                );
+                              }
+                            } catch {}
+                            return <span style={{ color: 'var(--gold)' }}>Live...</span>;
+                          })() : rec.hoursWorked === 'In progress...' ? (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Clock size={12} style={{ color: 'var(--gold)' }} /> In progress
                             </span>
@@ -691,6 +795,10 @@ export default function StaffManagement() {
                   <label className="form-label">Contact Number</label>
                   <input type="tel" className="form-input" required value={newUser.phone} onChange={e => setNewUser({...newUser, phone: e.target.value})} />
                 </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Password <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.78rem' }}>(leave blank to auto-generate)</span></label>
+                  <input type="text" className="form-input" placeholder="Min. 6 characters" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                </div>
                 <div className="form-row mb-1">
                   <div className="form-group">
                     <label className="form-label">Role</label>
@@ -712,10 +820,30 @@ export default function StaffManagement() {
                     </select>
                   </div>
                 </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Store Assignment</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    {allStores.map(store => (
+                      <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={newUser.storeIds.includes(store.id)}
+                          onChange={e => {
+                            if (e.target.checked) setNewUser({...newUser, storeIds: [...newUser.storeIds, store.id]});
+                            else setNewUser({...newUser, storeIds: newUser.storeIds.filter(id => id !== store.id)});
+                          }}
+                        />
+                        {store.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setIsAddUserModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Create Account</button>
+                <button type="button" className="btn btn-outline" onClick={() => setIsAddUserModalOpen(false)} disabled={isCreatingUser}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold', opacity: isCreatingUser ? 0.7 : 1 }} disabled={isCreatingUser}>
+                  {isCreatingUser ? 'Creating...' : 'Create Account'}
+                </button>
               </div>
             </form>
           </div>
@@ -756,6 +884,26 @@ export default function StaffManagement() {
                       <option value="Finance">Finance</option>
                       <option value="Delivery Partner">Delivery Partner</option>
                     </select>
+                  </div>
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Store Assignment</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    {allStores.map(store => (
+                      <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', opacity: editingUser.role === 'superadmin' ? 0.5 : 1 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={editingUserStores.includes(store.id)}
+                          disabled={!canManageStaff || editingUser.role === 'superadmin'}
+                          onChange={e => {
+                            if (e.target.checked) setEditingUserStores([...editingUserStores, store.id]);
+                            else setEditingUserStores(editingUserStores.filter(id => id !== store.id));
+                          }}
+                        />
+                        {store.name}
+                      </label>
+                    ))}
+                    {editingUser.role === 'superadmin' && <div style={{ fontSize: '0.75rem', color: 'var(--gold)', marginTop: '0.25rem' }}>Superadmins have access to all stores globally.</div>}
                   </div>
                 </div>
               </div>

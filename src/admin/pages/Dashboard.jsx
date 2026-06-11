@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
+import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck, Truck, RotateCcw, CheckCircle } from 'lucide-react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Link } from 'react-router-dom';
-import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue } from '../data/mockData';
+import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue, products as mockProducts, orders as mockOrders, adminUsers as mockCustomers } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { useOrders } from '../../hooks/useOrders';
@@ -129,21 +129,29 @@ const paymentMethods = [
 ];
 
 export default function Dashboard() {
-  const { user, showToast } = useApp();
-  const { orders: firebaseOrders } = useOrders();
-  const { customers: firebaseCustomers } = useCustomers();
-  const { products: firebaseProducts } = useProducts();
+  const { user, showToast, currentStore, assignedStores } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const activeStoreObj = assignedStores?.find(s => s.id === currentStore);
+  const activeStoreName = activeStoreObj ? activeStoreObj.name : 'All Stores';
+  const { orders: firebaseOrders } = useOrders(activeStoreId);
+  const { customers: firebaseCustomers } = useCustomers(activeStoreId);
+  const { products: firebaseProducts } = useProducts(activeStoreId);
   const [insights, setInsights] = useState([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [liveActivities, setLiveActivities] = useState(initialActivities);
   const [chartData, setChartData] = useState(revenueData);
   const { rates } = useRates();
   
+  // Data Fallbacks for Visual Preview
+  const displayOrders = firebaseOrders?.length > 0 ? firebaseOrders : mockOrders;
+  const displayCustomers = firebaseCustomers?.length > 0 ? firebaseCustomers : mockCustomers;
+  const displayProducts = firebaseProducts?.length > 0 ? firebaseProducts : mockProducts;
+  
   // Dynamic values based on Live Data
-  const actualOrdersCount = firebaseOrders?.length || 0;
-  const actualCustomersCount = firebaseCustomers?.length || 0;
-  const actualProductsCount = firebaseProducts?.length || 0;
-  const pendingOrdersCount = firebaseOrders?.filter(o => o.status === 'pending').length || 0;
+  const actualOrdersCount = displayOrders?.length || 0;
+  const actualCustomersCount = displayCustomers?.length || 0;
+  const actualProductsCount = displayProducts?.length || 0;
+  const pendingOrdersCount = displayOrders?.filter(o => o.status === 'pending' || o.status === 'confirmed').length || 0;
   
   const [securityStats, setSecurityStats] = useState({ todayLogins: 0, activeUsers: 0, failedLogins: 0, recentActivities: [] });
 
@@ -156,7 +164,11 @@ export default function Dashboard() {
         today.setHours(0,0,0,0);
         
         // Fetch recent logins
-        const q = query(collection(db, 'loginActivity'), orderBy('loginTime', 'desc'), limit(50));
+        let queryConstraints = [orderBy('loginTime', 'desc'), limit(50)];
+        if (activeStoreId && activeStoreId !== 'GLOBAL') {
+           queryConstraints.unshift(where('storeId', '==', activeStoreId));
+        }
+        const q = query(collection(db, 'loginActivity'), ...queryConstraints);
         const snap = await getDocs(q);
         
         let todayCount = 0;
@@ -185,7 +197,7 @@ export default function Dashboard() {
   }, [user]);
   
   // Inventory Alerts
-  const lowStockProducts = firebaseProducts?.filter(p => (p.stock || 0) <= (p.minStock || 5)) || [];
+  const lowStockProducts = displayProducts?.filter(p => (p.stock || 0) <= (p.minStock || 5)) || [];
   
   // Mock Assigned Tasks for Staff
   const assignedTasks = [
@@ -195,8 +207,8 @@ export default function Dashboard() {
   ];
   
   const calculateRealRevenueCr = () => {
-     if (!firebaseOrders || firebaseOrders.length === 0) return 0;
-     const total = firebaseOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+     if (!displayOrders || displayOrders.length === 0) return 0;
+     const total = displayOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
      return (total / 10000000).toFixed(4); // In Cr
   };
   
@@ -286,8 +298,13 @@ export default function Dashboard() {
     <div>
       <div className="page-header" style={{ marginBottom: '1rem' }}>
         <div>
-          <h1 className="page-title">Dashboard Overview</h1>
-          <p className="page-subtitle">Welcome back — Here's what's happening at Lumina Jewels today</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h1 className="page-title">Dashboard Overview</h1>
+            {activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE' && (
+               <span className="badge badge-active">{activeStoreName}</span>
+            )}
+          </div>
+          <p className="page-subtitle">Welcome back — Here's what's happening at {activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE' ? activeStoreName : 'Lumina Jewels'} today</p>
         </div>
         <div className="page-actions">
           {(!user || user.role === 'superadmin') && (
@@ -377,10 +394,10 @@ export default function Dashboard() {
             <Link to="/admin/delivery" style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>View Logistics Portal →</Link>
           </div>
           <div className="stat-grid" style={{ padding: '1.5rem', borderTop: 'none', background: 'transparent' }}>
-            <StatCard icon={<Package size={20} />} iconClass="gold" label="Pending Dispatch" value={firebaseOrders?.filter(o => o.status === 'packed' || o.status === 'assigned').length || 0} trend="Live" trendUp={true} trendNote="awaiting pickup" accentColor="var(--gold)" />
-            <StatCard icon={<Truck size={20} />} iconClass="blue" label="In Transit" value={firebaseOrders?.filter(o => o.status === 'in_transit' || o.status === 'out_for_delivery').length || 0} trend="Live" trendUp={true} trendNote="currently on road" accentColor="#3498db" />
-            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Delivered" value={firebaseOrders?.filter(o => o.status === 'delivered').length || 0} trend="Today" trendUp={true} trendNote="successful handovers" accentColor="#2ecc71" />
-            <StatCard icon={<RotateCcw size={20} />} iconClass="orange" label="Returns" value={firebaseOrders?.filter(o => o.status === 'returned').length || 0} trend="Action Req" trendUp={false} trendNote="processed returns" accentColor="var(--status-orange)" />
+            <StatCard icon={<Package size={20} />} iconClass="gold" label="Pending Dispatch" value={displayOrders?.filter(o => o.status === 'packed' || o.status === 'assigned').length || 0} trend="Live" trendUp={true} trendNote="awaiting pickup" accentColor="var(--gold)" />
+            <StatCard icon={<Truck size={20} />} iconClass="blue" label="In Transit" value={displayOrders?.filter(o => o.status === 'in_transit' || o.status === 'out_for_delivery').length || 0} trend="Live" trendUp={true} trendNote="currently on road" accentColor="#3498db" />
+            <StatCard icon={<CheckCircle size={20} />} iconClass="green" label="Delivered" value={displayOrders?.filter(o => o.status === 'delivered').length || 0} trend="Today" trendUp={true} trendNote="successful handovers" accentColor="#2ecc71" />
+            <StatCard icon={<RotateCcw size={20} />} iconClass="orange" label="Returns" value={displayOrders?.filter(o => o.status === 'returned').length || 0} trend="Action Req" trendUp={false} trendNote="processed returns" accentColor="var(--status-orange)" />
           </div>
         </div>
       )}

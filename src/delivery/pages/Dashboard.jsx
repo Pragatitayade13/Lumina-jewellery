@@ -3,8 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
 
 export default function Dashboard() {
-  const { user } = useApp();
-  const { shipments, loading } = useLogistics(user?.uid);
+  const { user, currentStore } = useApp();
+  const { shipments, loading } = useLogistics(user?.uid, currentStore);
 
   const pendingCount = shipments.filter(s => s.status === LOGISTICS_STATES.READY || s.status === LOGISTICS_STATES.ASSIGNED).length;
   const transitCount = shipments.filter(s => s.status === LOGISTICS_STATES.IN_TRANSIT || s.status === LOGISTICS_STATES.OUT_FOR_DELIVERY).length;

@@ -21,7 +21,7 @@ export function useScrollReveal() {
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 95%',
+            start: 'top 98%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -40,7 +40,7 @@ export function useScrollReveal() {
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 95%',
+            start: 'top 98%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -59,7 +59,7 @@ export function useScrollReveal() {
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 95%',
+            start: 'top 98%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -75,12 +75,12 @@ export function useScrollReveal() {
         {
           y: 0,
           opacity: 1,
-          duration: 0.6,
-          stagger: 0.1,
+          duration: 0.5,
+          stagger: 0.05,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: container,
-            start: 'top 95%',
+            start: 'top bottom',
             toggleActions: 'play none none reverse',
           }
         }

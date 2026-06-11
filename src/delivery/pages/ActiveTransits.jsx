@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MapPin, Navigation, CheckCircle, AlertOctagon, Phone, Camera, X, ShieldCheck, MessageCircle, AlertTriangle } from 'lucide-react';
+import { useLogistics, LOGISTICS_STATES } from '../../hooks/useLogistics';
+import { useApp } from '../../context/AppContext';
 
 export default function ActiveTransits() {
-  const [transits, setTransits] = useState([
-    { id: '#PKG-8904', orderId: '#LJ-7888', customer: 'Kavya Nair', address: '45 Marine Drive, Kochi, Kerala', phone: '+91 65432 10987', trackingStatus: 'in_transit', eta: '45 mins' },
-    { id: '#PKG-8905', orderId: '#LJ-7887', customer: 'Ananya Gupta', address: '12 KP Kalyani Nagar, Pune, Maharashtra', phone: '+91 54321 09876', trackingStatus: 'in_transit', eta: '2 hrs' },
-  ]);
+  const { user, showToast, currentStore } = useApp();
+  const { shipments, updateStatus, verifyDeliveryOTP, sendDeliveryOTP, loading } = useLogistics(user?.uid, currentStore);
 
   // Modal States
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
@@ -14,6 +14,23 @@ export default function ActiveTransits() {
   const [photoTaken, setPhotoTaken] = useState(false);
   const [signatureDone, setSignatureDone] = useState(false);
   const [idVerified, setIdVerified] = useState(false);
+  
+  // Filter active transits for this driver
+  const activeTransits = useMemo(() => {
+    return shipments.filter(s => 
+      s.status === LOGISTICS_STATES.IN_TRANSIT || 
+      s.status === LOGISTICS_STATES.OUT_FOR_DELIVERY
+    ).map(s => ({
+      id: s.id,
+      orderId: s.orderId,
+      customer: s.orderDetails?.customerName || s.orderDetails?.customer || s.customerName || 'Customer',
+      address: s.orderDetails?.shippingAddress?.address || s.orderDetails?.address || 'Address hidden',
+      phone: s.orderDetails?.phone || '+91 00000 00000',
+      trackingStatus: s.status,
+      eta: 'Calculating...',
+      ...s
+    }));
+  }, [shipments]);
 
   const openVerification = (transit) => {
     setSelectedTransit(transit);
@@ -24,14 +41,26 @@ export default function ActiveTransits() {
     setIdVerified(false);
   };
 
-  const confirmDelivery = (e) => {
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    try {
+      showToast('Generating and sending OTP...', 'info');
+      const generatedOtp = await sendDeliveryOTP(selectedTransit.id);
+      showToast(`OTP Sent to customer! (For demo, OTP is: ${generatedOtp})`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to send OTP.', 'error');
+    }
+  };
+
+  const confirmDelivery = async (e) => {
     e.preventDefault();
     if (!idVerified) {
       alert("SECURITY PROTOCOL FAILED: You must verify Government ID matches the order name.");
       return;
     }
-    if (otp !== '1234') {
-      alert("Invalid OTP! Please ask customer for correct 4-digit code (Hint: 1234).");
+    if (otp.length !== 6) {
+      alert("Invalid OTP format. Please enter the 6-digit code.");
       return;
     }
     if (!photoTaken) {
@@ -42,33 +71,61 @@ export default function ActiveTransits() {
       alert("Customer signature is required for high-value items.");
       return;
     }
-    setTransits(transits.filter(t => t.id !== selectedTransit.id));
-    setVerifyModalOpen(false);
-    setSelectedTransit(null);
-    alert("Handover successfully completed! Chain of custody terminated.");
-  };
-
-  const markDamaged = (id) => {
-    if(window.confirm("CRITICAL: Are you sure you want to log transit damage? This will immediately alert HQ and freeze the package custody.")) {
-      setTransits(transits.filter(t => t.id !== id));
-      alert("Damage report filed. Please return package to HQ vault immediately.");
+    
+    try {
+      const success = await verifyDeliveryOTP(selectedTransit.id, otp, user?.role, user?.uid);
+      if (success) {
+        setVerifyModalOpen(false);
+        setSelectedTransit(null);
+        showToast("Handover successfully completed! Chain of custody terminated.", "success");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Invalid OTP or verification failed. Please try again.");
     }
   };
 
-  const markOutForDelivery = (id) => {
-    setTransits(transits.map(t => t.id === id ? { ...t, trackingStatus: 'out_for_delivery' } : t));
+  const markDamaged = async (id) => {
+    if(window.confirm("CRITICAL: Are you sure you want to log transit damage? This will immediately alert HQ and freeze the package custody.")) {
+      try {
+        await updateStatus(id, LOGISTICS_STATES.FAILED, user?.role, user?.uid, { reason: 'transit_damage' });
+        showToast("Damage report filed. Please return package to HQ vault immediately.", "error");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to report damage.", "error");
+      }
+    }
+  };
+
+  const markOutForDelivery = async (id) => {
+    try {
+      await updateStatus(id, LOGISTICS_STATES.OUT_FOR_DELIVERY, user?.role, user?.uid);
+      showToast("Marked as out for delivery. OTP has been generated.", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to update status.", "error");
+    }
   };
 
   const sendETA = (customerName) => {
     alert(`Automated SMS sent to ${customerName}: "Your Lumina Jewels delivery driver is approaching and will arrive shortly."`);
   };
 
-  const triggerSOS = (id) => {
+  const triggerSOS = async (id) => {
     if(window.confirm("CRITICAL: Are you reporting suspicious activity or fraud? This will instantly abort delivery, lock the system, and alert HQ Security.")) {
-      setTransits(transits.filter(t => t.id !== id));
-      alert("SOS ALERT SENT. Move to a safe location. HQ Security is contacting you immediately.");
+      try {
+        await updateStatus(id, LOGISTICS_STATES.FAILED, user?.role, user?.uid, { reason: 'sos_alert' });
+        alert("SOS ALERT SENT. Move to a safe location. HQ Security is contacting you immediately.");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to send SOS.", "error");
+      }
     }
   };
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading active routes...</div>;
+  }
 
   return (
     <div>
@@ -82,7 +139,7 @@ export default function ActiveTransits() {
         </div>
       </div>
 
-      {transits.length === 0 ? (
+      {activeTransits.length === 0 ? (
         <div style={{ background: '#fff', padding: '4rem', textAlign: 'center', borderRadius: '12px', color: '#94a3b8' }}>
           <MapPin size={48} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
           <h3>No Active Transits</h3>
@@ -90,11 +147,11 @@ export default function ActiveTransits() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
-          {transits.map(transit => (
+          {activeTransits.map(transit => (
             <div key={transit.id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ background: '#0f172a', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
-                <span style={{ fontWeight: 'bold' }}>{transit.id}</span>
-                <span style={{ color: '#fbbf24' }}>ETA: {transit.eta}</span>
+                <span style={{ fontWeight: 'bold' }}>{transit.id.substring(0, 8).toUpperCase()}</span>
+                <span style={{ color: '#fbbf24' }}>{transit.trackingStatus === LOGISTICS_STATES.OUT_FOR_DELIVERY ? 'Out for Delivery' : 'In Transit'}</span>
               </div>
               <div style={{ padding: '1.5rem', flex: 1 }}>
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -126,7 +183,7 @@ export default function ActiveTransits() {
               </div>
               
               <div style={{ padding: '1rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '1rem' }}>
-                {transit.trackingStatus === 'in_transit' ? (
+                {transit.trackingStatus === LOGISTICS_STATES.IN_TRANSIT ? (
                   <button 
                     onClick={() => markOutForDelivery(transit.id)}
                     style={{ flex: 1, padding: '0.8rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
@@ -138,7 +195,7 @@ export default function ActiveTransits() {
                     onClick={() => openVerification(transit)}
                     style={{ flex: 1, padding: '0.8rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
                   >
-                    <CheckCircle size={18} /> Deliver Order
+                    <CheckCircle size={18} /> Verify Delivery
                   </button>
                 )}
                 
@@ -172,7 +229,7 @@ export default function ActiveTransits() {
               <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Delivering to:</div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>{selectedTransit.customer}</div>
-                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem' }}>ID: {selectedTransit.id}</div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem' }}>ID: {selectedTransit.id.substring(0, 8)}</div>
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
@@ -187,15 +244,20 @@ export default function ActiveTransits() {
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>2. Customer OTP Verification</label>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: '500', color: '#334155' }}>2. Customer OTP Verification</span>
+                  <button type="button" onClick={handleSendOTP} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.85rem', cursor: 'pointer', fontWeight: '600' }}>
+                    Send / Resend OTP
+                  </button>
+                </label>
                 <input 
                   type="text" 
                   required
-                  placeholder="Enter 4-digit OTP provided by customer"
+                  placeholder="Enter 6-digit OTP provided by customer"
                   value={otp}
                   onChange={e => setOtp(e.target.value)}
                   style={{ width: '100%', padding: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '1rem', letterSpacing: '2px' }}
-                  maxLength={4}
+                  maxLength={6}
                 />
               </div>
 

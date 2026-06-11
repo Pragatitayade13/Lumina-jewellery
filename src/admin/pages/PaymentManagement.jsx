@@ -46,9 +46,9 @@ export default function PaymentManagement() {
   const [logModal, setLogModal] = useState({ isOpen: false, txnId: null });
 
   const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = t.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          t.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          t.customer.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = String(t.id || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          String(t.orderId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          String(t.customer || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesStatus = true;
     if (statusFilter !== 'Status: All') matchesStatus = t.status.toLowerCase() === statusFilter.toLowerCase();

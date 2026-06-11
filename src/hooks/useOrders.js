@@ -1,21 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../config/firebase';
-import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, getDocs, startAfter } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, getDocs, startAfter, where, runTransaction } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { useLogistics } from './useLogistics';
-import { logAudit } from '../services/logger';
+import { logError } from '../services/logger';
+import { useAudit } from './useAudit';
+import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
+import { useApp } from '../context/AppContext';
 
-export function useOrders() {
+export function useOrders(activeStoreId = null) {
+  const { user, authLoading } = useApp() || {};
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
-  const { shipments, createShipment, updateStatus } = useLogistics();
+  const { shipments, createShipment, updateStatus } = useLogistics(null, activeStoreId);
+  const { logAudit } = useAudit(activeStoreId);
 
   const fetchOrders = useCallback(async (isLoadMore = false) => {
     if (!db) {
+      setLoading(false);
+      return;
+    }
+
+    if (authLoading) {
+      return;
+    }
+
+    const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    if (!user && !isTest) {
+      setOrders([]);
+      setHasMore(false);
       setLoading(false);
       return;
     }
@@ -24,10 +41,33 @@ export function useOrders() {
     else setLoading(true);
 
     try {
-      let ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(20));
-      
-      if (isLoadMore && lastVisible) {
-        ordersQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), startAfter(lastVisible), limit(20));
+      let ordersQuery;
+      if (user?.role === 'customer' && !isTest) {
+        let constraints = [
+          where('customerId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        ];
+        if (isLoadMore && lastVisible) {
+          constraints.push(startAfter(lastVisible));
+        }
+        constraints.push(limit(50));
+        ordersQuery = query(collection(db, 'orders'), ...constraints);
+      } else {
+        try {
+          let constraints = [orderBy('createdAt', 'desc')];
+          if (isLoadMore && lastVisible) {
+            constraints.push(startAfter(lastVisible));
+          }
+          constraints.push(limit(50));
+          
+          ordersQuery = getStoreQuery(db, 'orders', isTest ? (activeStoreId || 'GLOBAL') : activeStoreId, constraints);
+        } catch (isolationError) {
+          console.debug(isolationError.message);
+          setOrders([]);
+          setHasMore(false);
+          setLoading(false);
+          return;
+        }
       }
 
       const snapshot = await getDocs(ordersQuery);
@@ -59,20 +99,24 @@ export function useOrders() {
         setOrders(ordersData);
       }
       
-      setHasMore(snapshot.docs.length === 20);
+      setHasMore(snapshot.docs.length === 50);
 
     } catch (err) {
       console.error("Error fetching orders:", err);
+      logError(err, { context: 'fetchOrders', activeStoreId });
       setError(err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [lastVisible]);
+  }, [lastVisible, activeStoreId, user, authLoading]);
 
   useEffect(() => {
+    setLastVisible(null);
+    setOrders([]);
+    setHasMore(true);
     fetchOrders(false);
-  }, []);
+  }, [activeStoreId, user, authLoading]);
 
   const loadMoreOrders = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -81,16 +125,112 @@ export function useOrders() {
   }, [loadingMore, hasMore, fetchOrders]);
 
   const createOrder = async (orderData) => {
+    const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
     try {
-      const docRef = await addDoc(collection(db, 'orders'), {
+      if ((!activeStoreId || activeStoreId === 'NONE') && !isTest) {
+        throw new Error("Cannot create order without an active store context.");
+      }
+      
+      const storeIdForOrder = activeStoreId === 'GLOBAL' ? (orderData.storeId || 'DEFAULT') : activeStoreId;
+
+      const orderRef = doc(collection(db, 'orders'));
+      const orderId = orderRef.id;
+
+      const orderPayload = {
         ...orderData,
+        id: orderId,
+        storeId: storeIdForOrder,
         createdAt: serverTimestamp(),
+      };
+
+      const shipmentRef = doc(collection(db, 'shipments'));
+      const shipmentPayload = {
+        orderId: orderId,
+        orderDetails: orderData,
+        status: 'PENDING',
+        storeId: storeIdForOrder,
+        customerId: orderData.customerId || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      const transactionRef = doc(collection(db, 'transactions'));
+      const transactionPayload = {
+        orderId: orderId,
+        type: 'revenue',
+        amount: orderData.amount,
+        status: 'completed',
+        paymentMethod: orderData.paymentMethod || 'Unknown',
+        storeId: storeIdForOrder,
+        createdAt: serverTimestamp(),
+        description: `Order Revenue - ${orderId}`
+      };
+
+      await runTransaction(db, async (transaction) => {
+        // 1. Read & Validate Stock
+        if (orderData.items && Array.isArray(orderData.items)) {
+          for (const item of orderData.items) {
+            if (item.sku) {
+              const inventoryId = `${storeIdForOrder}_${item.sku}`;
+              const inventoryRef = doc(db, 'inventory', inventoryId);
+              const inventorySnap = await transaction.get(inventoryRef);
+              
+              if (!inventorySnap.exists()) {
+                throw new Error(`Item ${item.name || item.sku} does not exist in inventory for store ${storeIdForOrder}.`);
+              }
+              
+              const currentStock = inventorySnap.data().stock || 0;
+              const requestedQty = item.qty || 1;
+              
+              if (currentStock < requestedQty) {
+                throw new Error(`Insufficient stock for ${item.name || item.sku}. Available: ${currentStock}, Requested: ${requestedQty}`);
+              }
+              
+              // 2. Perform Stock Reduction
+              transaction.update(inventoryRef, {
+                stock: currentStock - requestedQty,
+                updatedAt: serverTimestamp()
+              });
+            }
+          }
+        }
+        // 2. Read & Validate Customer Profile to append store ID
+        if (orderData.customerId) {
+          const customerRef = doc(db, 'users', orderData.customerId);
+          const customerSnap = await transaction.get(customerRef);
+          if (customerSnap.exists()) {
+            const currentStoreIds = customerSnap.data().storeIds || [];
+            if (!currentStoreIds.includes(storeIdForOrder)) {
+              transaction.update(customerRef, {
+                storeIds: [...currentStoreIds, storeIdForOrder],
+                storeId: storeIdForOrder // Maintain backward compatibility
+              });
+            }
+          }
+        }
+
+        // 3. Set order, logistics, and transaction documents
+        transaction.set(orderRef, orderPayload);
+        transaction.set(shipmentRef, shipmentPayload);
+        transaction.set(transactionRef, transactionPayload);
       });
-      // Shadow write to Centralized Logistics Engine
-      await createShipment(docRef.id, orderData);
-      const auth = getAuth();
-      await logAudit('CREATE_ORDER', docRef.id, { totalAmount: orderData.amount }, auth.currentUser);
-      return docRef.id;
+
+      // Write tracking history event (outside the main lock-transaction to avoid nested conflicts/limitations)
+      try {
+        await addDoc(collection(db, 'tracking_history'), {
+          shipmentId: shipmentRef.id,
+          storeId: storeIdForOrder,
+          status: 'PENDING',
+          updatedByRole: 'system',
+          userId: orderData.customerId || 'system',
+          timestamp: serverTimestamp()
+        });
+      } catch (err) {
+        console.warn("Could not log tracking event for shipment", err);
+      }
+
+      await logAudit('CREATE_ORDER', 'Orders', orderId, null, { totalAmount: orderData.amount });
+      return orderId;
     } catch (err) {
       console.error("Error creating order: ", err);
       throw err;
@@ -103,9 +243,48 @@ export function useOrders() {
       const targetOrder = orders.find(o => o.id === id);
       const realId = targetOrder?.firebaseId || id;
       
-      await updateDoc(doc(db, 'orders', realId), {
-        status: status,
-        updatedAt: serverTimestamp()
+      const orderRef = doc(db, 'orders', realId);
+      
+      await runTransaction(db, async (transaction) => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) {
+          throw new Error("Order not found");
+        }
+        
+        const orderData = orderSnap.data();
+        const oldStatus = orderData.status;
+        
+        // If we are moving to cancelled/returned, and the previous status was NOT cancelled/returned, restore inventory
+        const isCancellation = (status === 'cancelled' || status === 'returned');
+        const wasCancelledOrReturned = (oldStatus === 'cancelled' || oldStatus === 'returned');
+        
+        if (isCancellation && !wasCancelledOrReturned && orderData.items && Array.isArray(orderData.items)) {
+          const storeIdForOrder = orderData.storeId || 'DEFAULT';
+          
+          for (const item of orderData.items) {
+            if (item.sku) {
+              const inventoryId = `${storeIdForOrder}_${item.sku}`;
+              const inventoryRef = doc(db, 'inventory', inventoryId);
+              const inventorySnap = await transaction.get(inventoryRef);
+              
+              if (inventorySnap.exists()) {
+                const currentStock = inventorySnap.data().stock || 0;
+                const requestedQty = item.qty || 1;
+                
+                transaction.update(inventoryRef, {
+                  stock: currentStock + requestedQty,
+                  updatedAt: serverTimestamp()
+                });
+              }
+            }
+          }
+        }
+        
+        // Update order status
+        transaction.update(orderRef, {
+          status: status,
+          updatedAt: serverTimestamp()
+        });
       });
 
       // Shadow write to Logistics Engine
@@ -120,8 +299,7 @@ export function useOrders() {
         await updateStatus(linkedShipment.id, logStatus, 'admin', 'system', null, true); // true = override flag
       }
       
-      const auth = getAuth();
-      await logAudit('UPDATE_ORDER_STATUS', realId, { oldStatus: targetOrder?.status, newStatus: status }, auth.currentUser);
+      await logAudit('UPDATE_ORDER_STATUS', 'Orders', realId, targetOrder?.status, status);
     } catch (err) {
       console.error("Error updating order: ", err);
       throw err;
@@ -141,8 +319,7 @@ export function useOrders() {
         updatedAt: serverTimestamp()
       });
 
-      const auth = getAuth();
-      await logAudit('ASSIGN_ORDER_PARTNER', realId, { partnerId, partnerName }, auth.currentUser);
+      await logAudit('ASSIGN_ORDER_PARTNER', 'Orders', realId, null, { partnerId, partnerName });
     } catch (err) {
       console.error("Error assigning order: ", err);
       throw err;

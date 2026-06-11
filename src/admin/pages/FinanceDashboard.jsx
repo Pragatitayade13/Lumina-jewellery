@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { IndianRupee, TrendingUp, TrendingDown, BarChart2, CheckCircle, Clock, AlertCircle, Download, Loader } from 'lucide-react';
 import { useRates } from '../../hooks/useRates';
 import { useOrders } from '../../hooks/useOrders';
+import { useFinance } from '../../hooks/useFinance';
 import { useApp } from '../../context/AppContext';
 import { db } from '../../config/firebase';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
@@ -55,10 +56,53 @@ function SparkLine({ data, color = 'var(--gold)' }) {
 
 export default function FinanceDashboard() {
   const { rates } = useRates();
-  const { orders: firebaseOrders, loading: ordersLoading } = useOrders();
-  const { showToast } = useApp();
+  const { user, showToast, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { orders: firebaseOrders, loading: ordersLoading } = useOrders(activeStoreId);
+  const { transactions, expenses, vendorPayments, loading: financeLoading } = useFinance(activeStoreId);
   const [activeTab, setActiveTab] = useState('revenue');
-  const [txLoading, setTxLoading] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState('');
+
+  const runMigration = async () => {
+    if (!window.confirm("Run finance data migration? This will generate transaction and expense records for all past orders.")) return;
+    setMigrationStatus('Starting migration...');
+    try {
+      const { collection, getDocs, addDoc } = await import('firebase/firestore');
+      const snap = await getDocs(collection(db, 'orders'));
+      let count = 0;
+      for (const docSnap of snap.docs) {
+        const order = docSnap.data();
+        const sid = order.storeId || 'GLOBAL';
+        const amt = Number(order.amount) || 0;
+        if (amt <= 0) continue;
+        
+        // Revenue
+        await addDoc(collection(db, 'transactions'), {
+          orderId: docSnap.id, type: 'revenue', amount: amt, status: 'completed',
+          paymentMethod: order.paymentMethod || 'Unknown', storeId: sid,
+          createdAt: order.createdAt || new Date(), description: `Historical Revenue - ${docSnap.id}`
+        });
+        
+        // COGS
+        await addDoc(collection(db, 'expenses'), {
+          orderId: docSnap.id, type: 'cogs', amount: amt * 0.62, storeId: sid,
+          createdAt: order.createdAt || new Date(), description: `Cost of Goods Sold - ${docSnap.id}`
+        });
+        
+        // OPEX
+        await addDoc(collection(db, 'expenses'), {
+          orderId: docSnap.id, type: 'opex', amount: amt * 0.11, storeId: sid,
+          createdAt: order.createdAt || new Date(), description: `Operating Expenses - ${docSnap.id}`
+        });
+        count++;
+      }
+      setMigrationStatus(`Done! Migrated ${count} orders.`);
+      showToast('Migration Complete');
+    } catch (e) {
+      console.error(e);
+      setMigrationStatus('Migration failed: ' + e.message);
+    }
+  };
 
   // --- Build chart from real orders grouped by day (last 14 days) ---
   const chartData = useMemo(() => {
@@ -88,12 +132,19 @@ export default function FinanceDashboard() {
     return days;
   }, [firebaseOrders]);
 
-  // --- Real revenue metrics from Firebase orders ---
+  // --- Real revenue metrics from Finance transactions ---
   const totalRevenue = useMemo(() =>
-    (firebaseOrders || []).reduce((s, o) => s + (Number(o.amount) || 0), 0), [firebaseOrders]);
-  const cogs = totalRevenue * 0.62;
+    transactions.filter(t => t.type === 'revenue').reduce((s, t) => s + (Number(t.amount) || 0), 0)
+    || (firebaseOrders || []).reduce((s, o) => s + (Number(o.amount) || 0), 0), [transactions, firebaseOrders]);
+    
+  const dbCogs = expenses.filter(e => e.type === 'cogs').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const cogs = dbCogs > 0 ? dbCogs : totalRevenue * 0.62;
+  
   const grossProfit = totalRevenue - cogs;
-  const opex = totalRevenue * 0.11;
+  
+  const dbOpex = expenses.filter(e => e.type === 'opex').reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const opex = dbOpex > 0 ? dbOpex : totalRevenue * 0.11;
+  
   const netProfit = grossProfit - opex;
   const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
   const todayRevenue = chartData[chartData.length - 1]?.revenue || 0;
@@ -189,7 +240,7 @@ export default function FinanceDashboard() {
     }, 600);
   };
 
-  const isLoading = ordersLoading || txLoading;
+  const isLoading = ordersLoading || financeLoading;
 
   return (
     <div>
@@ -203,11 +254,20 @@ export default function FinanceDashboard() {
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--status-green)', display: 'inline-block', animation: 'pulse 2s infinite' }} />
             {isLoading ? 'Loading...' : 'Live Data Active'}
           </div>
+          <button className="btn btn-outline" onClick={runMigration} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--status-orange)', color: 'var(--status-orange)' }}>
+            Migrate Legacy Data
+          </button>
           <button className="btn btn-outline" onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Download size={14} /> Export Report
           </button>
         </div>
       </div>
+      
+      {migrationStatus && (
+        <div style={{ padding: '1rem', background: 'rgba(243, 156, 18, 0.1)', color: 'var(--status-orange)', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold' }}>
+          {migrationStatus}
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
@@ -495,7 +555,22 @@ export default function FinanceDashboard() {
                 <tr><th>Partner ID</th><th>Name</th><th>Deliveries Completed</th><th>Payout Accrued</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody>
-                {[
+                {vendorPayments.length > 0 ? vendorPayments.map(p => (
+                  <tr key={p.id}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{p.id}</td>
+                    <td style={{ fontWeight: 600 }}>{p.vendorName}</td>
+                    <td>{p.deliveries || 0} Deliveries</td>
+                    <td style={{ fontWeight: 700 }}>₹{(Number(p.amount) || 0).toLocaleString('en-IN')}</td>
+                    <td><span className={`badge ${p.status === 'Paid' ? 'badge-delivered' : 'badge-pending'}`}>{p.status}</span></td>
+                    <td>
+                      {p.status === 'Pending' ? (
+                        <button className="btn btn-sm btn-outline" style={{ color: 'var(--status-green)', borderColor: 'var(--status-green)' }} onClick={() => showToast('Payout Initiated!')}>Initiate Payout</button>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Settled</span>
+                      )}
+                    </td>
+                  </tr>
+                )) : [
                   { id: 'DP-1001', name: 'Ramesh Kumar', deliveries: Math.floor((firebaseOrders?.filter(o => o.status === 'delivered').length || 0) * 0.6) || 12, status: 'Pending' },
                   { id: 'DP-1002', name: 'Suresh Singh', deliveries: Math.floor((firebaseOrders?.filter(o => o.status === 'delivered').length || 0) * 0.4) || 8, status: 'Paid' }
                 ].map(p => (

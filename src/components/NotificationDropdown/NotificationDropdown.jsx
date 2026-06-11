@@ -5,6 +5,7 @@ import { useInventory } from '../../hooks/useInventory';
 import { useOrders } from '../../hooks/useOrders';
 import { useLogistics } from '../../hooks/useLogistics';
 import './NotificationDropdown.css';
+import { useApp } from '../../context/AppContext';
 
 const getInitialNotifications = (userRole) => {
   if (userRole === 'customer') {
@@ -37,9 +38,11 @@ export default function NotificationDropdown({ userRole }) {
   const [staticNotifs, setStaticNotifs] = useState(() => getInitialNotifications(userRole));
   const [dynamicNotifs, setDynamicNotifs] = useState([]);
   const dropdownRef = useRef(null);
-  const { inventory } = useInventory();
-  const { orders } = useOrders();
-  const { shipments } = useLogistics();
+  const { user, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : null);
+  const { inventory } = useInventory(activeStoreId);
+  const { orders } = useOrders(activeStoreId);
+  const { shipments } = useLogistics(null, activeStoreId);
 
   useEffect(() => {
     let newAlerts = [];

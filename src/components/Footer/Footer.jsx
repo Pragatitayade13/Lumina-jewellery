@@ -105,9 +105,9 @@ export default function Footer() {
     <footer className="footer" id="footer">
       <div className="footer-top">
         <div className="container">
-          <div className="footer-grid stagger-container">
+          <div className="footer-grid">
             {/* Brand */}
-            <div className="footer-brand stagger-item">
+            <div className="footer-brand">
               <div className="footer-logo">
                 <div className="footer-logo-icon">
                   {landingPageData?.branding?.logoUrl ? (
@@ -160,7 +160,7 @@ export default function Footer() {
 
             {/* Links */}
             {Object.entries(footerLinks).map(([section, links]) => (
-              <div key={section} className="footer-links-col stagger-item">
+              <div key={section} className="footer-links-col">
                 <h4 className="footer-col-title">{section}</h4>
                 <ul className="footer-links-list">
                   {links.map(link => {
@@ -233,6 +233,9 @@ export default function Footer() {
               <Link to="/terms-of-service" className="footer-legal-link">Terms of Service</Link>
               <Link to="/cookies" className="footer-legal-link">Cookies</Link>
             </div>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.78rem', color: 'var(--text-muted)', width: '100%', opacity: 0.8 }}>
+            Engineered by <span style={{ color: 'var(--gold)', fontWeight: 600 }}>AgroZone Technology Pvt. Ltd.</span>
           </div>
         </div>
       </div>

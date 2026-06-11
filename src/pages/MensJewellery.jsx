@@ -12,8 +12,16 @@ import m4 from '../assets/products/mens_gold_kada_1780299659696.png';
 import m5 from '../assets/products/mens_om_pendant_1780299676039.png';
 
 export default function MensJewellery() {
-  const { inventory, loading } = useInventory();
+  const { customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
+  const { inventory, loading } = useInventory(customerSelectedStore);
   const navigate = useNavigate();
+
+  // Auto-open store selector if user lands on Men's Jewellery with no store chosen
+  useEffect(() => {
+    if (!customerSelectedStore && allPublicStores.length > 1) {
+      setIsCustomerStorePromptOpen(true);
+    }
+  }, [customerSelectedStore, allPublicStores.length]);
 
   const [selectedType, setSelectedType] = useState('All');
 
@@ -26,8 +34,6 @@ export default function MensJewellery() {
     if (selectedType === 'All') return mensProducts;
     return mensProducts.filter(item => item.subcategory === selectedType);
   }, [mensProducts, selectedType]);
-
-  const trending = mensProducts.slice(4, 8);
 
   const styles = [
     { name: 'Chains', image: m2 },
@@ -112,22 +118,6 @@ export default function MensJewellery() {
           </div>
         )}
       </section>
-
-
-      {/* Trending */}
-      {trending.length > 0 && (
-        <section className="mens-section">
-          <div className="section-header">
-            <h2>Trending Now</h2>
-            <div className="title-accent"><Gem size={14} /></div>
-          </div>
-          <div className="product-grid">
-            {trending.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

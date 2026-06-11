@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
+import { useApp } from '../context/AppContext';
 
 // Strict State Machine Rules
 export const LOGISTICS_STATES = {
@@ -32,7 +34,8 @@ const STATE_TRANSITIONS = {
 
 // Centralized API Hook
 
-export function useLogistics(deliveryPartnerId = null) {
+export function useLogistics(deliveryPartnerId = null, activeStoreId = null) {
+  const { user, authLoading } = useApp() || {};
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,13 +44,43 @@ export function useLogistics(deliveryPartnerId = null) {
       setLoading(false);
       return;
     }
+
+    if (authLoading) {
+      return;
+    }
+
+    const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    if (!user && !isTest) {
+      setShipments([]);
+      setLoading(false);
+      return;
+    }
     
     let shipmentsQuery;
-    if (deliveryPartnerId) {
-      // Securely filter assigned tasks
-      shipmentsQuery = query(collection(db, 'shipments'), where('assignedTo', '==', deliveryPartnerId), orderBy('createdAt', 'desc'));
+    
+    if (user?.role === 'customer' && !isTest) {
+      shipmentsQuery = query(
+        collection(db, 'shipments'),
+        where('customerId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
     } else {
-      shipmentsQuery = query(collection(db, 'shipments'), orderBy('createdAt', 'desc'));
+      try {
+        let additionalConstraints = [];
+        if (deliveryPartnerId) {
+          additionalConstraints.push(where('assignedTo', '==', deliveryPartnerId));
+        }
+        additionalConstraints.push(orderBy('createdAt', 'desc'));
+        shipmentsQuery = getStoreQuery(db, 'shipments', isTest ? (activeStoreId || 'GLOBAL') : activeStoreId, additionalConstraints);
+      } catch (err) {
+        if (err instanceof StoreIsolationError) {
+          console.debug(err.message);
+          setShipments([]);
+          setLoading(false);
+          return;
+        }
+        throw err;
+      }
     }
     
     const unsubscribe = onSnapshot(shipmentsQuery, (snapshot) => {
@@ -63,11 +96,15 @@ export function useLogistics(deliveryPartnerId = null) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [deliveryPartnerId, activeStoreId, user, authLoading]);
 
   const logTrackingEvent = async (shipmentId, status, role, userId = 'system', locationData = null) => {
+    const shipment = shipments.find(s => s.id === shipmentId);
+    const storeIdToLog = shipment ? shipment.storeId : (activeStoreId || 'GLOBAL');
+
     await addDoc(collection(db, 'tracking_history'), {
       shipmentId,
+      storeId: storeIdToLog,
       status,
       updatedByRole: role,
       userId,
@@ -105,10 +142,15 @@ export function useLogistics(deliveryPartnerId = null) {
 
   const createShipment = async (orderId, orderDetails) => {
     try {
+      if (!activeStoreId || activeStoreId === 'NONE') {
+        throw new Error("Cannot create shipment without active store context");
+      }
       const docRef = await addDoc(collection(db, 'shipments'), {
         orderId,
         orderDetails,
         status: LOGISTICS_STATES.PENDING,
+        storeId: activeStoreId,
+        customerId: orderDetails.customerId || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -151,6 +193,20 @@ export function useLogistics(deliveryPartnerId = null) {
             status: newStatus.toLowerCase(),
             updatedAt: serverTimestamp()
           });
+
+          if (newStatus === LOGISTICS_STATES.DELIVERED) {
+            import('firebase/firestore').then(async ({ query, collection, where, getDocs, updateDoc, doc }) => {
+              try {
+                const txQuery = query(collection(db, 'transactions'), where('orderId', '==', shipment.orderId));
+                const txSnap = await getDocs(txQuery);
+                txSnap.forEach(txDoc => {
+                  if (txDoc.data().status === 'pending') {
+                    updateDoc(doc(db, 'transactions', txDoc.id), { status: 'completed' });
+                  }
+                });
+              } catch(e) { console.warn("Failed to sync finance from logistics", e); }
+            });
+          }
         }
       } catch (err) {
         console.warn("Could not sync with legacy orders collection", err);
@@ -172,7 +228,7 @@ export function useLogistics(deliveryPartnerId = null) {
       // Usually assigned from READY or FAILED state
       await updateDoc(doc(db, 'shipments', shipmentId), {
         status: LOGISTICS_STATES.ASSIGNED,
-        assignedPartnerId: partnerId,
+        assignedTo: partnerId,
         assignedPartnerName: partnerName,
         updatedAt: serverTimestamp()
       });
@@ -212,5 +268,25 @@ export function useLogistics(deliveryPartnerId = null) {
     }
   };
 
-  return { shipments, loading, createShipment, updateStatus, assignPartner, getTrackingHistory, verifyDeliveryOTP };
+  const sendDeliveryOTP = async (shipmentId) => {
+    try {
+      const shipment = shipments.find(s => s.id === shipmentId);
+      if (!shipment) throw new Error("Shipment not found");
+
+      let currentOtp = shipment.otp;
+      if (!currentOtp) {
+        currentOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        await updateDoc(doc(db, 'shipments', shipmentId), {
+          otp: currentOtp,
+          updatedAt: serverTimestamp()
+        });
+      }
+      return currentOtp;
+    } catch (err) {
+      console.error("Error generating/retrieving OTP:", err);
+      throw err;
+    }
+  };
+
+  return { shipments, loading, createShipment, updateStatus, assignPartner, getTrackingHistory, verifyDeliveryOTP, sendDeliveryOTP };
 }

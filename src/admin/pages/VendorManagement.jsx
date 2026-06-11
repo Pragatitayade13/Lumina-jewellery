@@ -3,6 +3,7 @@ import { Store, TrendingUp, CheckCircle, Clock, Download, Plus, Search, FileText
 import { useApp } from '../../context/AppContext';
 import { db } from '../../config/firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useApprovals } from '../../hooks/useApprovals';
 
 const initialVendors = [
   { id: 'VND-001', name: 'Aura Diamonds', category: 'Diamonds', totalSales: 1240000, commissionRate: 12, amountDue: 148800, paidToDate: 520000, status: 'pending', joinDate: '12 Jan 2025', contact: 'aura@diamonds.in', phone: '+91 98201 12345', bank: 'HDFC **** 4821' },
@@ -25,7 +26,9 @@ const CATEGORY_RATES = {
 };
 
 export default function VendorManagement() {
-  const { showToast } = useApp();
+  const { showToast, user, currentStore } = useApp();
+  const userRole = user?.role || 'staff';
+  const { submitApprovalRequest } = useApprovals(currentStore);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('vendors');
@@ -56,7 +59,7 @@ export default function VendorManagement() {
   const totalSales = vendors.reduce((a, v) => a + v.totalSales, 0);
 
   const filteredVendors = useMemo(() => vendors.filter(v => {
-    const matchSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) || v.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = String(v.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(v.id || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === 'All' || v.status === statusFilter.toLowerCase();
     return matchSearch && matchStatus;
   }), [vendors, searchTerm, statusFilter]);
@@ -65,6 +68,17 @@ export default function VendorManagement() {
     showToast('Processing vendor payout...');
     const vendor = vendors.find(v => v.id === vendorId || v._docId === docId);
     if (!vendor) return;
+    
+    if (userRole === 'staff') {
+      try {
+        await submitApprovalRequest('VENDOR_PAYOUT', vendor, docId, 'VendorManagement');
+        showToast('Approval request submitted for payout.', 'success');
+      } catch (err) {
+        showToast('Failed to submit approval request.', 'error');
+      }
+      return;
+    }
+
     try {
       if (db && docId) {
         await updateDoc(doc(db, 'vendors', docId), {
@@ -96,6 +110,19 @@ export default function VendorManagement() {
       joinDate: today,
       createdAt: serverTimestamp()
     };
+    
+    if (userRole === 'staff') {
+      try {
+        await submitApprovalRequest('VENDOR_CREATION', vendorData, null, 'VendorManagement');
+        showToast('Approval request submitted for vendor creation.', 'success');
+        setShowAddModal(false);
+        setNewVendor({ name: '', category: 'Diamonds', contact: '', phone: '', bank: '' });
+      } catch (err) {
+        showToast('Failed to submit approval request.', 'error');
+      }
+      return;
+    }
+
     try {
       if (db) {
         await addDoc(collection(db, 'vendors'), vendorData);

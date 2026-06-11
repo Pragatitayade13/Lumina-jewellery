@@ -7,13 +7,25 @@ import ProductCard from '../components/ProductCard/ProductCard';
 import './Catalog.css';
 
 export default function Catalog() {
-  const { inventory, loading } = useInventory();
-  const { addToCart, toggleWishlist, isWishlisted } = useApp();
+  const { addToCart, toggleWishlist, isWishlisted, customerSelectedStore, setIsCustomerStorePromptOpen, allPublicStores } = useApp();
+  const { inventory, loading } = useInventory(customerSelectedStore);
+  
+  // Resolve active store name
+  const activeStoreName = customerSelectedStore
+    ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || 'Selected Store')
+    : null;
   
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialCategory = searchParams.get('category') || 'All';
   
+  // Auto-open store selector when user lands on catalog with no store chosen
+  useEffect(() => {
+    if (!customerSelectedStore && allPublicStores.length > 1) {
+      setIsCustomerStorePromptOpen(true);
+    }
+  }, [customerSelectedStore, allPublicStores.length]);
+
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState(initialCategory);
   const [subcategory, setSubcategory] = useState('All');
@@ -76,15 +88,28 @@ export default function Catalog() {
     let result = [...inventory];
 
     if (search) {
-      const s = search.toLowerCase();
-      result = result.filter(item => 
-        (item.name && item.name.toLowerCase().includes(s)) || 
-        (item.sku && item.sku.toLowerCase().includes(s)) ||
-        (item.category && item.category.toLowerCase().includes(s)) ||
-        (item.subcategory && item.subcategory.toLowerCase().includes(s)) ||
-        (item.purity && item.purity.toLowerCase().includes(s)) ||
-        (item.price && item.price.toString().includes(s))
-      );
+      const s = search.trim();
+      if (s) {
+        result = result.filter(item => {
+          try {
+            const regex = new RegExp(`\\b${s}`, 'i');
+            return (item.name && regex.test(item.name)) || 
+                   (item.sku && regex.test(item.sku)) ||
+                   (item.category && regex.test(item.category)) ||
+                   (item.subcategory && regex.test(item.subcategory)) ||
+                   (item.purity && regex.test(item.purity)) ||
+                   (item.price && regex.test(item.price.toString()));
+          } catch (e) {
+            const lowerS = s.toLowerCase();
+            return (item.name && item.name.toLowerCase().includes(lowerS)) || 
+                   (item.sku && item.sku.toLowerCase().includes(lowerS)) ||
+                   (item.category && item.category.toLowerCase().includes(lowerS)) ||
+                   (item.subcategory && item.subcategory.toLowerCase().includes(lowerS)) ||
+                   (item.purity && item.purity.toLowerCase().includes(lowerS)) ||
+                   (item.price && item.price.toString().includes(lowerS));
+          }
+        });
+      }
     }
 
     if (category !== 'All') {
@@ -169,6 +194,27 @@ export default function Catalog() {
 
   return (
     <div className="catalog-page">
+      {/* Store Context Banner */}
+      {activeStoreName && (
+        <div style={{
+          background: 'linear-gradient(90deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 100%)',
+          borderBottom: '1px solid rgba(201,168,76,0.2)',
+          padding: '0.6rem 2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.6rem',
+          fontSize: '0.85rem',
+          color: 'var(--text-secondary)'
+        }}>
+          <span style={{ color: 'var(--gold)', fontWeight: 700 }}>✦</span>
+          Browsing <strong style={{ color: 'var(--text-primary)', marginLeft: 4 }}>{activeStoreName}</strong>
+          <span style={{ margin: '0 0.5rem', opacity: 0.4 }}>•</span>
+          <button
+            onClick={() => setIsCustomerStorePromptOpen(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, textDecoration: 'underline' }}
+          >Change Store</button>
+        </div>
+      )}
       <div 
         className="catalog-header"
         style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), url('${headerInfo.image}')` }}

@@ -43,7 +43,13 @@ const ProductCard = memo(function ProductCard({ product }) {
       <div className="product-card" id={`product-card-${product.id}`}>
         <div className="product-card-img-wrap">
           <Link to={`/product/${product.id}`} style={{ display: 'block', width: '100%', height: '100%' }}>
-            <img src={product.image} alt={product.name} className="product-card-img" loading="lazy" />
+            <img 
+              src={product.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80'} 
+              alt={product.name} 
+              className="product-card-img" 
+              loading="lazy" 
+              onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80'; }}
+            />
           </Link>
           
           {product.badge && (

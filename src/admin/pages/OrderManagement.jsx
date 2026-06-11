@@ -1,15 +1,54 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { PackageOpen, Eye, FileText, Search, X, CheckCircle, Truck, AlertTriangle, Check, XCircle } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
 import { useCustomers } from '../../hooks/useCustomers';
+import { useStores } from '../../hooks/useStores';
 
 const statusClass = { assigned: 'badge-new', in_transit: 'badge-shipped', out_for_delivery: 'badge-shipped', packed: 'badge-confirmed', delivered: 'badge-delivered', pending: 'badge-pending', cancelled: 'badge-cancelled', returned: 'badge-orange' };
 
 export default function OrderManagement() {
-  const { orders: liveOrders, loading, updateOrderStatus, assignOrderToPartner } = useOrders();
-  const { customers: allUsers } = useCustomers();
-  const { showToast } = useApp();
+  const { user, showToast, globalSearch, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { orders: liveOrders, loading, error, updateOrderStatus, assignOrderToPartner } = useOrders(activeStoreId);
+  const { customers: allUsers } = useCustomers(activeStoreId);
+  const { userStores: allUserStores } = useStores();
+  
+  const [dbDebugStats, setDbDebugStats] = useState({ total: 0, storeMatch: 0, ids: [] });
+  
+  useEffect(() => {
+    import('firebase/firestore').then(({ getDocs, updateDoc, doc, collection }) => {
+      import('../../config/firebase').then(({ db }) => {
+        getDocs(collection(db, 'orders')).then(snap => {
+          let storeMatch = 0;
+          let ids = [];
+          snap.docs.forEach(d => {
+             const sid = d.data().storeId;
+             ids.push(String(sid));
+             if (sid === activeStoreId) {
+               storeMatch++;
+             } else if (sid === 'undefined' || sid == null || sid === '') {
+                // Auto-migrate legacy mismatched cart orders to this active store so the user can see them!
+                if (activeStoreId && activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE') {
+                  updateDoc(doc(db, 'orders', d.id), { storeId: activeStoreId }).catch(e => console.error("Auto-migrate failed", e));
+                  storeMatch++; // Optimistically count it
+                }
+             }
+          });
+          setDbDebugStats({ total: snap.size, storeMatch, ids: [...new Set(ids)] });
+        });
+      });
+    });
+  }, [activeStoreId]);
+  
+  const activePartners = useMemo(() => {
+    let partners = allUsers?.filter(u => u.role === 'delivery' || u.department === 'Delivery Partner') || [];
+    if (activeStoreId && activeStoreId !== 'GLOBAL') {
+      const assignedUserIds = allUserStores.filter(us => us.storeId === activeStoreId).map(us => us.userId);
+      partners = partners.filter(p => assignedUserIds.includes(p.id));
+    }
+    return partners;
+  }, [allUsers, allUserStores, activeStoreId]);
   
   const [activeTab, setActiveTab] = useState('All Orders');
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,11 +76,26 @@ export default function OrderManagement() {
         ? liveOrders.filter(o => o.status === 'out_for_delivery')
         : liveOrders.filter(o => o.status && o.status.toLowerCase() === activeTab.toLowerCase());
 
-    if (searchTerm) {
-      result = result.filter(o => 
-        (o.id && o.id.toLowerCase().includes(searchTerm.toLowerCase())) || 
-        (o.customer && o.customer.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+    const effectiveSearchTerm = globalSearch || searchTerm;
+    if (effectiveSearchTerm) {
+      const s = effectiveSearchTerm.trim();
+      if (s) {
+        result = result.filter(o => {
+          try {
+            const regex = new RegExp(`\\b${s}`, 'i');
+            return regex.test(String(o.id || '')) || 
+                   regex.test(String(o.customer || '')) ||
+                   regex.test(String(o.email || '')) ||
+                   regex.test(String(o.product || ''));
+          } catch (e) {
+            const searchString = s.toLowerCase();
+            return String(o.id || '').toLowerCase().includes(searchString) || 
+                   String(o.customer || '').toLowerCase().includes(searchString) ||
+                   String(o.email || '').toLowerCase().includes(searchString) ||
+                   String(o.product || '').toLowerCase().includes(searchString);
+          }
+        });
+      }
     }
 
     if (paymentFilter !== 'Payment Method') {
@@ -59,7 +113,7 @@ export default function OrderManagement() {
     });
 
     return result;
-  }, [liveOrders, activeTab, searchTerm, paymentFilter, sortOrder]);
+  }, [liveOrders, activeTab, searchTerm, globalSearch, paymentFilter, sortOrder]);
 
   const handleStatusChange = async (orderId, newStatus) => {
     if (!newStatus) return;
@@ -79,15 +133,20 @@ export default function OrderManagement() {
     }
     showToast("Preparing CSV for export...");
     setTimeout(() => {
-      const csvHeader = "Order ID,Date,Customer Info,Items,Amount,Payment,Status\n";
-      const csvContent = filteredAndSortedOrders.map(o => 
-        `"${o.id}","${o.date}","${o.customer}","${o.product}","${o.amount}","${o.paymentMethod}","${o.status}"`
-      ).join("\n");
+      const csvHeader = "Order ID,Date,Customer Name,City/Address,Store ID,Product,Subtotal (INR),CGST (INR),SGST (INR),IGST (INR),Total Amount (INR),Payment Method,Status\n";
+      const csvContent = filteredAndSortedOrders.map(o => {
+        const sub = (o.subtotal || o.amount * 0.97 || 0).toFixed(2);
+        const cgst = (o.cgst || 0).toFixed(2);
+        const sgst = (o.sgst || 0).toFixed(2);
+        const igst = (o.igst || 0).toFixed(2);
+        const total = (o.amount || 0).toFixed(2);
+        return `"${o.id}","${o.date}","${o.customer || ''}","${o.city || ''}","${o.storeId || ''}","${o.product || ''}","${sub}","${cgst}","${sgst}","${igst}","${total}","${o.paymentMethod || ''}","${o.status || ''}"`;
+      }).join("\n");
       const blob = new Blob([csvHeader + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", "Orders_Export.csv");
+      link.setAttribute("download", `Lumina_Jewels_Orders_Export_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -154,35 +213,35 @@ export default function OrderManagement() {
                     <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                   </td>
                   <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(order.subtotal || order.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹{((order.subtotal || order.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ${order.igst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                  <td style="text-align: right;">₹${order.igst.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹{(order.igst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${order.cgst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                  <td style="text-align: right;">₹${order.cgst.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹{(order.cgst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${order.sgst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                  <td style="text-align: right;">₹${order.sgst.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹{(order.sgst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${!order.igst && !order.cgst && !order.sgst ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                  <td style="text-align: right;">₹${(order.gstAmt || order.amount * 0.03).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹{((order.gstAmt || order.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                   <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${order.amount?.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹{(order.amount || 0).toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
@@ -296,35 +355,35 @@ export default function OrderManagement() {
                   <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                 </td>
                 <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${(viewInvoice.subtotal || viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹{((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
               </tr>
               ${viewInvoice.igst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                <td style="text-align: right;">₹${viewInvoice.igst.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹{(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${viewInvoice.cgst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                <td style="text-align: right;">₹${viewInvoice.cgst.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹{(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${viewInvoice.sgst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                <td style="text-align: right;">₹${viewInvoice.sgst.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹{(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                <td style="text-align: right;">₹${(viewInvoice.gstAmt || viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹{((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                 <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${viewInvoice.amount?.toLocaleString('en-IN')}</td>
+                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹{(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
@@ -402,18 +461,31 @@ export default function OrderManagement() {
                 <th>Order ID & Date</th>
                 <th>Customer Info</th>
                 <th>Items Ordered</th>
-                <th>Payment</th>
+              <th>Payment</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedOrders.length === 0 ? (
+              {error && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--status-red)' }}>
+                    <div style={{ fontWeight: 600 }}>Error loading orders</div>
+                    <div style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{error.message || String(error)}</div>
+                  </td>
+                </tr>
+              )}
+              {!error && filteredAndSortedOrders.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '3rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--text-muted)' }}><PackageOpen size={48} /></div>
                     <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>No orders found</div>
                     <div style={{ color: 'var(--text-muted)' }}>There are no orders matching this filter.</div>
+                    <div style={{ color: 'red', marginTop: '1rem', fontSize: '0.8rem', wordBreak: 'break-all' }}>
+                      Debug: DB Total: {dbDebugStats.total} | DB StoreMatch: {dbDebugStats.storeMatch} | useOrders: {liveOrders?.length || 0}<br/>
+                      Admin Store: {activeStoreId}<br/>
+                      DB Store IDs: {dbDebugStats.ids.join(', ')}
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -435,7 +507,7 @@ export default function OrderManagement() {
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>1 Item</div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{o.amount.toLocaleString('en-IN')}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{(o.amount || 0).toLocaleString('en-IN')}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{o.paymentMethod}</div>
                     </td>
                     <td>
@@ -495,7 +567,7 @@ export default function OrderManagement() {
                 <h4 style={{ color: 'var(--gold)', marginBottom: '0.5rem' }}>Product Details</h4>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   <strong>Item:</strong> {selectedOrder.product}<br/>
-                  <strong>Amount:</strong> ₹{selectedOrder.amount?.toLocaleString('en-IN')}<br/>
+                  <strong>Amount:</strong> ₹{(selectedOrder.amount || 0).toLocaleString('en-IN')}<br/>
                   <strong>Payment:</strong> {selectedOrder.paymentMethod}
                 </div>
               </div>
@@ -618,35 +690,35 @@ export default function OrderManagement() {
                     <span style={{ color: '#888', fontSize: '0.75rem' }}>HSN Code: 7113</span>
                   </td>
                   <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{(viewInvoice.subtotal || viewInvoice.amount * 0.97).toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 {viewInvoice.igst > 0 && (
                   <tr>
                     <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>IGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.igst.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {viewInvoice.cgst > 0 && (
                   <tr>
                     <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>CGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.cgst.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {viewInvoice.sgst > 0 && (
                   <tr>
                     <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>SGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{viewInvoice.sgst.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst && (
                   <tr>
                     <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.gstAmt || viewInvoice.amount * 0.03).toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 <tr style={{ background: '#fafafa', borderTop: '2px solid #1a1a1a' }}>
                   <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{viewInvoice.amount?.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
@@ -677,7 +749,7 @@ export default function OrderManagement() {
                 onChange={e => setSelectedPartnerId(e.target.value)}
               >
                 <option value="">-- Choose Partner --</option>
-                {allUsers?.filter(u => u.role === 'delivery' || u.department === 'Delivery Partner').map(p => (
+                {activePartners.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>

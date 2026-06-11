@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import { categories, products } from '../../data/products';
 import { useScrollLock } from '../../hooks/useScrollLock';
@@ -18,17 +18,88 @@ const categoryBgs = ['cat-gold','cat-silver','cat-diamond','cat-rings','cat-neck
 
 export default function FeaturedCategories() {
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const sectionRef = useRef(null);
   
   useScrollLock(!!selectedCategory);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // Add shimmer to title
+            const title = entry.target.querySelector('.section-title');
+            if (title) title.classList.add('shimmer');
+            
+            // Trigger staggered card entrances
+            const cards = entry.target.querySelectorAll('.category-card');
+            cards.forEach(card => card.classList.add('enter-anim'));
+            
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleMouseMove = (e) => {
+    if (window.innerWidth <= 768) return; // Disable on mobile
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Light effect tracking
+    card.style.setProperty('--mouse-x', `${(x / rect.width) * 100}%`);
+    card.style.setProperty('--mouse-y', `${(y / rect.height) * 100}%`);
+    
+    // Gentle 3D Tilt
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -12;
+    const rotateY = ((x - centerX) / centerX) * 12;
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+  };
+
+  const handleMouseLeave = (e) => {
+    if (window.innerWidth <= 768) return;
+    const card = e.currentTarget;
+    card.style.transform = ''; // Reset transform on leave
+    card.style.setProperty('--mouse-x', '50%');
+    card.style.setProperty('--mouse-y', '50%');
+  };
 
   const categoryProducts = selectedCategory 
     ? products.filter(p => p.category === selectedCategory.name || (selectedCategory.name.includes('Jewellery') && p.material.includes(selectedCategory.name.split(' ')[0])))
     : [];
 
   return (
-    <section className="categories-section" id="categories">
+    <section className="categories-section" id="categories" ref={sectionRef}>
+      {/* Animated Particles Background */}
+      <div className="particles-container">
+        {[...Array(20)].map((_, i) => (
+          <div 
+            key={i} 
+            className="particle"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDuration: `${5 + Math.random() * 10}s`,
+              animationDelay: `${Math.random() * 5}s`
+            }}
+          />
+        ))}
+      </div>
+
       <div className="container">
-        <div className="section-header reveal">
+        <div className="section-header">
           <span className="section-label">Shop by Category</span>
           <h2 className="section-title">Explore Our Collections</h2>
           <div className="gold-divider" />
@@ -37,76 +108,81 @@ export default function FeaturedCategories() {
           </p>
         </div>
 
-        <div className="categories-grid stagger-container clip-reveal-trigger">
+        <div className="categories-grid">
           {categories.map((cat, i) => (
             <div
               key={cat.id}
-              className={`category-card ${categoryBgs[i]} stagger-item`}
+              className={`category-card ${categoryBgs[i]}`}
               id={`category-card-${cat.id}`}
               role="button"
               tabIndex={0}
               aria-label={`Browse ${cat.name}`}
               onClick={() => setSelectedCategory(cat)}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
             >
+              <div className="card-light-effect" />
               <img
                 src={categoryImages[i]}
                 alt={cat.name}
                 className="category-img"
+                loading="lazy"
               />
               <div className="category-icon">{cat.icon}</div>
-                <div className="category-overlay">
-                  <div className="category-name">{cat.name}</div>
-                  <div className="category-count">{cat.count}</div>
-                  <div className="category-explore">
-                    <span>Explore</span>
-                    <ArrowRight size={14} />
-                  </div>
+              <div className="category-overlay">
+                <div className="category-name">{cat.name}</div>
+                <div className="category-count">{cat.count}</div>
+                <div className="category-explore">
+                  <span>Explore</span>
+                  <ArrowRight size={14} />
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
+      </div>
 
-        {selectedCategory && (
-          <div className="auth-modal-overlay" onClick={() => setSelectedCategory(null)} data-lenis-prevent="true" style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="auth-modal" onClick={e => e.stopPropagation()} data-lenis-prevent="true" style={{ width: '80%', maxWidth: '1000px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem', position: 'relative' }}>
-              <button 
-                onClick={() => setSelectedCategory(null)}
-                style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}
-              >
-                <X size={18} />
-              </button>
-              
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <div style={{ color: 'var(--gold)', fontSize: '2rem', marginBottom: '0.5rem' }}>{selectedCategory.icon}</div>
-                <h2 style={{ fontSize: '1.8rem', fontFamily: 'var(--font-heading)', color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>{selectedCategory.name}</h2>
-                <p style={{ color: 'var(--text-muted)' }}>Explore our exclusive collection of {selectedCategory.name.toLowerCase()}</p>
-              </div>
+      {/* Modal logic remains unchanged but styles matched up */}
+      {selectedCategory && (
+        <div className="auth-modal-overlay" onClick={() => setSelectedCategory(null)} data-lenis-prevent="true" style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="auth-modal" onClick={e => e.stopPropagation()} data-lenis-prevent="true" style={{ width: '80%', maxWidth: '1000px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem', position: 'relative' }}>
+            <button 
+              onClick={() => setSelectedCategory(null)}
+              style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}
+            >
+              <X size={18} />
+            </button>
+            
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{ color: 'var(--gold)', fontSize: '2rem', marginBottom: '0.5rem' }}>{selectedCategory.icon}</div>
+              <h2 style={{ fontSize: '1.8rem', fontFamily: 'var(--font-heading)', color: 'var(--text-primary)', margin: '0 0 0.5rem 0' }}>{selectedCategory.name}</h2>
+              <p style={{ color: 'var(--text-muted)' }}>Explore our exclusive collection of {selectedCategory.name.toLowerCase()}</p>
+            </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
-                {categoryProducts.length > 0 ? (
-                  categoryProducts.map(product => (
-                    <div key={product.id} className="product-card">
-                      <div className="product-image-wrap">
-                        <img src={product.image} alt={product.name} className="product-img" />
-                      </div>
-                      <div className="product-info">
-                        <h3 className="product-title" style={{ fontSize: '1rem' }}>{product.name}</h3>
-                        <div className="product-price-wrap" style={{ marginTop: '0.5rem' }}>
-                          <span className="price-current">₹{product.price.toLocaleString('en-IN')}</span>
-                        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
+              {categoryProducts.length > 0 ? (
+                categoryProducts.map(product => (
+                  <div key={product.id} className="product-card">
+                    <div className="product-image-wrap">
+                      <img src={product.image} alt={product.name} className="product-img" loading="lazy" />
+                    </div>
+                    <div className="product-info">
+                      <h3 className="product-title" style={{ fontSize: '1rem' }}>{product.name}</h3>
+                      <div className="product-price-wrap" style={{ marginTop: '0.5rem' }}>
+                        <span className="price-current">₹{product.price.toLocaleString('en-IN')}</span>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    <p>New collections for {selectedCategory.name} are arriving soon!</p>
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <p>New collections for {selectedCategory.name} are arriving soon!</p>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </section>
-    );
-  }
+        </div>
+      )}
+    </section>
+  );
+}

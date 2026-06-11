@@ -6,8 +6,9 @@ import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp 
 import { db } from '../../config/firebase';
 
 export default function TaxManagement() {
-  const { user, showToast } = useApp();
-  const { taxSettings, loading: taxLoading, updateTaxSettings, calculateTax } = useTaxes();
+  const { user, showToast, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { taxSettings, loading: taxLoading, updateTaxSettings, calculateTax } = useTaxes(activeStoreId);
   
   const [taxRecords, setTaxRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);

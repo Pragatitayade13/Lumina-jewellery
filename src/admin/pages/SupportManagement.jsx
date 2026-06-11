@@ -10,10 +10,11 @@ export default function SupportManagement() {
   const [activeTab, setActiveTab] = useState('Tickets');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const { tickets, loading: ticketsLoading, updateTicket, addTicket } = useSupportTickets();
-  const { orders, updateOrderStatus } = useOrders();
-  const { products } = useProducts();
-  const { showToast } = useApp();
+  const { showToast, user, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const { tickets, loading: ticketsLoading, updateTicket, addTicket } = useSupportTickets(activeStoreId);
+  const { orders, updateOrderStatus } = useOrders(activeStoreId);
+  const { products } = useProducts(activeStoreId);
   
   const [respondModal, setRespondModal] = useState({ isOpen: false, ticket: null, message: '' });
   const [createModal, setCreateModal] = useState(false);
@@ -42,8 +43,8 @@ export default function SupportManagement() {
   const avgResponseTime = resolvedCount > 0 ? '1.2h' : '0.0h'; // Mocked average
 
   const filteredTickets = tickets.filter(t => 
-    t.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    String(t.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(t.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleRespond = async (e) => {
@@ -248,7 +249,7 @@ export default function SupportManagement() {
               <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status</th><th>ETA / Date</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {orders.filter(o => o.id.toLowerCase().includes(searchTerm.toLowerCase()) || o.customer.toLowerCase().includes(searchTerm.toLowerCase())).map(o => (
+              {orders.filter(o => String(o.id || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(o.customer || '').toLowerCase().includes(searchTerm.toLowerCase())).map(o => (
                 <tr key={o.id}>
                   <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{o.id}</td>
                   <td>{o.customer}</td>
@@ -321,7 +322,7 @@ export default function SupportManagement() {
               <tr><th>Product Info</th><th>SKU / Details</th><th>Stock</th><th>Price (₹)</th></tr>
             </thead>
             <tbody>
-              {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
+              {products.filter(p => String(p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(p.sku || '').toLowerCase().includes(searchTerm.toLowerCase())).map(p => (
                 <tr key={p.id}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{p.name}</div>
@@ -358,7 +359,7 @@ export default function SupportManagement() {
               <tr><th>Customer</th><th>Product</th><th>Rating</th><th>Review</th><th>Date</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {reviews.filter(r => !r.hidden && (r.customer.toLowerCase().includes(searchTerm.toLowerCase()) || r.product.toLowerCase().includes(searchTerm.toLowerCase()))).map(r => (
+              {reviews.filter(r => !r.hidden && (String(r.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(r.product || '').toLowerCase().includes(searchTerm.toLowerCase()))).map(r => (
                 <tr key={r.id}>
                   <td>{r.customer}</td>
                   <td>{r.product}</td>

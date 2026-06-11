@@ -37,9 +37,9 @@ export default function ProductShowcase() {
   const filtered = filter === 'All' ? products : products.filter(p => p.category === filter);
 
   const validImages = (ps.images || []).filter(img => img && img.trim() !== '');
-  const showcaseImages = validImages.length > 0 
-    ? [...validImages, ...validImages] // duplicate for continuous scroll
-    : [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9, slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9];
+  const defaultImages = [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9];
+  const combinedImages = validImages.length > 0 ? [...validImages, ...defaultImages] : defaultImages;
+  const showcaseImages = [...combinedImages, ...combinedImages];
 
   return (
     <section className="showcase-section" id="product-showcase">

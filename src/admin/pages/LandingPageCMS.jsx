@@ -13,6 +13,8 @@ export default function LandingPageCMS() {
   const [saving, setSaving] = useState(false);
   const [uploadingSlide, setUploadingSlide] = useState(null);
   const [uploadingShowcaseImage, setUploadingShowcaseImage] = useState(null);
+  const [uploadingNewArrival, setUploadingNewArrival] = useState(null);
+  const [uploadingBestSeller, setUploadingBestSeller] = useState(null);
   const [originalData, setOriginalData] = useState(null);
   const [data, setData] = useState({
     hero: {
@@ -381,10 +383,43 @@ export default function LandingPageCMS() {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Using simple object URL for instant preview. 
-    // In production, you'd upload this to Firebase Storage and get the URL.
-    const url = URL.createObjectURL(file);
-    handleNewArrivalsItemChange(index, 'image', url);
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Image must be smaller than 2MB", "error");
+      return;
+    }
+
+    try {
+      if (!storage) {
+        showToast("Storage is not configured.", "error");
+        return;
+      }
+      setUploadingNewArrival(index);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `new_arrival_${index}_${Date.now()}.${fileExt}`;
+      const storageRef = ref(storage, `cms/landing/${fileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {},
+        (error) => {
+          console.error("Upload error:", error);
+          showToast("Failed to upload image", "error");
+          setUploadingNewArrival(null);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          handleNewArrivalsItemChange(index, 'image', downloadURL);
+          setUploadingNewArrival(null);
+          showToast("Image uploaded successfully");
+        }
+      );
+    } catch (error) {
+      console.error("Upload process error:", error);
+      showToast("Failed to start upload", "error");
+      setUploadingNewArrival(null);
+    }
   };
 
   // --- Best Sellers Items ---
@@ -418,8 +453,44 @@ export default function LandingPageCMS() {
   const handleBestSellersImageUpload = async (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    handleBestSellersItemChange(index, 'image', url);
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Image must be smaller than 2MB", "error");
+      return;
+    }
+
+    try {
+      if (!storage) {
+        showToast("Storage is not configured.", "error");
+        return;
+      }
+      setUploadingBestSeller(index);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `best_seller_${index}_${Date.now()}.${fileExt}`;
+      const storageRef = ref(storage, `cms/landing/${fileName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {},
+        (error) => {
+          console.error("Upload error:", error);
+          showToast("Failed to upload image", "error");
+          setUploadingBestSeller(null);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          handleBestSellersItemChange(index, 'image', downloadURL);
+          setUploadingBestSeller(null);
+          showToast("Image uploaded successfully");
+        }
+      );
+    } catch (error) {
+      console.error("Upload process error:", error);
+      showToast("Failed to start upload", "error");
+      setUploadingBestSeller(null);
+    }
   };
 
   const handleProductShowcaseChange = (field, value) => {
@@ -952,6 +1023,7 @@ export default function LandingPageCMS() {
                                   <label style={{ display: 'block', marginBottom: '0.5rem' }}>Product Image <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Max 2MB)</span></label>
                                   <input type="file" accept="image/*" onChange={(e) => handleNewArrivalsImageUpload(e, i)} style={{ fontSize: '0.9rem' }} />
                                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Upload a square image (Max 2MB) for best results.</p>
+                                  {uploadingNewArrival === i && <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading image...</div>}
                                 </div>
                               </div>
                               
@@ -1024,6 +1096,7 @@ export default function LandingPageCMS() {
                                   <label style={{ display: 'block', marginBottom: '0.5rem' }}>Product Image <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Max 2MB)</span></label>
                                   <input type="file" accept="image/*" onChange={(e) => handleBestSellersImageUpload(e, i)} style={{ fontSize: '0.9rem' }} />
                                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Upload a square image (Max 2MB) for best results.</p>
+                                  {uploadingBestSeller === i && <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading image...</div>}
                                 </div>
                               </div>
                               

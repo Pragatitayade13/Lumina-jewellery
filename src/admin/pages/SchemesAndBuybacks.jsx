@@ -45,8 +45,8 @@ export default function SchemesAndBuybacks() {
   }, [evalForm, rates]);
 
   const filteredSchemes = localSchemes.filter(s => 
-    s.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.id.toLowerCase().includes(searchTerm.toLowerCase())
+    String(s.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(s.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEnrollSubmit = () => {
@@ -81,8 +81,8 @@ export default function SchemesAndBuybacks() {
   };
 
   const filteredExchanges = exchanges.filter(e => 
-    e.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.id.toLowerCase().includes(searchTerm.toLowerCase())
+    String(e.customer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(e.id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const openEvalModal = (exc) => {

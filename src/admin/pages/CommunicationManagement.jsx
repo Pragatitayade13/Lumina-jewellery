@@ -436,7 +436,7 @@ export default function CommunicationManagement() {
               <table className="admin-table">
                 <thead><tr><th>Email Address</th><th>Subscription Date</th><th>Source</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
-                  {subscribers.filter(s => s.email?.toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
+                  {subscribers.filter(s => String(s.email || '').toLowerCase().includes(searchTerm.toLowerCase())).map(s => (
                     <tr key={s.id}>
                       <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

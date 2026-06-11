@@ -24,6 +24,7 @@ import WishlistModal from './components/WishlistModal/WishlistModal';
 import SupportModal from './components/SupportModal/SupportModal';
 import QuickViewModal from './components/QuickViewModal/QuickViewModal';
 import FloatingWhatsApp from './components/FloatingWhatsApp/FloatingWhatsApp';
+import CustomerStoreSelector from './components/CustomerStoreSelector/CustomerStoreSelector';
 
 const VirtualTryOn = lazy(() => import('./components/VirtualTryOn/VirtualTryOn'));
 const Catalog = lazy(() => import('./pages/Catalog'));
@@ -31,6 +32,7 @@ const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const MensJewellery = lazy(() => import('./pages/MensJewellery'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const LMSLanding = lazy(() => import('./pages/LMSLanding'));
 
 const AdminApp = lazy(() => import('./admin/AdminApp'));
 const CustomerApp = lazy(() => import('./customer/CustomerApp'));
@@ -49,6 +51,7 @@ function GlobalModals() {
   const { isSupportOpen, setIsSupportOpen, vtoProduct, setVtoProduct } = useApp();
   return (
     <>
+      <CustomerStoreSelector />
       <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
       <QuickViewModal />
       <Suspense fallback={null}>
@@ -195,6 +198,7 @@ export default function App() {
                 <Route path="/account/*" element={<CustomerApp />} />
                 <Route path="/delivery/*" element={<DeliveryApp />} />
                 <Route path="/track/:orderId" element={<TrackOrder />} />
+                <Route path="/lms" element={<LMSLanding />} />
                 <Route path="/*" element={<StoreLayout />}>
                   <Route index element={<HomePage />} />
                   <Route path="collections" element={<Catalog />} />

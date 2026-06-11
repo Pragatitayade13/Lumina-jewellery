@@ -18,7 +18,7 @@ const statusMeta = {
 };
 
 export const calcInvoiceTotals = (items, calculateTax, customerState) => {
-  const subtotal = items.reduce((s, i) => s + (Number(i.qty) * Math.abs(Number(i.rate) || Number(i.price) || 0)), 0);
+  const subtotal = items.reduce((s, i) => s + (Number(i.qty) * Math.abs(Number(i.rate) || Number(i.price) || Number(i.cost) || 0)), 0);
   let gstAmt = 0;
   let cgst = 0;
   let sgst = 0;
@@ -26,7 +26,7 @@ export const calcInvoiceTotals = (items, calculateTax, customerState) => {
 
   items.forEach(i => {
     const ratePercentage = Number(i.gst) || 3;
-    const base = Number(i.qty) * Math.abs(Number(i.rate) || Number(i.price) || 0);
+    const base = Number(i.qty) * Math.abs(Number(i.rate) || Number(i.price) || Number(i.cost) || 0);
     
     let taxDetails;
     if (calculateTax) {
@@ -58,6 +58,12 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
   const dateStr = inv.date || (inv.createdAt ? new Date(inv.createdAt?.seconds * 1000).toLocaleDateString() : new Date().toLocaleDateString());
   const dueDateStr = inv.dueDate || '—';
 
+  const billStoreName = inv.storeName || COMPANY.name;
+  const billStoreAddress = inv.storeAddress || COMPANY.address;
+  const billStoreGst = inv.storeGst || inv.storeGstin || COMPANY.gstin;
+  const billStoreContact = inv.storeContact || inv.storePhone || COMPANY.phone;
+  const billStoreCodeStr = inv.storeCode ? ` | Store Code: ${inv.storeCode}` : '';
+
   return `<!DOCTYPE html><html><head><title>${isCreditNote ? 'Credit Note' : 'Tax Invoice'} ${inv.id}</title>
   <style>
     body{font-family:Arial,sans-serif;margin:0;padding:2rem;color:#222;font-size:13px}
@@ -83,9 +89,9 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
     <div class="header">
       <div>
         <div class="logo">${COMPANY.logo}</div>
-        <p class="company-name">${COMPANY.name}</p>
-        <p style="margin:0;color:#666;font-size:0.8rem">${COMPANY.address}</p>
-        <p style="margin:0;color:#666;font-size:0.8rem">GSTIN: ${COMPANY.gstin} | ${COMPANY.phone}</p>
+        <p class="company-name">${billStoreName}</p>
+        <p style="margin:0;color:#666;font-size:0.8rem">${billStoreAddress}</p>
+        <p style="margin:0;color:#666;font-size:0.8rem">GSTIN: ${billStoreGst} | ${billStoreContact}${billStoreCodeStr}</p>
       </div>
       <div style="text-align:right">
         <div class="doc-type">${isCreditNote ? 'CREDIT NOTE' : 'TAX INVOICE'}</div>
@@ -113,7 +119,7 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
     <table>
       <tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>GST %</th><th>GST Type</th><th>GST Amt</th><th>Total</th></tr>
       ${items.map((item, i) => {
-        const lineRate = Math.abs(Number(item.rate) || Number(item.price) || 0);
+        const lineRate = Math.abs(Number(item.rate) || Number(item.price) || Number(item.cost) || 0);
         const lineQty = Number(item.qty) || 1;
         const lineTotal = lineQty * lineRate;
         const ratePercentage = Number(item.gst) || 3;

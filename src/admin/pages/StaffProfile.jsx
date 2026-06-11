@@ -5,10 +5,11 @@ import { useAttendance } from '../../hooks/useAttendance';
 import { useCustomers } from '../../hooks/useCustomers';
 
 export default function StaffProfile() {
-  const { user, showToast } = useApp();
+  const { user, showToast, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
   const [activeModal, setActiveModal] = useState(null); // 'password', 'editProfile', 'notifications'
 
-  const { customers } = useCustomers();
+  const { customers } = useCustomers(activeStoreId);
   const currentUserData = customers.find(c => c.id === user?.uid);
   const mySchedule = currentUserData?.schedule;
 
