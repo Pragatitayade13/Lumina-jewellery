@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: [
         'use-sync-external-store/shim/with-selector',
-        'use-sync-external-store/shim/with-selector.js'
+        'use-sync-external-store/shim/with-selector.js',
+        'scheduler'
       ],
       exclude: ['lucide-react', 'three', '@react-three/fiber', '@react-three/drei', 'framer-motion', 'gsap']
     },
