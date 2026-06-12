@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
       include: [
         'use-sync-external-store/shim/with-selector',
         'use-sync-external-store/shim/with-selector.js',
-        'scheduler'
+        'scheduler',
+        'stats.js'
       ],
       exclude: ['lucide-react', 'three', '@react-three/fiber', '@react-three/drei', 'framer-motion', 'gsap']
     },
