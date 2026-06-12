@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Package, Heart, LifeBuoy, 
-  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck, Store
+  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck, Store, Menu
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
@@ -38,6 +39,7 @@ const pageTitles = {
 };
 
 export default function CustomerLayout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, setUser, theme, toggleTheme, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
@@ -99,7 +101,7 @@ export default function CustomerLayout({ children }) {
   return (
     <div className="customer-wrapper">
       {/* ─── Sidebar ─── */}
-      <aside className="customer-sidebar">
+      <aside className={`customer-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">
             {landingPageData?.branding?.logoUrl ? (
@@ -125,6 +127,7 @@ export default function CustomerLayout({ children }) {
                 to={item.path}
                 end={item.exact}
                 className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                onClick={() => setSidebarOpen(false)}
               >
                 <span className="nav-icon">{item.icon}</span>
                 <span style={{ flex: 1 }}>{item.label}</span>
@@ -136,7 +139,10 @@ export default function CustomerLayout({ children }) {
         <div className="sidebar-footer">
           {/* Active store context pill */}
           <div
-            onClick={() => setIsCustomerStorePromptOpen(true)}
+            onClick={() => {
+              setSidebarOpen(false);
+              setIsCustomerStorePromptOpen(true);
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -160,7 +166,14 @@ export default function CustomerLayout({ children }) {
             <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Change</span>
           </div>
           <div className="sidebar-customer-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div 
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate('/account/profile');
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer' }}
+              title="View Profile Settings"
+            >
               <div className="customer-avatar">{user?.name ? user.name.substring(0, 2).toUpperCase() : 'CU'}</div>
               <div>
                 <div className="customer-name">{user?.name || 'Customer'}</div>
@@ -173,12 +186,35 @@ export default function CustomerLayout({ children }) {
         </div>
       </aside>
 
+      {/* Sidebar Overlay on mobile */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ─── Main Content Area ─── */}
       <div className="customer-main-area">
         <header className="customer-topbar">
-          <div>
-            <div className="topbar-page-title">{pageTitle}</div>
-            <div className="topbar-breadcrumb">Home › Account › {pageTitle}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button 
+              className="show-on-mobile" 
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'none',
+                padding: 0,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Menu size={20} />
+            </button>
+            <div>
+              <div className="topbar-page-title">{pageTitle}</div>
+              <div className="topbar-breadcrumb">Home › Account › {pageTitle}</div>
+            </div>
           </div>
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {rates && rates.gold24k && (

@@ -280,3 +280,84 @@
 .badge-warning { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.3); }
 .badge-info { background: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); }
 .badge-danger { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .customer-wrapper {
+    position: relative;
+  }
+
+  .customer-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .customer-sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Overlay backdrop when sidebar is open */
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 998;
+    animation: fadeInSidebarOverlay 0.2s ease-out;
+  }
+
+  @keyframes fadeInSidebarOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .customer-topbar {
+    padding: 0 1rem;
+  }
+
+  .topbar-actions {
+    display: none !important; /* Hide secondary topbar actions on mobile to prevent overflow */
+  }
+
+  .customer-main {
+    padding: 1rem;
+  }
+
+  .show-on-mobile {
+    display: flex !important;
+  }
+
+  /* Responsive profile tabs */
+  .customer-tabs {
+    flex-wrap: wrap;
+    gap: 0.75rem !important;
+  }
+
+  .customer-tabs .tab-btn {
+    font-size: 0.9rem !important;
+    padding-bottom: 0.35rem !important;
+  }
+
+  /* Stat grid and boxes on mobile */
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Modal boxes on mobile */
+  .modal-box {
+    margin: 1rem;
+    padding: 1.5rem !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
