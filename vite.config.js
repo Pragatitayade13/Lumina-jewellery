@@ -10,13 +10,20 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     optimizeDeps: {
+      include: [
+        'use-sync-external-store/shim/with-selector',
+        'use-sync-external-store/shim/with-selector.js'
+      ],
       exclude: ['lucide-react', 'three', '@react-three/fiber', '@react-three/drei', 'framer-motion', 'gsap']
     },
-    resolve: process.env.VITEST ? {
+    resolve: {
       alias: {
-        'lucide-react': path.resolve('src/mockLucide.js')
+        ...(process.env.VITEST ? {
+          'lucide-react': path.resolve('src/mockLucide.js')
+        } : {}),
+        'use-sync-external-store/shim/with-selector.js': 'use-sync-external-store/shim/with-selector'
       }
-    } : {},
+    },
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (req.url && req.url.includes('/api/goldapi')) {
