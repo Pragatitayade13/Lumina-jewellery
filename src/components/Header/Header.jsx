@@ -272,15 +272,36 @@ export default function Header({ onCartClick, onWishlistClick }) {
                 {cartCount > 0 && <span className="count">{cartCount}</span>}
               </button>
 
-              <button
-                className="login-btn hide-on-mobile"
-                id="login-btn"
-                onClick={() => setIsAuthOpen(true)}
-                aria-label={t('nav.login')}
-              >
-                <User size={14} />
-                <span>{t('nav.login')}</span>
-              </button>
+              {user ? (
+                <button
+                  className="login-btn hide-on-mobile"
+                  id="account-btn"
+                  onClick={() => {
+                    if (user.role === 'customer' || !user.role) navigate('/account');
+                    else if (user.role === 'delivery') navigate('/delivery');
+                    else navigate('/admin');
+                  }}
+                  aria-label="Account"
+                  style={{
+                    background: 'rgba(201,168,76,0.1)',
+                    border: '1px solid rgba(201,168,76,0.35)',
+                    color: 'var(--gold)'
+                  }}
+                >
+                  <User size={14} />
+                  <span>{user.name || 'Account'}</span>
+                </button>
+              ) : (
+                <button
+                  className="login-btn hide-on-mobile"
+                  id="login-btn"
+                  onClick={() => setIsAuthOpen(true)}
+                  aria-label={t('nav.login')}
+                >
+                  <User size={14} />
+                  <span>{t('nav.login')}</span>
+                </button>
+              )}
 
               <button
                 className={`hamburger${menuOpen ? ' open' : ''}`}
@@ -318,9 +339,20 @@ export default function Header({ onCartClick, onWishlistClick }) {
           </button>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => { setMenuOpen(false); setIsAuthOpen(true); }}>
-            <User size={16} /> Login / Register
-          </button>
+          {user ? (
+            <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => {
+              setMenuOpen(false);
+              if (user.role === 'customer' || !user.role) navigate('/account');
+              else if (user.role === 'delivery') navigate('/delivery');
+              else navigate('/admin');
+            }}>
+              <User size={16} /> {user.name || 'My Account'}
+            </button>
+          ) : (
+            <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={() => { setMenuOpen(false); setIsAuthOpen(true); }}>
+              <User size={16} /> Login / Register
+            </button>
+          )}
         </div>
       </div>
     </>

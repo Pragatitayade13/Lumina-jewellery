@@ -5,7 +5,7 @@ import { useAudit } from '../../hooks/useAudit';
 import { X, User, Shield, Briefcase, Calculator, Truck, ShieldAlert, ArrowLeft, ClipboardList, Diamond, Key, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../../config/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import bgImage from '../../assets/login_bg.png';
 import './AuthModal.css';
@@ -280,6 +280,26 @@ export default function AuthModal() {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      alert("Please enter your email address in the email field first.");
+      return;
+    }
+
+    if (auth) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert(`Password reset link has been sent to ${email}!`);
+      } catch (err) {
+        console.error("Forgot password error:", err);
+        alert("Error sending password reset email: " + err.message);
+      }
+    } else {
+      alert(`[Mock mode] Password reset link sent to ${email}!`);
+    }
+  };
+
   const loginOptions = [
     {
       id: 'customer',
@@ -538,7 +558,7 @@ export default function AuthModal() {
                      <span className="checkmark"></span>
                      Remember Me
                    </label>
-                   <a href="#" className="glass-forgot-link">Forgot Password?</a>
+                   <a href="#" className="glass-forgot-link" onClick={handleForgotPassword}>Forgot Password?</a>
                  </div>
                )}
 

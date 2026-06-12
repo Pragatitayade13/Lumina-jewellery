@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Store, MapPin, ArrowRight, Globe, X, CheckCircle, Search } from 'lucide-react';
 import './CustomerStoreSelector.css';
@@ -8,11 +8,31 @@ export default function CustomerStoreSelector() {
     isCustomerStorePromptOpen,
     setIsCustomerStorePromptOpen,
     allPublicStores,
+    setAllPublicStores,
     customerSelectedStore,
     setCustomerSelectedStore,
   } = useApp();
 
   const [search, setSearch] = useState('');
+
+  // Fetch active stores if empty when selector modal is opened
+  useEffect(() => {
+    if (isCustomerStorePromptOpen && allPublicStores.length === 0) {
+      import('../../config/firebase').then(async ({ db }) => {
+        if (!db) return;
+        try {
+          const { query, collection, where, getDocs } = await import('firebase/firestore');
+          const storesQ = query(collection(db, 'stores'), where('status', '==', 'active'));
+          const snapshot = await getDocs(storesQ);
+          const stores = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('[CustomerStoreSelector] Lazy-loaded public stores:', stores.length);
+          setAllPublicStores(stores);
+        } catch (err) {
+          console.error('[CustomerStoreSelector] Lazy loading stores failed:', err);
+        }
+      }).catch(() => {});
+    }
+  }, [isCustomerStorePromptOpen, allPublicStores.length, setAllPublicStores]);
 
   if (!isCustomerStorePromptOpen) return null;
 

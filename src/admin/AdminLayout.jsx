@@ -3,7 +3,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Gem, Package, UsersRound, 
   Store, CreditCard, BarChart3, BarChart2, FileText, Shield, 
-  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin, User, ChevronUp, ClipboardCheck
+  Settings, Bell, Zap, Globe, Diamond, Mail, Calendar, RefreshCcw, LogOut, LifeBuoy, Receipt, Coins, Map, Sun, Moon, Menu, CheckCircle, MapPin, User, ChevronUp, ClipboardCheck,
+  Truck, RotateCcw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
@@ -18,12 +19,12 @@ const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['superadmin', 'admin', 'staff', 'finance', 'manager'] },
   
   { section: 'Logistics', roles: ['superadmin', 'delivery'] },
-  { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <LayoutDashboard size={18} />, roles: ['superadmin', 'admin', 'delivery'] },
+  { path: '/admin/delivery?tab=dashboard', label: 'Logistics Dashboard', icon: <Truck size={18} />, roles: ['superadmin', 'admin', 'delivery'] },
   { path: '/admin/delivery?tab=assigned', label: 'Assigned Orders', icon: <Package size={18} />, roles: ['delivery'] },
   { path: '/admin/delivery?tab=pickups', label: 'Pickup Confirmation', icon: <CheckCircle size={18} />, roles: ['delivery'] },
   { path: '/admin/delivery?tab=status', label: 'Delivery Status Update', icon: <RefreshCcw size={18} />, roles: ['delivery'] },
   { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['delivery'] },
-  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'admin', 'finance', 'delivery'] },
+  { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RotateCcw size={18} />, roles: ['superadmin', 'admin', 'finance', 'delivery'] },
 
   { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager', 'admin'] },
@@ -87,7 +88,7 @@ const pageTitles = {
 };
 
 export default function AdminLayout({ children }) {
-  const { user, setUser, theme, toggleTheme, globalSearch, setGlobalSearch, setCurrentStore, currentStore, assignedStores } = useApp();
+  const { user, setUser, theme, toggleTheme, globalSearch, setGlobalSearch, setCurrentStore, currentStore, assignedStores, setIsStoreSelectionOpen } = useApp();
   const { systemSettingsData, landingPageData } = useCMS();
   const location = useLocation();
   const navigate = useNavigate();
@@ -101,6 +102,8 @@ export default function AdminLayout({ children }) {
   // Find the currently active store details
   const activeStoreObj = assignedStores?.find(s => s.id === currentStore);
   const activeStoreName = activeStoreObj?.name || activeStoreObj?.storeName || null;
+  const activeStoreCode = activeStoreObj?.code || null;
+  const activeStoreLocation = activeStoreObj?.address || null;
   
   const storeName = currentStore && currentStore !== 'GLOBAL' && currentStore !== 'NONE' && activeStoreName 
     ? activeStoreName 
@@ -384,7 +387,33 @@ export default function AdminLayout({ children }) {
           </button>
           <div>
             <div className="topbar-page-title">{pageTitle}</div>
-            <div className="topbar-breadcrumb">{storeName} {portalName} › {pageTitle}</div>
+            <div className="topbar-breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span>{storeName}</span>
+              {activeStoreCode && <span style={{ opacity: 0.75 }}>({activeStoreCode})</span>}
+              {activeStoreLocation && <span style={{ opacity: 0.6 }}>· {activeStoreLocation}</span>}
+              <span style={{ opacity: 0.5 }}>| {portalName} › {pageTitle}</span>
+              {assignedStores && assignedStores.length > 1 && (
+                <button 
+                  onClick={() => setIsStoreSelectionOpen(true)}
+                  style={{
+                    marginLeft: '8px',
+                    padding: '2px 8px',
+                    fontSize: '0.7rem',
+                    border: '1px solid var(--gold)',
+                    borderRadius: '4px',
+                    background: 'rgba(201, 168, 76, 0.1)',
+                    color: 'var(--gold)',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = 'var(--gold)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'rgba(201, 168, 76, 0.1)'}
+                >
+                  Switch Store
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

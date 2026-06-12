@@ -8,6 +8,7 @@ import { useCustomers } from '../../hooks/useCustomers';
 import { useMessages } from '../../hooks/useMessages';
 import { useStores } from '../../hooks/useStores';
 import { useAudit } from '../../hooks/useAudit';
+import { useScrollLock } from '../../hooks/useScrollLock';
 
 export default function StaffManagement() {
   const { user, showToast, globalSearch, currentStore } = useApp();
@@ -111,6 +112,8 @@ export default function StaffManagement() {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', assignee: '', deadline: '' });
 
+  useScrollLock(isAddUserModalOpen || !!editingUser || newTaskOpen);
+
   // Chat State
   const [selectedChatUser, setSelectedChatUser] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
@@ -136,13 +139,13 @@ export default function StaffManagement() {
       await updateUserPermissions(editingUser.id, {
         name: editingUser.name,
         role: editingUser.role,
-        department: editingUser.department
+        department: editingUser.role === 'admin' ? '' : editingUser.department
       });
       await updateUserStores(editingUser.id, editingUserStores);
       
       await logAudit('USER_ROLE_CHANGED', 'Users', editingUser.id, null, {
         role: editingUser.role,
-        department: editingUser.department,
+        department: editingUser.role === 'admin' ? '' : editingUser.department,
         storeIds: editingUserStores
       });
 
@@ -193,7 +196,7 @@ export default function StaffManagement() {
         email: newUser.email,
         phone: newUser.phone || 'N/A',
         role: newUser.role,
-        department: newUser.department,
+        department: newUser.role === 'admin' ? '' : newUser.department,
         status: 'active',
         storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
         createdAt: serverTimestamp()
@@ -799,7 +802,7 @@ export default function StaffManagement() {
                   <label className="form-label">Password <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.78rem' }}>(leave blank to auto-generate)</span></label>
                   <input type="text" className="form-input" placeholder="Min. 6 characters" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
                 </div>
-                <div className="form-row mb-1">
+                <div className="form-row mb-1" style={newUser.role === 'admin' ? { gridTemplateColumns: '1fr' } : {}}>
                   <div className="form-group">
                     <label className="form-label">Role</label>
                     <select className="form-input" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
@@ -810,15 +813,17 @@ export default function StaffManagement() {
                       <option value="delivery">Delivery</option>
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select className="form-input" value={newUser.department} onChange={e => setNewUser({...newUser, department: e.target.value})}>
-                      <option value="Sales">Sales</option>
-                      <option value="Customer Support">Customer Support</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Delivery Partner">Delivery Partner</option>
-                    </select>
-                  </div>
+                  {newUser.role !== 'admin' && (
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <select className="form-input" value={newUser.department} onChange={e => setNewUser({...newUser, department: e.target.value})}>
+                        <option value="Sales">Sales</option>
+                        <option value="Customer Support">Customer Support</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Delivery Partner">Delivery Partner</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group mb-1">
                   <label className="form-label">Store Assignment</label>
@@ -863,7 +868,7 @@ export default function StaffManagement() {
                   <label className="form-label">Full Name</label>
                   <input type="text" className="form-input" required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} disabled={!canManageStaff} />
                 </div>
-                <div className="form-row mb-1">
+                <div className="form-row mb-1" style={editingUser.role === 'admin' ? { gridTemplateColumns: '1fr' } : {}}>
                   <div className="form-group">
                     <label className="form-label">Role</label>
                     <select className="form-input" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})} disabled={!canManageStaff || editingUser.role === 'superadmin'}>
@@ -875,16 +880,18 @@ export default function StaffManagement() {
                       <option value="delivery">Delivery</option>
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Department</label>
-                    <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})} disabled={!canManageStaff}>
-                      <option value="" disabled>Select Department</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Customer Support">Customer Support</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Delivery Partner">Delivery Partner</option>
-                    </select>
-                  </div>
+                  {editingUser.role !== 'admin' && (
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})} disabled={!canManageStaff}>
+                        <option value="" disabled>Select Department</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Customer Support">Customer Support</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Delivery Partner">Delivery Partner</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group mb-1">
                   <label className="form-label">Store Assignment</label>

@@ -3,23 +3,44 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useOrders } from '../useOrders';
 
 // Mock dependencies
-vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(),
-  addDoc: vi.fn().mockResolvedValue({ id: 'new-order-id' }),
-  doc: vi.fn(),
-  updateDoc: vi.fn().mockResolvedValue(),
-  serverTimestamp: vi.fn(),
-  query: vi.fn(),
-  limit: vi.fn(),
-  startAfter: vi.fn(),
-  orderBy: vi.fn(),
-  getDocs: vi.fn().mockResolvedValue({
-    empty: false,
-    docs: [
-      { id: '1', data: () => ({ id: 'ORD-001', amount: 50000, status: 'pending' }) }
-    ]
+const mockLogAudit = vi.fn();
+vi.mock('../useAudit', () => ({
+  useAudit: () => ({
+    logAudit: mockLogAudit
   })
 }));
+
+vi.mock('firebase/firestore', () => {
+  const mockDoc = { id: 'new-order-id' };
+  return {
+    collection: vi.fn(() => ({})),
+    addDoc: vi.fn().mockResolvedValue(mockDoc),
+    doc: vi.fn(() => ({ id: 'new-order-id' })),
+    updateDoc: vi.fn().mockResolvedValue(),
+    serverTimestamp: vi.fn(() => 'mock-timestamp'),
+    query: vi.fn(),
+    limit: vi.fn(),
+    startAfter: vi.fn(),
+    orderBy: vi.fn(),
+    where: vi.fn(),
+    runTransaction: vi.fn(async (db, callback) => {
+      return callback({
+        get: vi.fn().mockResolvedValue({
+          exists: () => true,
+          data: () => ({ stock: 10, storeIds: [] })
+        }),
+        update: vi.fn(),
+        set: vi.fn()
+      });
+    }),
+    getDocs: vi.fn().mockResolvedValue({
+      empty: false,
+      docs: [
+        { id: '1', data: () => ({ id: 'ORD-001', amount: 50000, status: 'pending' }) }
+      ]
+    })
+  };
+});
 
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn().mockReturnValue({ currentUser: { uid: 'test-user' } })
@@ -59,7 +80,7 @@ describe('useOrders Hook (Orders Flow)', () => {
   });
 
   it('should create an order and log audit', async () => {
-    const { result } = renderHook(() => useOrders());
+    const { result } = renderHook(() => useOrders('eoNjBBBlw1edDfPWufPD'));
     
     let newId;
     await act(async () => {
@@ -67,12 +88,11 @@ describe('useOrders Hook (Orders Flow)', () => {
     });
 
     expect(newId).toBe('new-order-id');
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('CREATE_ORDER', 'new-order-id', expect.any(Object), expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('CREATE_ORDER', 'Orders', 'new-order-id', null, expect.any(Object));
   });
 
   it('should update order status and log audit', async () => {
-    const { result } = renderHook(() => useOrders());
+    const { result } = renderHook(() => useOrders('eoNjBBBlw1edDfPWufPD'));
     
     await act(async () => {
       // Simulate fetch
@@ -83,12 +103,11 @@ describe('useOrders Hook (Orders Flow)', () => {
       await result.current.updateOrderStatus('ORD-001', 'shipped');
     });
 
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('UPDATE_ORDER_STATUS', '1', expect.any(Object), expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('UPDATE_ORDER_STATUS', 'Orders', '1', expect.any(String), 'shipped');
   });
 
   it('should assign order partner and log audit', async () => {
-    const { result } = renderHook(() => useOrders());
+    const { result } = renderHook(() => useOrders('eoNjBBBlw1edDfPWufPD'));
     
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -98,7 +117,6 @@ describe('useOrders Hook (Orders Flow)', () => {
       await result.current.assignOrderToPartner('ORD-001', 'DEL-123', 'FastDelivery');
     });
 
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('ASSIGN_ORDER_PARTNER', '1', expect.any(Object), expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('ASSIGN_ORDER_PARTNER', 'Orders', '1', null, expect.any(Object));
   });
 });

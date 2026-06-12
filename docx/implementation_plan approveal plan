@@ -1,0 +1,46 @@
+# Phase 6: Approval Workflow Engine
+
+This plan details the implementation of an Approval Workflow Engine that restricts high-risk operations from executing immediately, forcing them through a review cycle (Pending -> Approved -> Rejected).
+
+## User Review Required
+> [!IMPORTANT]
+> The threshold for a "High Discount" must be defined. For this implementation, I propose intercepting any price change where the `price` is less than 80% of the `mrp` (a 20%+ discount) if performed by a staff member. Please let me know if you prefer a different threshold.
+
+## Proposed Architecture
+
+### 1. The Approvals Collection
+We will utilize a new Firebase collection named `approvals`. 
+- **Schema**: `id`, `type`, `status` (pending, approved, rejected), `storeId`, `requestedBy` (userId), `requestedRole`, `payload` (the data to execute), `timestamp`, `reviewedBy`, `comments`.
+
+### 2. The Core Engine
+#### [NEW] [useApprovals.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useApprovals.js)
+- A new hook that provides `submitApprovalRequest(type, payload)` and `processApproval(id, status)`.
+- It will also export a real-time list of `pendingApprovals` for the active store so managers can review them.
+
+### 3. Intercepting High-Risk Actions
+We will update our existing hooks to check the active user's role. If the user is `staff`, the action will be redirected to `submitApprovalRequest` instead of executing directly.
+
+#### [MODIFY] [useProducts.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useProducts.js)
+- **Product Deletion**: Always requires approval for staff.
+- **High Discounts**: Check if `updateData.price` represents a significant discount compared to `mrp`. If so, require approval.
+
+#### [MODIFY] [useInventory.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useInventory.js)
+- **Inventory Adjustments**: Redirect `updateStock` calls to approvals if initiated by staff.
+- **Stock Transfers**: Redirect `addStockTransfer` calls to approvals.
+
+#### [MODIFY] [useFinance.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useFinance.js)
+- **Finance Adjustments**: Redirect `addTransaction` and `addExpense`.
+- **Vendor Payments**: Redirect `addVendorPayment`.
+
+#### Vendor Creation
+- We will locate the Vendor creation logic and intercept it similarly.
+
+### 4. Manager/Admin Review Interface
+#### [NEW] [ApprovalDashboard.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/admin/pages/ApprovalDashboard.jsx) or modifying an existing view.
+- We need a place for Managers to review these pending requests. I will add an "Approvals" tab to the dashboard or integrate it into an existing page (e.g., a unified Notifications/Approvals drop-down, or an Approvals page).
+
+## Verification Plan
+1. Log in as a `staff` member and attempt to delete a product.
+2. Verify that the product is NOT deleted, but a new `Approval Request` is created.
+3. Log in as a `manager` and approve the request.
+4. Verify that the product is then actually deleted.

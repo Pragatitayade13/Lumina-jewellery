@@ -19,7 +19,7 @@ export default function WishlistPage() {
           <Heart size={48} color="var(--border-color)" style={{ marginBottom: '1rem' }} />
           <h3 style={{ marginBottom: '0.5rem' }}>Your wishlist is empty</h3>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Save items you love to revisit them later.</p>
-          <button className="btn btn-gold" onClick={() => navigate('/')}>Explore Collections</button>
+          <button className="btn btn-gold" onClick={() => navigate('/collections')}>Explore Collections</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>

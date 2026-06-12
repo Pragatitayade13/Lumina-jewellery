@@ -1,0 +1,198 @@
+# Store Data Isolation Implementation Plan
+
+This document details the architecture design and implementation strategy to enforce complete data isolation by `storeId` across all modules of the Jewellery Management ERP and Customer Portal.
+
+---
+
+## 1. Architecture Audit
+
+A complete audit of our current React hooks, Firestore collections, and security rules shows where `storeId` needs to be enforced:
+
+### Firestore Collections & Key Fields
+
+| Collection | Current State | Target Store Field | Scope of Filter / Security Policy |
+| :--- | :--- | :--- | :--- |
+| `products` | Stamped with `storeId` | `storeId` | Customers see only activeStore products; Store Admin/Staff see only their store's products; Super Admin sees all. |
+| `inventory` | Composite key (using SKU as ID) | `storeId` | Must split inventory records per store. Re-map document IDs to `storeId_sku` or query using composite fields `where('storeId', '==', activeStoreId)`. |
+| `orders` | Stamped with `storeId` | `storeId` | Stamped automatically during checkout. Store Admin/Staff/Delivery/Manager see only orders matching their assigned storeId. |
+| `shipments` | Stamped with `storeId` | `storeId` | Enforces logistics isolation. Filter by `storeId` for store operations and delivery partners. |
+| `tracking_history` | Linked by `shipmentId` | `storeId` (denormalized) | Inherits isolation from `shipments`. Filter/read checked against `shipment`'s storeId. |
+| `users` | Contains profile & roles | N/A (Linked via `userStores`) | Global collection. Staff/Managers/Admins get their store permissions from the `userStores` helper collection. |
+| `userStores` | User-to-store mappings | `storeId` | Links admin/staff/delivery/manager `userId` to their allowed `storeId`s. |
+| `tax_transactions` | Global | `storeId` | Financial transactions must be partitioned per store. |
+| `tax_audit_logs` | Global | `storeId` | Partitioned per store. |
+| `inventory_transactions` | Global | `storeId` | Stock adjustments, POs, transfers must contain store references. |
+
+### Hook Audits (src/hooks/)
+
+1. **`useInventory.js`**:
+   - Currently uses `sku` as the document ID directly (e.g. `doc(db, 'inventory', item.sku)`). This prevents Pune and Khandelwal stores from having different stock levels for the same SKU.
+   - **Fix Required**: Migrate from using raw `sku` as the document ID to `storeId_sku` (composite key) or use auto-generated IDs with query filters. The composite ID `storeId_sku` is preferred to maintain easy lookup by SKU + store.
+2. **`useOrders.js`**:
+   - Stamps `storeId` from `activeStoreId`, but `useLogistics` is instantiated without passing the store context.
+   - **Fix Required**: Pass `activeStoreId` down to `useLogistics()` inside `useOrders.js` to ensure generated shipments are correctly linked to the active store.
+3. **`useLogistics.js`**:
+   - `createShipment` defaults to `'DEFAULT'` if `activeStoreId` is missing.
+   - **Fix Required**: Require `storeId` on shipment creation and enforce store filtering on queries.
+4. **`useCustomers.js`**:
+   - Currently, user accounts are global.
+   - **Fix Required**: Customers must be assigned to their first-contact store on signup, or filtered in store dashboards based on customers who have placed orders at that store.
+5. **`useTaxes.js`**:
+   - Needs `activeStoreId` filtering for all tax transactions and audit logs.
+
+---
+
+## 2. Database Migration Plan
+
+To avoid breaking existing data and support backward compatibility, we will execute a database migration:
+
+### Phase 1: Backfill & Migration Script
+Create a node utility script `scripts/migrate-store-ids.js` to perform the following:
+1. **Products Migration**:
+   - Assign a default store ID (e.g. `khandelwal_store`) to all products currently lacking a `storeId`.
+2. **Orders Migration**:
+   - Scan all legacy `orders` and `shipments`. Backfill `storeId` using the assigned store of the customer or a default store ID.
+3. **Inventory Separation**:
+   - Since `inventory` currently stores stock globally with the document ID as `sku`, we will read all current inventory documents, map them to our list of active stores, and write new documents under the format `{storeId}_{sku}`.
+   - Example: Document `RING_A_GOLD` becomes `pune_store_RING_A_GOLD` and `khandelwal_store_RING_A_GOLD`.
+
+### Phase 2: Double-Write Window
+During development/staging, the frontend hooks will read both legacy keys (as fallbacks) and new store-isolated composite keys, ensuring seamless service.
+
+---
+
+## 3. Store Isolation Strategy
+
+We will achieve complete data isolation through:
+1. **Frontend Context Enforcements**:
+   - `AppContext` provides `currentStore` (admins/staff) and `customerSelectedStore` (customers).
+   - All hook queries automatically apply the `where('storeId', '==', storeId)` filter.
+2. **Firestore Security Rules Enforcements**:
+   - Update `firestore.rules` to prevent cross-store reads/writes.
+   - A user's role and assigned stores (retrieved from `userStores` collection or custom claims) are matched against the document's `storeId`.
+
+### Updated Rules Design:
+```javascript
+// Rule helper to check if a user is assigned to a store
+function isAssignedToStore(storeId) {
+  return isAuthenticated() && (
+    isSuperAdmin() || 
+    exists(/databases/$(database)/documents/userStores/$(request.auth.uid + '_' + storeId))
+  );
+}
+
+match /orders/{orderId} {
+  allow read: if isAuthenticated() && (
+    resource.data.userId == request.auth.uid || 
+    isAssignedToStore(resource.data.storeId)
+  );
+  allow write: if isAuthenticated() && isAssignedToStore(request.resource.data.storeId);
+}
+```
+
+---
+
+## 4. API Updates
+
+We must update internal endpoints (or service methods simulating backend functions) to support store parameters:
+
+- **Order Creation API (`createOrder`)**:
+  - Validates that the cart does not contain mixed store items.
+  - Automatically fetches the active customer store context and stamps `storeId` before committing.
+- **Logistics API (`createShipment`, `updateStatus`)**:
+  - Verifies the delivery partner is assigned to the store corresponding to the shipment's `storeId`.
+- **Finance API**:
+  - Enforces `storeId` constraints on tax calculation, revenue logging, and expense tracking.
+
+---
+
+## 5. Dashboard Updates
+
+We will apply strict `storeId` filtering to all Role Dashboards:
+
+- **Store Admin Dashboard**:
+  - Filter `orders`, `inventory`, `users/customers`, and `finance` collections using `activeStoreId`.
+  - Prevent displaying global statistics. All cards (Revenue, Orders, Low Stock) must reflect store-specific computations.
+- **Manager / Staff Dashboard**:
+  - Read `activeStoreId` from local state (`currentStore`).
+  - Restrict access to staff directories and scheduling to only display employees assigned to the same `storeId`.
+- **Delivery Partner Dashboard**:
+  - Filter pickup tasks and active transits using both `assignedTo == deliveryPartnerId` and `storeId == activeStoreId`.
+- **Super Admin Dashboard**:
+  - Retains the global selector option (`GLOBAL` or `null`).
+  - Provides a consolidated multi-store reporting interface.
+
+---
+
+## 6. Inventory Separation Strategy
+
+To support separate stock counts per store (e.g., Ring A has 10 pcs in Khandelwal but 5 pcs in Pune):
+
+1. **Composite Document IDs**:
+   - Document ID = `{storeId}_{sku}`.
+2. **Schema Definition**:
+   ```typescript
+   interface StoreInventoryItem {
+     id: string; // "pune_store_RING_A"
+     sku: string; // "RING_A"
+     storeId: string; // "pune_store"
+     stock: number; // 5
+     minStock: number;
+     price: number;
+     mrp: number;
+     lastUpdated: Timestamp;
+   }
+   ```
+3. **Trigger Mechanics**:
+   - When a sale occurs at `khandelwal_store`, the order processing engine decrements stock only for document `khandelwal_store_RING_A`.
+   - Pune and Mumbai store records remain untouched.
+
+---
+
+## 7. Finance Separation Strategy
+
+Finance items (revenue, expenses, taxes) will be partitioned using store scopes:
+
+- **Revenue Logging**:
+  - Every order's revenue is credited to its stamped `storeId`.
+- **Expense Logging**:
+  - Expenses (rent, local salaries, electricity) will be saved under an `expenses` collection containing a `storeId` field.
+- **Profit and Loss Reporting**:
+  - The finance page will fetch calculations based on `query(collection(db, 'expenses'), where('storeId', '==', activeStoreId))` and order revenue.
+- **Tax Separation**:
+  - `tax_transactions` will be query-filtered by `activeStoreId` so local store tax audits remain decoupled.
+
+---
+
+## 8. Logistics & Delivery Separation Strategy
+
+- **Shipments**:
+  - Shipments are tagged with `storeId`.
+  - Store staff only view shipments belonging to their active store.
+- **Delivery Partner Assignment**:
+  - Delivery partners are assigned to specific stores.
+  - The delivery app filters available tasks by the partner's assigned `storeId` matching the shipment's `storeId`.
+- **Inter-Store Transfers**:
+  - Introduce `stock_transfers` schema supporting `fromStoreId` and `toStoreId`.
+  - Decrements source store stock and increments target store stock upon transfer completion.
+
+---
+
+## 9. Testing Checklist
+
+- [ ] **Customer Flow**: Select Khandelwal Store -> Catalog displays only Khandelwal products -> Add product -> Verify cart shows Khandelwal tag.
+- [ ] **Cart Store Lock**: Add Khandelwal product -> Attempt to switch to Pune store -> Verify prompt warns and blocks mixed cart.
+- [ ] **Order Flow**: Complete checkout -> Verify order doc in Firestore contains `storeId: "khandelwal_store"`.
+- [ ] **Store Admin Views**: Log in as Khandelwal Admin -> Verify dashboard, orders, inventory, and finance display Khandelwal data only. Verify Pune store dashboard has 0 exposure to Khandelwal data.
+- [ ] **Inventory Decrement**: Ring A has 10 pcs at Khandelwal and 5 pcs at Pune. Place Khandelwal order for Ring A. Verify Khandelwal stock drops to 9; Pune stock remains 5.
+- [ ] **Delivery Partner View**: Log in as Pune Delivery Partner -> Verify no Khandelwal shipments are visible.
+- [ ] **Super Admin View**: Verify Super Admin can switch between stores and view global consolidated analytics.
+
+---
+
+## 10. Rollback Plan
+
+In case of data issues or critical bugs:
+1. **Fallback to Default Store**: If a record has no `storeId`, the system resolves it to a default central store ID rather than throwing an exception.
+2. **Revert Rules**: Maintain a copy of the previous permissive `firestore.rules` file to quickly restore global reads/writes if users report access issues.
+3. **Database Restoration**: Since all migration operations use writes to new composite keys (`{storeId}_{sku}`), original global records (using `sku` keys) will be kept intact during the double-write phase to ensure zero loss of historical data.

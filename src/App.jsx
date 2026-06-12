@@ -48,7 +48,7 @@ function Toast() {
 }
 
 function GlobalModals() {
-  const { isSupportOpen, setIsSupportOpen, vtoProduct, setVtoProduct } = useApp();
+  const { isSupportOpen, setIsSupportOpen, vtoProduct, setVtoProduct, isCartOpen, setIsCartOpen, isWishlistOpen, setIsWishlistOpen } = useApp();
   return (
     <>
       <CustomerStoreSelector />
@@ -57,14 +57,15 @@ function GlobalModals() {
       <Suspense fallback={null}>
         <VirtualTryOn isOpen={!!vtoProduct} onClose={() => setVtoProduct(null)} product={vtoProduct} />
       </Suspense>
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
     </>
   );
 }
 
 function StoreLayout() {
   useScrollReveal();
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const { isCartOpen, setIsCartOpen, isWishlistOpen, setIsWishlistOpen } = useApp();
   const { landingPageData, systemSettingsData } = useCMS();
 
   useEffect(() => {
@@ -83,8 +84,6 @@ function StoreLayout() {
       <Footer />
       <Toast />
       <AuthModal />
-      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
       <FloatingWhatsApp />
     </SmoothScroll>
   );

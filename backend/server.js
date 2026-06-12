@@ -243,6 +243,48 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
+// Dynamic serverless handler loader for nested API files (e.g. /api/payment/create-order)
+app.all('/api/:folder/:file', async (req, res) => {
+  const { folder, file } = req.params;
+  const path = require('path');
+  const fs = require('fs');
+
+  const apiFilePath = path.resolve(__dirname, '..', 'api', folder, `${file}.js`);
+
+  if (fs.existsSync(apiFilePath)) {
+    try {
+      const apiModule = await import(`file://${apiFilePath}`);
+      await apiModule.default(req, res);
+    } catch (err) {
+      console.error(`Error running serverless handler ${folder}/${file}:`, err);
+      res.status(500).json({ error: err.message });
+    }
+  } else {
+    res.status(404).json({ error: `Serverless API not found at ${folder}/${file}` });
+  }
+});
+
+// Dynamic serverless handler loader for root-level API files (e.g. /api/gold-rates)
+app.all('/api/:file', async (req, res) => {
+  const { file } = req.params;
+  const path = require('path');
+  const fs = require('fs');
+
+  const apiFilePath = path.resolve(__dirname, '..', 'api', `${file}.js`);
+
+  if (fs.existsSync(apiFilePath)) {
+    try {
+      const apiModule = await import(`file://${apiFilePath}`);
+      await apiModule.default(req, res);
+    } catch (err) {
+      console.error(`Error running serverless handler ${file}:`, err);
+      res.status(500).json({ error: err.message });
+    }
+  } else {
+    res.status(404).json({ error: `Serverless API not found at ${file}` });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useScrollLock } from '../../hooks/useScrollLock';
-import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Plus, Minus, Tag, MapPin, CreditCard, CheckCircle, ArrowLeft, ArrowRight, Truck } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useTaxes } from '../../hooks/useTaxes';
+import { useNavigate } from 'react-router-dom';
 import './CartModal.css';
 
 export default function CartModal({ isOpen, onClose }) {
   useScrollLock(isOpen);
   const { cart, removeFromCart, updateQuantity, clearCart, user, setIsAuthOpen, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
   const { createOrder } = useOrders(customerSelectedStore);
+  const navigate = useNavigate();
   
   // Resolve store data for UI display and payload
   const activeStoreObj = customerSelectedStore
@@ -484,6 +486,16 @@ export default function CartModal({ isOpen, onClose }) {
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
               Thank you for shopping with Lumina Jewels. Your order <strong style={{ color: 'var(--gold)' }}>{lastOrderId}</strong> has been confirmed.
             </p>
+            <button 
+              className="btn btn-gold" 
+              style={{ width: '100%', padding: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} 
+              onClick={() => {
+                onClose();
+                navigate('/account/orders');
+              }}
+            >
+              <Truck size={18} /> View & Track Order
+            </button>
             <button className="btn btn-outline" style={{ width: '100%', padding: '1rem' }} onClick={onClose}>
               Continue Shopping
             </button>

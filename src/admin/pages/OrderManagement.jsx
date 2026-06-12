@@ -4,15 +4,21 @@ import { useOrders } from '../../hooks/useOrders';
 import { useApp } from '../../context/AppContext';
 import { useCustomers } from '../../hooks/useCustomers';
 import { useStores } from '../../hooks/useStores';
+import { useScrollLock } from '../../hooks/useScrollLock';
+import { useLogistics } from '../../hooks/useLogistics';
+import { useCMS } from '../../context/CMSContext';
 
 const statusClass = { assigned: 'badge-new', in_transit: 'badge-shipped', out_for_delivery: 'badge-shipped', packed: 'badge-confirmed', delivered: 'badge-delivered', pending: 'badge-pending', cancelled: 'badge-cancelled', returned: 'badge-orange' };
 
 export default function OrderManagement() {
   const { user, showToast, globalSearch, currentStore } = useApp();
-  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const activeStoreId = currentStore || user?.storeId || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
   const { orders: liveOrders, loading, error, updateOrderStatus, assignOrderToPartner } = useOrders(activeStoreId);
   const { customers: allUsers } = useCustomers(activeStoreId);
-  const { userStores: allUserStores } = useStores();
+  const { stores: allStores, userStores: allUserStores } = useStores();
+  const { shipments } = useLogistics(null, activeStoreId);
+  const { landingPageData, systemSettingsData } = useCMS();
+  const shopName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || 'Lumina Jewels';
   
   const [dbDebugStats, setDbDebugStats] = useState({ total: 0, storeMatch: 0, ids: [] });
   
@@ -60,6 +66,8 @@ export default function OrderManagement() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [orderToAssign, setOrderToAssign] = useState(null);
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
+  
+  useScrollLock(!!selectedOrder || !!viewInvoice || assignModalOpen);
   
   const tabs = ['All Orders', 'Pending', 'Packed', 'Assigned', 'In Transit', 'Out For Delivery', 'Delivered', 'Returned', 'Cancelled'];
   
@@ -166,23 +174,27 @@ export default function OrderManagement() {
       let invoicesHtml = '';
       
       filteredAndSortedOrders.forEach((order, index) => {
+        const orderStore = allStores?.find(s => s.id === order.storeId);
+        const billStoreName = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
+        const billStoreAddress = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
+
         invoicesHtml += `
           <div class="invoice-container" style="${index < filteredAndSortedOrders.length - 1 ? 'page-break-after: always; margin-bottom: 4rem;' : ''}">
-            <div class="header">
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                  <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a;">LUMINA JEWELS</h2>
-                </div>
-                <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
-              </div>
-              <div style="text-align: right;">
-                <strong style="font-size: 1.2rem;">${order.id}</strong><br/>
-                <span style="font-size: 0.8rem; color: #555;">Date: ${order.date}</span>
-              </div>
-            </div>
+             <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
+               <div>
+                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                   </svg>
+                   <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a; margin: 0;">${billStoreName.toUpperCase()}</h2>
+                 </div>
+                 <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
+               </div>
+               <div style="text-align: right; min-width: 200px;">
+                 <strong style="font-size: 1.2rem; color: #1a1a1a; display: block; margin-bottom: 0.25rem;">${order.id}</strong>
+                 <span style="font-size: 0.8rem; color: #555;">Date: ${order.date}</span>
+               </div>
+             </div>
             
             <div class="details">
               <div>
@@ -213,42 +225,42 @@ export default function OrderManagement() {
                     <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                   </td>
                   <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹{((order.subtotal || order.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${((order.subtotal || order.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ${order.igst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                  <td style="text-align: right;">₹{(order.igst || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${(order.igst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${order.cgst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                  <td style="text-align: right;">₹{(order.cgst || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${(order.cgst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${order.sgst > 0 ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                  <td style="text-align: right;">₹{(order.sgst || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${(order.sgst || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 ${!order.igst && !order.cgst && !order.sgst ? `
                 <tr>
                   <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                  <td style="text-align: right;">₹{((order.gstAmt || order.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${((order.gstAmt || order.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 ` : ''}
                 <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                   <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹{(order.amount || 0).toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${(order.amount || 0).toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
             
             <div class="footer">
               This is a computer generated invoice and does not require a physical signature.<br/>
-              Lumina Jewels, Mumbai, Maharashtra 400001
+              Thank you for choosing ${billStoreName} · ${billStoreAddress}
             </div>
           </div>
         `;
@@ -292,6 +304,10 @@ export default function OrderManagement() {
   const handleDownloadPDF = () => {
     if (!viewInvoice) return;
     
+    const orderStore = allStores?.find(s => s.id === viewInvoice.storeId);
+    const billStoreName = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
+    const billStoreAddress = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
@@ -310,18 +326,18 @@ export default function OrderManagement() {
           </style>
         </head>
         <body>
-          <div class="header">
+          <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a;">LUMINA JEWELS</h2>
+                <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a; margin: 0;">${billStoreName.toUpperCase()}</h2>
               </div>
               <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
             </div>
-            <div style="text-align: right;">
-              <strong style="font-size: 1.2rem;">${viewInvoice.id}</strong><br/>
+            <div style="text-align: right; min-width: 200px;">
+              <strong style="font-size: 1.2rem; color: #1a1a1a; display: block; margin-bottom: 0.25rem;">${viewInvoice.id}</strong>
               <span style="font-size: 0.8rem; color: #555;">Date: ${viewInvoice.date}</span>
             </div>
           </div>
@@ -355,42 +371,42 @@ export default function OrderManagement() {
                   <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
                 </td>
                 <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹{((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
               </tr>
               ${viewInvoice.igst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                <td style="text-align: right;">₹{(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${viewInvoice.cgst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                <td style="text-align: right;">₹{(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${viewInvoice.sgst > 0 ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                <td style="text-align: right;">₹{(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               ${!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst ? `
               <tr>
                 <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                <td style="text-align: right;">₹{((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
               </tr>
               ` : ''}
               <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
                 <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹{(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
+                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
           
           <div class="footer">
             This is a computer generated invoice and does not require a physical signature.<br/>
-            Lumina Jewels, Mumbai, Maharashtra 400001
+            ${billStoreAddress}
           </div>
         </body>
       </html>
@@ -512,6 +528,16 @@ export default function OrderManagement() {
                     </td>
                     <td>
                       <span className={`badge ${statusClass[o.status]}`}>{o.status.toUpperCase()}</span>
+                      {(() => {
+                        const shipment = shipments?.find(s => s.orderId === o.id);
+                        if (!shipment) return null;
+                        return (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', background: 'var(--gold)' }}></span>
+                            <span>Delivery: <strong style={{ color: 'var(--text-primary)' }}>{shipment.status.replace(/_/g, ' ').toUpperCase()}</strong></span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -642,99 +668,105 @@ export default function OrderManagement() {
       )}
 
       {/* Invoice Modal */}
-      {viewInvoice && (
-        <div className="auth-modal-overlay" onClick={() => setViewInvoice(null)}>
-          <div className="auth-modal" style={{ maxWidth: '700px', padding: '3rem 2rem', background: '#fff', color: '#333', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", lineHeight: 1.6 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '1.5rem' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                  <h2 style={{ margin: 0, color: '#1a1a1a', fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', letterSpacing: '1px' }}>LUMINA JEWELS</h2>
+      {viewInvoice && (() => {
+        const orderStore = allStores?.find(s => s.id === viewInvoice.storeId);
+        const billStoreName = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
+        const billStoreAddress = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
+
+        return (
+          <div className="auth-modal-overlay" onClick={() => setViewInvoice(null)}>
+            <div className="auth-modal" style={{ maxWidth: '700px', padding: '3rem 2rem', background: '#fff', color: '#333', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", lineHeight: 1.6 }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', borderBottom: '2px solid #1a1a1a', paddingBottom: '1.5rem', width: '100%' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    <h2 style={{ margin: 0, color: '#1a1a1a', fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', letterSpacing: '1px' }}>{billStoreName.toUpperCase()}</h2>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#666', letterSpacing: '0.5px', paddingLeft: '2.25rem' }}>TAX INVOICE / BILL OF SUPPLY</div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#666', letterSpacing: '0.5px', paddingLeft: '2.25rem' }}>TAX INVOICE / BILL OF SUPPLY</div>
+                <div style={{ textAlign: 'right', minWidth: '200px' }}>
+                  <strong style={{ fontSize: '1.2rem', color: '#1a1a1a', display: 'block', marginBottom: '0.25rem' }}>{viewInvoice.id}</strong>
+                  <span style={{ fontSize: '0.85rem', color: '#555' }}>Date: {viewInvoice.date}</span>
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <strong style={{ fontSize: '1.2rem', color: '#1a1a1a' }}>{viewInvoice.id}</strong><br/>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>Date: {viewInvoice.date}</span>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem', fontSize: '0.9rem', background: '#fcfcfc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #f0f0f0' }}>
+                <div>
+                  <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Billed To:</strong><br/>
+                  <strong style={{ color: '#1a1a1a' }}>{viewInvoice.customer}</strong><br/>
+                  {viewInvoice.city}<br/>
+                  India
+                </div>
+                <div>
+                  <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Payment Status:</strong><br/>
+                  <strong style={{ color: '#1a1a1a' }}>{viewInvoice.paymentMethod}</strong><br/>
+                  {viewInvoice.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
+                </div>
               </div>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem', fontSize: '0.9rem', background: '#fcfcfc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #f0f0f0' }}>
-              <div>
-                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Billed To:</strong><br/>
-                <strong style={{ color: '#1a1a1a' }}>{viewInvoice.customer}</strong><br/>
-                {viewInvoice.city}<br/>
-                India
-              </div>
-              <div>
-                <strong style={{ textTransform: 'uppercase', color: '#888', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Payment Status:</strong><br/>
-                <strong style={{ color: '#1a1a1a' }}>{viewInvoice.paymentMethod}</strong><br/>
-                {viewInvoice.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
-              </div>
-            </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ background: '#f9f9f9', borderBottom: '2px solid #eee' }}>
-                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Item Description</th>
-                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Qty</th>
-                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Total (INR)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '1rem 0.5rem' }}>
-                    <strong style={{ color: '#1a1a1a', fontSize: '0.9rem' }}>{viewInvoice.product}</strong><br/>
-                    <span style={{ color: '#888', fontSize: '0.75rem' }}>HSN Code: 7113</span>
-                  </td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {viewInvoice.igst > 0 && (
-                  <tr>
-                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>IGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ background: '#f9f9f9', borderBottom: '2px solid #eee' }}>
+                    <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Item Description</th>
+                    <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Qty</th>
+                    <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: '#666', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' }}>Total (INR)</th>
                   </tr>
-                )}
-                {viewInvoice.cgst > 0 && (
-                  <tr>
-                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>CGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <strong style={{ color: '#1a1a1a', fontSize: '0.9rem' }}>{viewInvoice.product}</strong><br/>
+                      <span style={{ color: '#888', fontSize: '0.75rem' }}>HSN Code: 7113</span>
+                    </td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>1</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>₹{((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
                   </tr>
-                )}
-                {viewInvoice.sgst > 0 && (
-                  <tr>
-                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>SGST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
+                  {viewInvoice.igst > 0 && (
+                    <tr>
+                      <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>IGST</td>
+                      <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  )}
+                  {viewInvoice.cgst > 0 && (
+                    <tr>
+                      <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>CGST</td>
+                      <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  )}
+                  {viewInvoice.sgst > 0 && (
+                    <tr>
+                      <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>SGST</td>
+                      <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  )}
+                  {!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst && (
+                    <tr>
+                      <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST</td>
+                      <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  )}
+                  <tr style={{ background: '#fafafa', borderTop: '2px solid #1a1a1a' }}>
+                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total</td>
+                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
                   </tr>
-                )}
-                {!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst && (
-                  <tr>
-                    <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', color: '#666' }}>GST</td>
-                    <td style={{ padding: '1rem 0.5rem', textAlign: 'right' }}>₹{((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
-                  </tr>
-                )}
-                <tr style={{ background: '#fafafa', borderTop: '2px solid #1a1a1a' }}>
-                  <td colSpan="2" style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total</td>
-                  <td style={{ padding: '1rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '1.2rem', color: '#1a1a1a' }}>₹{(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
-                </tr>
-              </tbody>
-            </table>
-            
-            <div style={{ textAlign: 'center', color: '#888', fontSize: '0.8rem', marginTop: '4rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              This is a computer generated invoice and does not require a physical signature.<br/>
-              Lumina Jewels, Mumbai, Maharashtra 400001
-            </div>
+                </tbody>
+              </table>
+              
+              <div style={{ textAlign: 'center', color: '#888', fontSize: '0.8rem', marginTop: '4rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
+                This is a computer generated invoice and does not require a physical signature.<br/>
+                {billStoreAddress}
+              </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
-              <button className="btn btn-outline" style={{ borderColor: '#000', color: '#000' }} onClick={() => setViewInvoice(null)}>Close View</button>
-              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000' }} onClick={handleDownloadPDF}>Download PDF</button>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+                <button className="btn btn-outline" style={{ borderColor: '#000', color: '#000' }} onClick={() => setViewInvoice(null)}>Close View</button>
+                <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000' }} onClick={handleDownloadPDF}>Download PDF</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Assign Partner Modal */}
       {assignModalOpen && orderToAssign && (

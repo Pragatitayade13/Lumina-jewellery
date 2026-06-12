@@ -6,7 +6,7 @@ import { useApp } from '../../context/AppContext';
 
 export default function CustomerManagement() {
   const { user, showToast, globalSearch, currentStore } = useApp();
-  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const activeStoreId = currentStore || user?.storeId || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
   const { customers, loading, updateCustomerStatus } = useCustomers(activeStoreId);
   const { orders } = useOrders(activeStoreId);
   const [searchTerm, setSearchTerm] = useState('');

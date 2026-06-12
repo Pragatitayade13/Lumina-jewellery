@@ -132,7 +132,8 @@ service cloud.firestore {
     // Inventory
     match /inventory/{itemId} {
       allow read: if true;
-      allow write: if isStaffOrHigher() && isAssignedToStore(request.resource.data.storeId || resource.data.storeId);
+      allow write: if (isStaffOrHigher() && (isAssignedToStore(request.resource.data.storeId) || isAssignedToStore(resource.data.storeId))) ||
+                   (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt']));
     }
     
     // Inventory & Stock Auditing (Strictly Backend/Staff)
@@ -160,7 +161,8 @@ service cloud.firestore {
     // Finance & Accounting (Transactions, Expenses, Vendor Payments)
     match /transactions/{docId} {
       allow read: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
-      allow create: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(request.resource.data.storeId);
+      allow create: if ((isStaffOrHigher() || isFinance()) && isAssignedToStore(request.resource.data.storeId)) ||
+                    (isAuthenticated() && request.resource.data.type == 'revenue');
       allow update, delete: if (isStaffOrHigher() || isFinance()) && isAssignedToStore(resource.data.storeId);
     }
     match /expenses/{docId} {

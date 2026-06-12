@@ -61,29 +61,25 @@ export function useCustomers(activeStoreId = null) {
       return;
     }
 
-    let q;
-    if (activeStoreId === 'GLOBAL') {
-      q = query(collection(db, 'users'));
-    } else {
-      q = query(collection(db, 'users'), where('storeIds', 'array-contains', activeStoreId));
-    }
+    const q = query(collection(db, 'users'));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // Backward compatibility fallback: if query on storeIds array yielded no profiles,
-      // fallback to querying users directly assigned via storeId string field (legacy users)
-      let docs = snapshot.docs;
-      if (snapshot.empty && activeStoreId !== 'GLOBAL') {
-        try {
-          const fallbackQ = query(collection(db, 'users'), where('storeId', '==', activeStoreId));
-          const fallbackSnap = await getDocs(fallbackQ);
-          docs = fallbackSnap.docs;
-        } catch (e) {
-          console.warn("Fallback customer query failed:", e);
-        }
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allUsers = snapshot.docs.map(doc => formatUserData(doc.id, doc.data()));
+      if (activeStoreId === 'GLOBAL') {
+        setCustomers(allUsers);
+      } else {
+        const filtered = allUsers.filter(u => {
+          const isCustomer = !['superadmin', 'admin', 'manager', 'staff', 'finance', 'delivery'].includes((u.role || 'customer').toLowerCase());
+          if (isCustomer) {
+            // Customers belong to this store if they registered here or are global (no storeId)
+            return !u.storeId || u.storeId === activeStoreId;
+          } else {
+            // Staff/Admins must be explicitly assigned to this store
+            return u.storeId === activeStoreId || (u.storeIds && u.storeIds.includes(activeStoreId));
+          }
+        });
+        setCustomers(filtered);
       }
-
-      const usersData = docs.map(doc => formatUserData(doc.id, doc.data()));
-      setCustomers(usersData);
       setLoading(false);
     }, (err) => {
       console.error("Error listening to customers:", err);

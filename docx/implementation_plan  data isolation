@@ -1,0 +1,60 @@
+# Phase 1: Store Data Isolation Foundation
+
+Goal: Ensure every module only loads data belonging to the active store using a centralized utility, enforcing strict data isolation and fail-safe fallbacks.
+
+## Proposed Changes
+
+### 1. Create Centralized Utility
+#### [NEW] `src/utils/storeQuery.js`
+Create a centralized utility to handle store isolation for all Firestore queries. This prevents manual mistakes where `where("storeId", "==", activeStoreId)` is forgotten.
+- **Function**: `getStoreQuery(db, collectionName, activeStoreId, additionalConstraints = [])`
+- **Fallback Logic**: If `activeStoreId` is missing or `'NONE'`, it will log a warning and return a mock/empty query or throw a specific error that the hooks can catch to return an empty array without hitting Firestore. If `GLOBAL`, it queries all. Otherwise, it appends the `storeId` filter.
+
+### 2. Refactor Hooks
+All critical data hooks will be updated to use the new `getStoreQuery` utility. They will also be updated to immediately return an empty state if the store context is invalid (missing or `'NONE'`).
+
+#### [MODIFY] `src/hooks/useOrders.js`
+- Replace `query(collection(db, 'orders'), ...)` with `getStoreQuery(db, 'orders', activeStoreId)`.
+- Add early return if `!activeStoreId || activeStoreId === 'NONE'`.
+
+#### [MODIFY] `src/hooks/useInventory.js`
+- Replace `query(collection(db, 'inventory'), ...)` with `getStoreQuery(db, 'inventory', activeStoreId)`.
+- Apply to `purchase_orders` and `stock_transfers` fetchers within the same hook.
+
+#### [MODIFY] `src/hooks/useCustomers.js`
+- Replace customer queries to use `getStoreQuery`.
+
+#### [MODIFY] `src/hooks/useLogistics.js`
+- Replace shipment queries to use `getStoreQuery`.
+
+#### [MODIFY] `src/hooks/useTaxes.js` (Finance)
+- Replace tax settings queries to use `getStoreQuery`.
+
+#### [MODIFY] `src/hooks/useDeliveryLocation.js`
+- Update query building logic to enforce isolation.
+
+#### [MODIFY] `src/hooks/useProducts.js`
+- Replace direct collection queries with `getStoreQuery`.
+
+#### [MODIFY] `src/hooks/useAttendance.js` (Staff)
+- Update staff attendance and record fetching.
+
+#### [MODIFY] `src/hooks/useMessages.js` (Notifications)
+- Ensure all notification/message queries are tied to the specific store.
+
+## Fallback Protection Strategy
+If `activeStoreId` is null/undefined or `'NONE'`:
+1. `getStoreQuery` throws a known error `StoreIsolationError`.
+2. The hook catches it, logs a warning (`"Data fetch aborted: No active store selected."`), and explicitly sets state to `[]`.
+3. No database read occurs, protecting data and saving reads.
+
+## Open Questions
+- For the `GLOBAL` state (Superadmin), they currently see all data. Do you want to enforce a visual identifier in the UI for Superadmins so they know *which* store an item belongs to when viewing the global list, or is that already handled?
+
+## Verification Plan
+### Automated Tests
+- N/A
+### Manual Verification
+- Log in as Store Admin A and verify orders/customers/inventory lists are restricted to Store A.
+- Log in as Store Admin B and ensure Store A data is completely invisible.
+- Log in without a store assigned and ensure lists correctly show empty states instead of crashing or leaking data.

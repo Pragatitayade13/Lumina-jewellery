@@ -1,0 +1,183 @@
+# Store-Based Customer Ordering Flow
+
+## Background
+
+The ERP already has:
+- `AppContext` with `currentStore`, `setCurrentStore`, and `assignedStores` for **admin/staff** roles.
+- All admin hooks (`useInventory`, `useOrders`, `useLogistics`, `useProducts`, etc.) accept `activeStoreId` and apply Firestore `where('storeId', '==', …)` filters.
+- `useOrders.createOrder` already stamps `storeId` on the document when `activeStoreId` is provided.
+- `StoreSelectionModal` — used by admin roles on login.
+
+**What is missing for customers:**
+1. Customers have `role === 'customer'`, so `assignedStores` is intentionally left `[]` in AppContext (line 111-113). Customers are never offered the store selector.
+2. The `Catalog` page uses `useInventory()` with no `activeStoreId`, so all stores' inventory is merged.
+3. `CartModal.createOrder` calls `useOrders()` with no `activeStoreId`, so `storeId` is **never** stamped on customer orders.
+4. Customer pages (`Dashboard`, `OrderHistory`) use `useOrders()` with no store scope — orders are filtered only by `customerId`.
+5. There is no UI for a customer to choose a store before shopping.
+
+---
+
+## Proposed Changes
+
+### Phase A — AppContext: Customer Store Context
+
+#### [MODIFY] [AppContext.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/context/AppContext.jsx)
+- Add `customerSelectedStore` state (separate from `currentStore` which is admin-only).
+- Persist it to `localStorage` as `jw_customer_store`.
+- Expose `customerSelectedStore`, `setCustomerSelectedStore`, `allPublicStores`, and `isCustomerStorePromptOpen` / `setIsCustomerStorePromptOpen` from the context.
+- On auth-state-change, when `userData.role === 'customer'`:
+  - Fetch all `active` stores from Firestore (public read — no `userStores` required).
+  - Store them in `allPublicStores`.
+  - If only one store exists, auto-select it.
+  - If multiple exist and no store is saved, set `isCustomerStorePromptOpen = true`.
+- `addToCart` should tag each cart item with `storeId: customerSelectedStore` so cart is always store-bound.
+
+---
+
+### Phase B — New Component: CustomerStoreSelector
+
+#### [NEW] [CustomerStoreSelector.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/components/CustomerStoreSelector/CustomerStoreSelector.jsx)
+#### [NEW] [CustomerStoreSelector.css](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/components/CustomerStoreSelector/CustomerStoreSelector.css)
+
+A full-page overlay (matching the existing `auth-glass-modal` design language) that:
+- Shows all public/active stores as selectable cards with store name, city, address, and distance hint.
+- Has a "Shop All Stores" bypass option for non-location-specific shoppers.
+- Has a "Change Store" link visible in the header when a store is active.
+- Triggers automatically on first load for customers.
+- Stores selection in `AppContext.customerSelectedStore` and `localStorage`.
+
+---
+
+### Phase C — Catalog & ProductDetails: Store-Scoped Inventory
+
+#### [MODIFY] [Catalog.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/pages/Catalog.jsx)
+- Read `customerSelectedStore` from `useApp()`.
+- Pass it to `useInventory(customerSelectedStore)` — so when a store is selected, only that store's products are shown.
+- When `customerSelectedStore` is `null` (all stores), `useInventory()` returns everything (existing behavior preserved).
+- Add a store badge/banner at the top: *"Browsing Lumina Bandra West — Change Store"*.
+
+#### [MODIFY] [ProductDetails.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/pages/ProductDetails.jsx)
+- Pass `customerSelectedStore` to product lookup to guard cross-store access.
+- Show store name on product page.
+
+---
+
+### Phase D — Cart & Checkout: Stamp storeId on Order
+
+#### [MODIFY] [CartModal.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/components/CartModal/CartModal.jsx)
+- Read `customerSelectedStore` from `useApp()`.
+- Replace `const { createOrder } = useOrders()` with `const { createOrder } = useOrders(customerSelectedStore)`.
+- Show a "Shipping from [Store Name]" banner on Step 0 (Cart).
+- On Step 0, if `customerSelectedStore` is null, show a non-blocking "No store selected — your order will be processed by our central team" info banner.
+- Guard: if cart items have mixed `storeId`s (customer changed store after adding items), show a warning and offer "Clear cart & switch store".
+
+---
+
+### Phase E — Customer Pages: Scoped Views
+
+#### [MODIFY] [customer/pages/Dashboard.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/customer/pages/Dashboard.jsx)
+- Pass `customerSelectedStore` to `useOrders(customerSelectedStore)` (or keep no filter — because customer orders are already filtered by `customerId`, adding storeId filter is optional and reduces scope to current store only; we'll keep it without store filter to let customer see all their orders regardless of store).
+
+#### [MODIFY] [customer/pages/OrderHistory.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/customer/pages/OrderHistory.jsx)
+- Show store name on each order row so customers can see which store fulfilled it.
+- Add a "Store" column to the table.
+
+---
+
+### Phase F — Header: Store Context Chip
+
+#### [MODIFY] [Header.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/components/Header/Header.jsx)
+- Add a small `<Store size={14} /> [Store Name] ▾` chip in the header actions (between search and cart) for logged-in customers.
+- Clicking it opens `CustomerStoreSelector` in change-store mode.
+- If no store is selected, shows `"Select Store"` in gold as a CTA.
+
+---
+
+### Phase G — Admin Data Flow (Already Complete ✅)
+
+No changes needed. Because `useOrders.createOrder` already stamps `storeId` from `activeStoreId`:
+```js
+if (activeStoreId && activeStoreId !== 'GLOBAL') {
+  orderPayload.storeId = activeStoreId;
+}
+```
+And all admin hooks already filter by `storeId`. So once the customer order is saved with `storeId`, it **automatically appears** in:
+- Store Dashboard → `useOrders(activeStoreId)` 
+- Order Management → same
+- Finance Module → linked via order `storeId`
+- Logistics → `useLogistics(null, activeStoreId)` 
+- Inventory → `useInventory(activeStoreId)` (stock decrement)
+- Delivery Operations → `useOrders(activeStoreId)` and `useLogistics(null, activeStoreId)`
+
+---
+
+## Database Schema (No Migration Required)
+
+The `orders` collection already has `storeId` support via the hook layer. No schema migration is needed — `storeId` is just a new optional field that will be populated going forward for all customer orders.
+
+For legacy orders without `storeId`:
+- Admin views with store filter won't show them (by design — they predate store architecture).
+- Customer views don't filter by store, so legacy orders still appear for customers.
+
+---
+
+## Firestore Rules Update (Optional — Phase 3)
+
+```
+match /orders/{orderId} {
+  allow read: if request.auth != null && (
+    // Customer sees their own orders
+    resource.data.customerId == request.auth.uid ||
+    // Store staff sees only their store's orders
+    (request.auth.token.role in ['admin','manager','staff'] && 
+     resource.data.storeId == request.auth.token.storeId) ||
+    // Super admin sees all
+    request.auth.token.role == 'superadmin'
+  );
+}
+```
+
+---
+
+## Backward Compatibility
+
+| Scenario | Behavior |
+|---|---|
+| Customer has no store selected | `createOrder` is called with `null` storeId → no `storeId` stamped (legacy behavior) |
+| Customer selects a store | `storeId` stamped on order → flows into store dashboard |
+| Admin with no activeStore | Gets global view (no where clause) |
+| Super Admin | Always global, `storeId = 'GLOBAL'` passes through |
+| Legacy orders without storeId | Still visible to customers in `OrderHistory`; admin global view shows them |
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Cart store-locking:** When a customer adds products from Store A, then changes to Store B — should we:
+> 1. Clear the cart and start fresh (strict isolation)
+> 2. Warn the customer but allow mixed cart (flexible)
+> 3. Allow mixed cart and let the first item's store define the order storeId
+
+> [!IMPORTANT]
+> **"Shop without selecting a store" option:** Should customers be allowed to skip store selection and shop globally (no storeId on orders)? Or should store selection be mandatory?
+
+> [!NOTE]
+> **Product visibility:** When a customer selects Store A, should they see *only* products tagged with `storeId = storeA`, or also products with no `storeId` (legacy global catalog)? Recommend: show both (store-specific + global catalog).
+
+---
+
+## Verification Plan
+
+### Automated
+- Unit test: `useOrders(storeId).createOrder` stamps `storeId` on order document.
+- Unit test: `useInventory(storeId)` returns only products with matching `storeId`.
+
+### Manual
+1. Customer logs in → Store selector appears.
+2. Customer selects "Lumina Bandra West" → catalog shows that store's products.
+3. Customer adds to cart → cart shows "Shipping from Lumina Bandra West".
+4. Customer places order → Firestore `orders` doc has `storeId: "storeA_id"`.
+5. Store Admin (Bandra West) logs in → order appears in their dashboard.
+6. Store Admin (Another Store) logs in → order does **not** appear.
+7. Super Admin → sees all orders across all stores.

@@ -3,24 +3,43 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useProducts } from '../useProducts';
 
 // Mock dependencies
-vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(),
-  addDoc: vi.fn().mockResolvedValue({ id: 'new-product-id' }),
-  deleteDoc: vi.fn().mockResolvedValue(),
-  doc: vi.fn(),
-  updateDoc: vi.fn().mockResolvedValue(),
-  query: vi.fn(),
-  limit: vi.fn(),
-  startAfter: vi.fn(),
-  orderBy: vi.fn(),
-  getDocs: vi.fn().mockResolvedValue({
-    empty: false,
-    docs: [
-      { id: '1', data: () => ({ name: 'Gold Ring', price: 50000, sku: 'R01' }) },
-      { id: '2', data: () => ({ name: 'Diamond Necklace', price: 150000, sku: 'N01' }) }
-    ]
+const mockLogAudit = vi.fn();
+vi.mock('../useAudit', () => ({
+  useAudit: () => ({
+    logAudit: mockLogAudit
   })
 }));
+
+vi.mock('../../context/AppContext', () => ({
+  useApp: () => ({
+    user: { uid: 'test-user', role: 'admin' }
+  })
+}));
+
+vi.mock('firebase/firestore', () => {
+  const mockDoc = { id: 'new-product-id' };
+  return {
+    collection: vi.fn(() => ({})),
+    addDoc: vi.fn().mockResolvedValue(mockDoc),
+    deleteDoc: vi.fn().mockResolvedValue(),
+    doc: vi.fn(() => ({ id: '1' })),
+    updateDoc: vi.fn().mockResolvedValue(),
+    serverTimestamp: vi.fn(() => 'mock-timestamp'),
+    query: vi.fn(),
+    limit: vi.fn(),
+    startAfter: vi.fn(),
+    orderBy: vi.fn(),
+    where: vi.fn(),
+    onSnapshot: vi.fn(() => vi.fn()),
+    getDocs: vi.fn().mockResolvedValue({
+      empty: false,
+      docs: [
+        { id: '1', data: () => ({ name: 'Gold Ring', price: 50000, sku: 'R01' }) },
+        { id: '2', data: () => ({ name: 'Diamond Necklace', price: 150000, sku: 'N01' }) }
+      ]
+    })
+  };
+});
 
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn().mockReturnValue({ currentUser: { uid: 'test-user' } })
@@ -40,7 +59,7 @@ describe('useProducts Hook (Inventory Flow)', () => {
   });
 
   it('should fetch products on mount', async () => {
-    const { result } = renderHook(() => useProducts());
+    const { result } = renderHook(() => useProducts('eoNjBBBlw1edDfPWufPD'));
     
     // Initial state
     expect(result.current.loading).toBe(true);
@@ -56,7 +75,7 @@ describe('useProducts Hook (Inventory Flow)', () => {
   });
 
   it('should add a product and log audit', async () => {
-    const { result } = renderHook(() => useProducts());
+    const { result } = renderHook(() => useProducts('eoNjBBBlw1edDfPWufPD'));
     
     let newId;
     await act(async () => {
@@ -64,29 +83,26 @@ describe('useProducts Hook (Inventory Flow)', () => {
     });
 
     expect(newId).toBe('new-product-id');
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('ADD_PRODUCT', 'new-product-id', expect.any(Object), expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('PRODUCT_CREATED', 'Products', 'new-product-id', null, { name: 'Silver Bracelet' });
   });
 
   it('should remove a product and log audit', async () => {
-    const { result } = renderHook(() => useProducts());
+    const { result } = renderHook(() => useProducts('eoNjBBBlw1edDfPWufPD'));
     
     await act(async () => {
       await result.current.removeProduct('1');
     });
 
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('REMOVE_PRODUCT', '1', expect.any(Object), expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('PRODUCT_DELETED', 'Products', '1');
   });
 
   it('should update a product and log audit', async () => {
-    const { result } = renderHook(() => useProducts());
+    const { result } = renderHook(() => useProducts('eoNjBBBlw1edDfPWufPD'));
     
     await act(async () => {
       await result.current.updateProduct('1', { price: 55000 });
     });
 
-    const { logAudit } = await import('../../services/logger');
-    expect(logAudit).toHaveBeenCalledWith('UPDATE_PRODUCT', '1', { keysUpdated: ['price'] }, expect.any(Object));
+    expect(mockLogAudit).toHaveBeenCalledWith('PRODUCT_UPDATED', 'Products', '1', null, { price: 55000 });
   });
 });

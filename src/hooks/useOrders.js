@@ -42,7 +42,7 @@ export function useOrders(activeStoreId = null) {
 
     try {
       let ordersQuery;
-      if (user?.role === 'customer' && !isTest) {
+      if ((user?.role === 'customer' || !activeStoreId) && !isTest && user) {
         let constraints = [
           where('customerId', '==', user.uid),
           orderBy('createdAt', 'desc')
@@ -126,12 +126,19 @@ export function useOrders(activeStoreId = null) {
 
   const createOrder = async (orderData) => {
     const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+    
+    // Verify authenticated user exists
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    console.log("Current User:", currentUser ? currentUser.uid : "None");
+    
     try {
       if ((!activeStoreId || activeStoreId === 'NONE') && !isTest) {
         throw new Error("Cannot create order without an active store context.");
       }
       
       const storeIdForOrder = activeStoreId === 'GLOBAL' ? (orderData.storeId || 'DEFAULT') : activeStoreId;
+      console.log("Active Store ID during checkout:", storeIdForOrder);
 
       const orderRef = doc(collection(db, 'orders'));
       const orderId = orderRef.id;
@@ -166,54 +173,104 @@ export function useOrders(activeStoreId = null) {
         description: `Order Revenue - ${orderId}`
       };
 
-      await runTransaction(db, async (transaction) => {
-        // 1. Read & Validate Stock
-        if (orderData.items && Array.isArray(orderData.items)) {
-          for (const item of orderData.items) {
-            if (item.sku) {
-              const inventoryId = `${storeIdForOrder}_${item.sku}`;
-              const inventoryRef = doc(db, 'inventory', inventoryId);
-              const inventorySnap = await transaction.get(inventoryRef);
-              
-              if (!inventorySnap.exists()) {
-                throw new Error(`Item ${item.name || item.sku} does not exist in inventory for store ${storeIdForOrder}.`);
+      let currentCollection = "Unknown";
+      let currentOperation = "Unknown";
+
+      try {
+        await runTransaction(db, async (transaction) => {
+          // --- READ PHASE ---
+          const inventoryReads = [];
+          if (orderData.items && Array.isArray(orderData.items)) {
+            for (const item of orderData.items) {
+              if (item.sku) {
+                const inventoryId = `${storeIdForOrder}_${item.sku}`;
+                const inventoryRef = doc(db, 'inventory', inventoryId);
+                inventoryReads.push({
+                  item,
+                  ref: inventoryRef,
+                  promise: transaction.get(inventoryRef)
+                });
               }
-              
-              const currentStock = inventorySnap.data().stock || 0;
-              const requestedQty = item.qty || 1;
-              
-              if (currentStock < requestedQty) {
-                throw new Error(`Insufficient stock for ${item.name || item.sku}. Available: ${currentStock}, Requested: ${requestedQty}`);
-              }
-              
-              // 2. Perform Stock Reduction
-              transaction.update(inventoryRef, {
-                stock: currentStock - requestedQty,
-                updatedAt: serverTimestamp()
-              });
             }
           }
-        }
-        // 2. Read & Validate Customer Profile to append store ID
-        if (orderData.customerId) {
-          const customerRef = doc(db, 'users', orderData.customerId);
-          const customerSnap = await transaction.get(customerRef);
-          if (customerSnap.exists()) {
+
+          let customerSnap = null;
+          let customerRef = null;
+          if (orderData.customerId) {
+            customerRef = doc(db, 'users', orderData.customerId);
+          }
+
+          // Resolve inventory reads
+          for (const invRead of inventoryReads) {
+            currentCollection = "inventory";
+            currentOperation = "get";
+            invRead.snap = await invRead.promise;
+          }
+
+          // Resolve customer read
+          if (customerRef) {
+            currentCollection = "users";
+            currentOperation = "get";
+            customerSnap = await transaction.get(customerRef);
+          }
+
+          // --- WRITE PHASE ---
+          // 1. Update stock
+          for (const invRead of inventoryReads) {
+            const { item, ref, snap } = invRead;
+            if (!snap.exists()) {
+              throw new Error(`Item ${item.name || item.sku} does not exist in inventory for store ${storeIdForOrder}.`);
+            }
+            const currentStock = snap.data().stock || 0;
+            const requestedQty = item.qty || 1;
+            if (currentStock < requestedQty) {
+              throw new Error(`Insufficient stock for ${item.name || item.sku}. Available: ${currentStock}, Requested: ${requestedQty}`);
+            }
+
+            console.log("Updating Inventory");
+            currentCollection = "inventory";
+            currentOperation = "update";
+            transaction.update(ref, {
+              stock: currentStock - requestedQty,
+              updatedAt: serverTimestamp()
+            });
+          }
+
+          // 2. Update customer profile to append store ID
+          if (customerRef && customerSnap && customerSnap.exists()) {
+            console.log("Updating Customer Order History");
             const currentStoreIds = customerSnap.data().storeIds || [];
             if (!currentStoreIds.includes(storeIdForOrder)) {
+              currentCollection = "users";
+              currentOperation = "update";
               transaction.update(customerRef, {
                 storeIds: [...currentStoreIds, storeIdForOrder],
                 storeId: storeIdForOrder // Maintain backward compatibility
               });
             }
           }
-        }
 
-        // 3. Set order, logistics, and transaction documents
-        transaction.set(orderRef, orderPayload);
-        transaction.set(shipmentRef, shipmentPayload);
-        transaction.set(transactionRef, transactionPayload);
-      });
+          // 3. Set order, logistics, and transaction documents
+          console.log("Creating Order");
+          currentCollection = "orders";
+          currentOperation = "set";
+          transaction.set(orderRef, orderPayload);
+
+          currentCollection = "shipments";
+          currentOperation = "set";
+          transaction.set(shipmentRef, shipmentPayload);
+
+          console.log("Creating Payment");
+          currentCollection = "transactions";
+          currentOperation = "set";
+          transaction.set(transactionRef, transactionPayload);
+        });
+      } catch (error) {
+        console.error("Checkout Error:", error);
+        console.error("Collection:", currentCollection);
+        console.error("Operation:", currentOperation);
+        throw error;
+      }
 
       // Write tracking history event (outside the main lock-transaction to avoid nested conflicts/limitations)
       try {

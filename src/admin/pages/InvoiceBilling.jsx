@@ -7,10 +7,14 @@ import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, serverT
 import { generateInvoiceHTML, calcInvoiceTotals as calcTotals, downloadInvoice } from '../../utils/invoiceGenerator';
 import { useTaxes } from '../../hooks/useTaxes';
 import { getStoreQuery } from '../../utils/storeQuery';
+import { useScrollLock } from '../../hooks/useScrollLock';
+import { useCMS } from '../../context/CMSContext';
 
 export default function InvoiceBilling() {
   const { showToast, activeStoreId, allPublicStores } = useApp();
   const { calculateTax } = useTaxes();
+  const { landingPageData, systemSettingsData } = useCMS();
+  const shopName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || 'Lumina Jewels';
   const [invoices, setInvoices] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -19,6 +23,8 @@ export default function InvoiceBilling() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newInvType, setNewInvType] = useState('invoice');
   const [newInv, setNewInv] = useState({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
+
+  useScrollLock(showNewModal || !!previewInv);
 
   // Load invoices from Firebase in real-time
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function InvoiceBilling() {
 
   const handleDownload = (inv) => {
     showToast(`Generating ${inv.type === 'credit_note' ? 'Credit Note' : 'Invoice'} PDF...`);
-    downloadInvoice(inv, inv.type === 'credit_note', calculateTax);
+    downloadInvoice(inv, inv.type === 'credit_note', calculateTax, shopName);
   };
 
   const handleMarkPaid = async (inv) => {
@@ -104,7 +110,7 @@ export default function InvoiceBilling() {
       paymentMethod: isCN ? 'Credit Note' : newInv.paymentMethod,
       type: newInvType,
       storeId: activeStoreId && activeStoreId !== 'NONE' ? activeStoreId : 'GLOBAL',
-      storeName: activeStoreObj?.name || 'Lumina Jewels (HQ)',
+      storeName: activeStoreObj?.name || shopName,
       storeCode: activeStoreObj?.code || 'HQ-01',
       storeAddress: activeStoreObj?.address || '',
       storeContact: activeStoreObj?.contact || activeStoreObj?.phone || '',
@@ -113,10 +119,15 @@ export default function InvoiceBilling() {
     };
 
     try {
-      // Save invoice to Firebase
-      await addDoc(collection(db, 'invoices'), invoice);
+      // Trigger download immediately for instant user feedback
+      handleDownload({ ...invoice });
 
-      // Also log the tax transaction
+      // Save invoice to Firebase in the background
+      addDoc(collection(db, 'invoices'), invoice).catch(err => {
+        console.error('Error saving invoice to Firebase:', err);
+      });
+
+      // Also log the tax transaction in the background
       if (db) {
         addDoc(collection(db, 'tax_transactions'), {
           displayId: id,
@@ -132,13 +143,12 @@ export default function InvoiceBilling() {
         }).catch(console.error);
       }
 
-      showToast(`${isCN ? 'Credit Note' : 'Invoice'} ${id} generated & saved!`);
+      showToast(`${isCN ? 'Credit Note' : 'Invoice'} ${id} generated!`);
       setShowNewModal(false);
       setNewInv({ customer: '', email: '', phone: '', address: '', state: 'Maharashtra', orderId: '', paymentMethod: 'UPI', items: [{ name: '', qty: 1, rate: '', gst: 3 }] });
-      setTimeout(() => handleDownload({ ...invoice }), 800);
     } catch (err) {
-      console.error('Error saving invoice:', err);
-      showToast('Failed to save invoice. Please try again.', 'error');
+      console.error('Error generating invoice:', err);
+      showToast('Failed to generate invoice. Please try again.', 'error');
     }
   };
 
@@ -388,37 +398,37 @@ export default function InvoiceBilling() {
       {/* GENERATE INVOICE / CREDIT NOTE MODAL */}
       {showNewModal && (
         <div className="modal-overlay" onClick={() => setShowNewModal(false)}>
-          <div className="modal-box" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ flexShrink: 0 }}>
-              <h3 className="modal-title">{newInvType === 'credit_note' ? '📋 New Credit Note' : '🧾 Generate New Invoice'}</h3>
+          <div className="modal-box" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{newInvType === 'credit_note' ? '📋 New Credit Note' : '🧾 Generate New Invoice'}</h2>
               <button className="modal-close" onClick={() => setShowNewModal(false)}>×</button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
+            <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Customer Name *</label>
-                  <input placeholder="e.g. Priya Sharma" value={newInv.customer} onChange={e => setNewInv({ ...newInv, customer: e.target.value })} />
+                  <label className="form-label">Customer Name *</label>
+                  <input className="form-input" placeholder="e.g. Priya Sharma" value={newInv.customer} onChange={e => setNewInv({ ...newInv, customer: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label>Order ID *</label>
-                  <input placeholder="#ORD-XXXXX" value={newInv.orderId} onChange={e => setNewInv({ ...newInv, orderId: e.target.value })} />
+                  <label className="form-label">Order ID *</label>
+                  <input className="form-input" placeholder="#ORD-XXXXX" value={newInv.orderId} onChange={e => setNewInv({ ...newInv, orderId: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label>Email</label>
-                  <input placeholder="customer@email.com" value={newInv.email} onChange={e => setNewInv({ ...newInv, email: e.target.value })} />
+                  <label className="form-label">Email</label>
+                  <input className="form-input" placeholder="customer@email.com" value={newInv.email} onChange={e => setNewInv({ ...newInv, email: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label>Phone</label>
-                  <input placeholder="+91 XXXXX XXXXX" value={newInv.phone} onChange={e => setNewInv({ ...newInv, phone: e.target.value })} />
+                  <label className="form-label">Phone</label>
+                  <input className="form-input" placeholder="+91 XXXXX XXXXX" value={newInv.phone} onChange={e => setNewInv({ ...newInv, phone: e.target.value })} />
                 </div>
               </div>
               <div className="form-group">
-                <label>Billing Address</label>
-                <input placeholder="Full address" value={newInv.address} onChange={e => setNewInv({ ...newInv, address: e.target.value })} />
+                <label className="form-label">Billing Address</label>
+                <input className="form-input" placeholder="Full address" value={newInv.address} onChange={e => setNewInv({ ...newInv, address: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>State (Place of Supply)</label>
-                <select value={newInv.state} onChange={e => setNewInv({ ...newInv, state: e.target.value })} style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <label className="form-label">State (Place of Supply)</label>
+                <select className="form-input" value={newInv.state} onChange={e => setNewInv({ ...newInv, state: e.target.value })}>
                   <option value="Maharashtra">Maharashtra</option>
                   <option value="Delhi">Delhi</option>
                   <option value="Karnataka">Karnataka</option>
@@ -428,21 +438,21 @@ export default function InvoiceBilling() {
               </div>
               {newInvType === 'invoice' && (
                 <div className="form-group">
-                  <label>Payment Method</label>
-                  <select value={newInv.paymentMethod} onChange={e => setNewInv({ ...newInv, paymentMethod: e.target.value })}>
+                  <label className="form-label">Payment Method</label>
+                  <select className="form-input" value={newInv.paymentMethod} onChange={e => setNewInv({ ...newInv, paymentMethod: e.target.value })}>
                     {['UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Cash', 'EMI', 'Wallet'].map(m => <option key={m}>{m}</option>)}
                   </select>
                 </div>
               )}
 
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Line Items</div>
+                <div className="form-label" style={{ fontWeight: 700, marginBottom: '0.8rem', color: 'var(--text-primary)' }}>Line Items</div>
                 {newInv.items.map((item, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                    <input placeholder="Item description" value={item.name} onChange={e => handleItemChange(idx, 'name', e.target.value)} />
-                    <input type="number" placeholder="Qty" value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} min="1" />
-                    <input type="number" placeholder="Rate ₹" value={item.rate} onChange={e => handleItemChange(idx, 'rate', e.target.value)} />
-                    <select value={item.gst} onChange={e => handleItemChange(idx, 'gst', e.target.value)}>
+                    <input className="form-input" placeholder="Item description" value={item.name} onChange={e => handleItemChange(idx, 'name', e.target.value)} />
+                    <input className="form-input" type="number" placeholder="Qty" value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} min="1" />
+                    <input className="form-input" type="number" placeholder="Rate ₹" value={item.rate} onChange={e => handleItemChange(idx, 'rate', e.target.value)} />
+                    <select className="form-input" value={item.gst} onChange={e => handleItemChange(idx, 'gst', e.target.value)}>
                       {[0,3,5,12,18,28].map(g => <option key={g} value={g}>GST {g}%</option>)}
                     </select>
                     {newInv.items.length > 1 && (
@@ -486,9 +496,9 @@ export default function InvoiceBilling() {
                 })()}
               </div>
             </div>
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem', flexShrink: 0, borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem' }}>
+            <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setShowNewModal(false)}>Cancel</button>
-              <button className="btn btn-gold" onClick={handleGenerateInvoice} style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 800, border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button className="btn btn-gold" onClick={handleGenerateInvoice} style={{ color: '#fff' }}>
                 <FileText size={14} /> {newInvType === 'credit_note' ? 'Issue Credit Note' : 'Generate & Download'}
               </button>
             </div>

@@ -1,0 +1,45 @@
+# Finance Data Isolation
+
+This plan details the implementation of strict data isolation for the Finance module, ensuring that Store Admins only see financial data belonging to their active store, and establishing a robust schema for financial transactions.
+
+## Open Questions
+> [!WARNING]
+> Currently, expenses and vendor payouts are calculated dynamically as a percentage of total revenue (`opex = totalRevenue * 0.11`). Should I create formal database schemas for **Expenses** and **Vendor Payments** so they can be logged individually, or should I continue calculating them proportionally but strictly isolated by store?
+
+## Proposed Changes
+
+### Database Security
+#### [MODIFY] [firestore.rules](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/firestore.rules)
+- Add security rules for a new `transactions` collection.
+- Ensure `allow read, write: if isStaffOrHigher() && isAssignedToStore(resource.data.storeId)`.
+
+### Hooks
+#### [NEW] [useFinance.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useFinance.js)
+- Create a dedicated hook to manage isolated financial data.
+- Fetch from `transactions` collection using `getStoreQuery(db, 'transactions', activeStoreId)`.
+- Expose distinct methods for: `addRevenue`, `addExpense`, `recordTax`, and `recordVendorPayment`.
+- Ensure all created transactions strictly enforce `storeId: activeStoreId`.
+
+#### [MODIFY] [useOrders.js](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/hooks/useOrders.js)
+- Ensure that creating an order triggers a transaction record to correctly reflect real revenue rather than arbitrary dashboard math.
+
+### Dashboard
+#### [MODIFY] [FinanceDashboard.jsx](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/src/admin/pages/FinanceDashboard.jsx)
+- Replace the legacy dynamic calculations (`totalRevenue * 0.62`) with real aggregates fetched from `useFinance(activeStoreId)`.
+- Separate the UI clearly into: Revenue, Expenses, Profit, Tax, and Vendor Payments.
+- Confirm that `useOrders(activeStoreId)` and `useFinance(activeStoreId)` are both passed the correct `activeStoreId`.
+
+### Scripts
+#### [NEW] [migrate_finance.cjs](file:///c:/Users/praga/.gemini/antigravity-ide/scratch/jewellery-website/scratch/migrate_finance.cjs)
+- Create a Node script to traverse the `orders` collection.
+- Automatically generate ledger entries in the `transactions` collection for historical orders, ensuring each transaction copies the `storeId` from its parent order.
+
+## Verification Plan
+
+### Automated Tests
+- Run `node scratch/migrate_finance.cjs` to verify that transactions are generated with correct `storeId` values.
+
+### Manual Verification
+1. Login as Pune Finance Admin. Verify that the Revenue, Expenses, and Profit match ONLY the Pune store orders.
+2. Login as Mumbai Finance Admin. Verify that data strictly matches Mumbai.
+3. Login as Super Admin. Switch contexts between Global, Pune, and Mumbai using the dropdown and verify the metrics update correctly.

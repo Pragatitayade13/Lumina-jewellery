@@ -82,7 +82,7 @@ export default function AdminApp() {
             <Route path="users" element={<ProtectedRoute allowedRoles={['superadmin', 'manager', 'admin']}><StaffManagement /></ProtectedRoute>} />
             
             {/* Logistics routes */}
-            <Route path="delivery" element={<ProtectedRoute allowedRoles={['superadmin', 'delivery']}><DeliveryOperations /></ProtectedRoute>} />
+            <Route path="delivery" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'finance', 'delivery']}><DeliveryOperations /></ProtectedRoute>} />
             
             {/* Profile route for all roles */}
             <Route path="profile" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager', 'finance', 'delivery']}><StaffProfile /></ProtectedRoute>} />

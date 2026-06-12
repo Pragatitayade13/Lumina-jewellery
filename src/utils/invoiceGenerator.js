@@ -45,7 +45,7 @@ export const calcInvoiceTotals = (items, calculateTax, customerState) => {
   return { subtotal, gstAmt, cgst, sgst, igst, total: subtotal + gstAmt };
 };
 
-export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
+export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax, globalShopName = null) {
   const items = inv.items || [];
   const { subtotal, gstAmt, cgst, sgst, igst, total } = calcInvoiceTotals(items, calculateTax, inv.state || inv.shippingAddress || 'Maharashtra');
   
@@ -58,7 +58,7 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
   const dateStr = inv.date || (inv.createdAt ? new Date(inv.createdAt?.seconds * 1000).toLocaleDateString() : new Date().toLocaleDateString());
   const dueDateStr = inv.dueDate || '—';
 
-  const billStoreName = inv.storeName || COMPANY.name;
+  const billStoreName = (inv.storeId && inv.storeId !== 'GLOBAL' && inv.storeId !== 'NONE' && inv.storeName) ? inv.storeName : (globalShopName || COMPANY.name);
   const billStoreAddress = inv.storeAddress || COMPANY.address;
   const billStoreGst = inv.storeGst || inv.storeGstin || COMPANY.gstin;
   const billStoreContact = inv.storeContact || inv.storePhone || COMPANY.phone;
@@ -150,12 +150,12 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax) {
       ${sgst > 0 ? `<div class="total-row"><span>SGST:</span><span>₹${sgst.toFixed(2)}</span></div>` : ''}
       <div class="total-row total-final"><span>${isCreditNote ? 'Credit Amount:' : 'Grand Total:'}</span><span>${isCreditNote ? '-' : ''}₹${total.toFixed(2)}</span></div>
     </div>
-    <div class="footer">Thank you for choosing ${COMPANY.name} | Computer Generated ${isCreditNote ? 'Credit Note' : 'Invoice'} — No Signature Required</div>
+    <div class="footer">Thank you for choosing ${billStoreName} | Computer Generated ${isCreditNote ? 'Credit Note' : 'Invoice'} — No Signature Required</div>
   </body></html>`;
 }
 
-export const downloadInvoice = (inv, isCreditNote = false, calculateTax) => {
-  const htmlStr = generateInvoiceHTML(inv, isCreditNote, calculateTax);
+export const downloadInvoice = (inv, isCreditNote = false, calculateTax, globalShopName = null) => {
+  const htmlStr = generateInvoiceHTML(inv, isCreditNote, calculateTax, globalShopName);
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.write(htmlStr);

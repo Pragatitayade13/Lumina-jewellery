@@ -66,6 +66,8 @@ export function AppProvider({ children }) {
   });
   const [allPublicStores, setAllPublicStores] = useState([]);
   const [isCustomerStorePromptOpen, setIsCustomerStorePromptOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const setCustomerSelectedStore = (storeId) => {
     setCustomerSelectedStoreState(storeId);
@@ -330,6 +332,7 @@ export function AppProvider({ children }) {
       return [...prev, { ...product, qty: 1 }];
     });
     showToast(`✦ ${product.name} added to cart`);
+    setIsCartOpen(true);
   };
 
   const removeFromCart = (id) => {
@@ -372,6 +375,8 @@ export function AppProvider({ children }) {
       cart, wishlist, toast, user, setUser,
       isAuthOpen, setIsAuthOpen,
       isSupportOpen, setIsSupportOpen,
+      isCartOpen, setIsCartOpen,
+      isWishlistOpen, setIsWishlistOpen,
       theme, toggleTheme,
       quickViewProduct, setQuickViewProduct,
       vtoProduct, setVtoProduct,
