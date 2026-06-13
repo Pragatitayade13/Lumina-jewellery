@@ -76,9 +76,35 @@ export default function FeaturedCategories() {
     card.style.setProperty('--mouse-y', '50%');
   };
 
-  const categoryProducts = selectedCategory 
-    ? products.filter(p => p.category === selectedCategory.name || (selectedCategory.name.includes('Jewellery') && p.material.includes(selectedCategory.name.split(' ')[0])))
-    : [];
+  const getGroupedProducts = () => {
+    if (!selectedCategory) return {};
+    const filtered = products.filter(p => 
+      p.category === selectedCategory.name || 
+      (selectedCategory.name.includes('Jewellery') && p.material.includes(selectedCategory.name.split(' ')[0]))
+    );
+    const groups = {};
+    filtered.forEach(p => {
+      let groupName = 'Others';
+      if (selectedCategory.name === 'Gold Jewellery' || selectedCategory.name === 'Silver Jewellery' || selectedCategory.name === 'Diamond Jewellery') {
+        groupName = p.category;
+      } else if (p.subcategory) {
+        groupName = p.subcategory;
+      } else {
+        if (p.material.includes('Gold')) groupName = 'Gold Collection';
+        else if (p.material.includes('Diamond')) groupName = 'Diamond Collection';
+        else if (p.material.includes('Silver')) groupName = 'Silver Collection';
+        else if (p.material.includes('Platinum')) groupName = 'Platinum Collection';
+        else groupName = 'Exclusive Collection';
+      }
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(p);
+    });
+    return groups;
+  };
+
+  const groupedProducts = getGroupedProducts();
 
   return (
     <section className="categories-section" id="categories" ref={sectionRef}>
@@ -159,23 +185,32 @@ export default function FeaturedCategories() {
               <p style={{ color: 'var(--text-muted)' }}>Explore our exclusive collection of {selectedCategory.name.toLowerCase()}</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
-              {categoryProducts.length > 0 ? (
-                categoryProducts.map(product => (
-                  <div key={product.id} className="product-card">
-                    <div className="product-image-wrap">
-                      <img src={product.image} alt={product.name} className="product-img" loading="lazy" />
-                    </div>
-                    <div className="product-info">
-                      <h3 className="product-title" style={{ fontSize: '1rem' }}>{product.name}</h3>
-                      <div className="product-price-wrap" style={{ marginTop: '0.5rem' }}>
-                        <span className="price-current">₹{product.price.toLocaleString('en-IN')}</span>
-                      </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {Object.keys(groupedProducts).length > 0 ? (
+                Object.entries(groupedProducts).map(([groupName, groupList]) => (
+                  <div key={groupName}>
+                    <h3 style={{ fontSize: '1.15rem', fontFamily: 'var(--font-heading)', color: 'var(--gold)', marginBottom: '1rem', borderBottom: '1px solid rgba(201, 168, 76, 0.2)', paddingBottom: '0.4rem', textAlign: 'left' }}>
+                      {groupName}
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                      {groupList.map(product => (
+                        <div key={product.id} className="product-card">
+                          <div className="product-image-wrap">
+                            <img src={product.image} alt={product.name} className="product-img" loading="lazy" />
+                          </div>
+                          <div className="product-info">
+                            <h4 className="product-title" style={{ fontSize: '1rem' }}>{product.name}</h4>
+                            <div className="product-price-wrap" style={{ marginTop: '0.5rem' }}>
+                              <span className="price-current">₹{product.price.toLocaleString('en-IN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))
               ) : (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                   <p>New collections for {selectedCategory.name} are arriving soon!</p>
                 </div>
               )}
