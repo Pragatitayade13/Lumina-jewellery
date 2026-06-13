@@ -124,17 +124,17 @@ export default function Footer() {
                 India's most trusted destination for authentic, handcrafted jewellery. 
                 BIS certified gold, IGI certified diamonds, and premium silver jewellery since 1998.
               </p>
-              <div className="footer-contact-group">
+              <div className="footer-contact">
                 <a href={`tel:${socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91-9876543210'}`} className="footer-contact-item">
                   <Phone size={14} /> {socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91 98765 43210'}
                 </a>
                 <a href={`mailto:${socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}`} className="footer-contact-item">
                   <Mail size={14} /> {socialMediaData?.contact?.email || 'luminajewels.app@gmail.com'}
                 </a>
+                <span className="footer-contact-item">
+                  <MapPin size={14} /> Mumbai, Maharashtra, India
+                </span>
               </div>
-              <span className="footer-contact-item">
-                <MapPin size={14} /> Mumbai, Maharashtra, India
-              </span>
               <div className="footer-socials">
                 {(!socialMediaData || socialMediaData?.integrations?.footerIcons !== false) && (
                   <>
