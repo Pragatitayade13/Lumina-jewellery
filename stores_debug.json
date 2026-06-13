@@ -1,0 +1,66 @@
+{
+  "documents": [
+    {
+      "name": "projects/jewellery-website-50d32/databases/(default)/documents/stores/OCoSBsKDGGOT5NOqZpP1",
+      "fields": {
+        "code": {
+          "stringValue": "01"
+        },
+        "address": {
+          "stringValue": "Pune"
+        },
+        "createdAt": {
+          "timestampValue": "2026-06-08T18:05:52.708Z"
+        },
+        "status": {
+          "stringValue": "active"
+        },
+        "name": {
+          "stringValue": "Khandelval"
+        },
+        "contactPhone": {
+          "stringValue": "8976879809"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-06-08T18:05:52.708Z"
+        },
+        "contactEmail": {
+          "stringValue": "Store@gmail.com"
+        }
+      },
+      "createTime": "2026-06-08T18:05:52.740043Z",
+      "updateTime": "2026-06-08T18:05:52.740043Z"
+    },
+    {
+      "name": "projects/jewellery-website-50d32/databases/(default)/documents/stores/eoNjBBBlw1edDfPWufPD",
+      "fields": {
+        "code": {
+          "stringValue": "02"
+        },
+        "address": {
+          "stringValue": "mumbai"
+        },
+        "createdAt": {
+          "timestampValue": "2026-06-09T06:06:41.870Z"
+        },
+        "name": {
+          "stringValue": "gold and jems"
+        },
+        "contactPhone": {
+          "stringValue": "8798879809"
+        },
+        "contactEmail": {
+          "stringValue": "gold@gmail.com"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-06-09T06:06:41.870Z"
+        },
+        "status": {
+          "stringValue": "active"
+        }
+      },
+      "createTime": "2026-06-09T06:06:41.904608Z",
+      "updateTime": "2026-06-09T06:06:41.904608Z"
+    }
+  ]
+}
