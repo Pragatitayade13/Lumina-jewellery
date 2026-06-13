@@ -11,6 +11,19 @@ import m3 from '../assets/products/mens_cufflinks_1780299644045.png';
 import m4 from '../assets/products/mens_gold_kada_1780299659696.png';
 import m5 from '../assets/products/mens_om_pendant_1780299676039.png';
 import silverEarrings from '../assets/products/antique_silver_earrings.png';
+import antiqueTempleNecklace from '../assets/products/antique_temple_necklace.png';
+import bridalMaangTikka from '../assets/products/bridal_maang_tikka.png';
+import diamondMangalsutra from '../assets/products/diamond_mangalsutra.png';
+import diamondNecklaceSet from '../assets/products/diamond_necklace_set.png';
+import diamondStudEarrings from '../assets/products/diamond_stud_earrings.png';
+import goldAntiqueBangles from '../assets/products/gold_antique_bangles.png';
+import goldJhumkaEarrings from '../assets/products/gold_jhumka_earrings.png';
+import oxidisedSilverChoker from '../assets/products/oxidised_silver_choker.png';
+import platinumSolitaireRing from '../assets/products/platinum_solitaire_ring.png';
+import polkiKundanChoker from '../assets/products/polki_kundan_choker.png';
+import solitaireDiamondRing from '../assets/products/solitaire_diamond_ring.png';
+import roseGoldDiamondBracelet from '../assets/products/rose_gold_diamond_bracelet.png';
+import platinumDiamondHoopEarrings from '../assets/products/platinum_diamond_hoop_earrings.png';
 
 export const products = [
   {
@@ -38,7 +51,7 @@ export const products = [
     rating: 4.8,
     reviews: 186,
     badge: 'Hot',
-    image: p2,
+    image: solitaireDiamondRing,
     isNew: false,
     isBestSeller: true,
     description: 'Classic solitaire ring with a stunning center stone in a four-prong platinum setting.',
@@ -54,7 +67,7 @@ export const products = [
     rating: 4.7,
     reviews: 312,
     badge: 'New',
-    image: p3,
+    image: goldJhumkaEarrings,
     isNew: true,
     isBestSeller: false,
     description: 'Traditional chandelier earrings with intricate goldwork and precious ruby accents.',
@@ -86,7 +99,7 @@ export const products = [
     rating: 5.0,
     reviews: 89,
     badge: 'Luxury',
-    image: p5,
+    image: polkiKundanChoker,
     isNew: false,
     isBestSeller: true,
     description: 'Statement choker necklace with uncut polki diamonds set in 22K gold — epitome of luxury.',
@@ -118,7 +131,7 @@ export const products = [
     rating: 4.9,
     reviews: 450,
     badge: 'Classic',
-    image: p1,
+    image: diamondStudEarrings,
     isNew: false,
     isBestSeller: true,
     description: 'Elegant princess cut diamond studs in a minimal platinum setting.',
@@ -135,7 +148,7 @@ export const products = [
     rating: 5.0,
     reviews: 65,
     badge: 'Luxury',
-    image: p5,
+    image: diamondNecklaceSet,
     isNew: false,
     isBestSeller: true,
     description: 'Complete kundan bridal set including necklace, earrings, and maang tikka.',
@@ -152,7 +165,7 @@ export const products = [
     rating: 4.8,
     reviews: 42,
     badge: 'New',
-    image: p4,
+    image: goldAntiqueBangles,
     isNew: true,
     isBestSeller: false,
     description: 'Intricate temple design bridal bangles with Goddess Lakshmi motifs.',
@@ -169,7 +182,7 @@ export const products = [
     rating: 4.9,
     reviews: 78,
     badge: 'Trending',
-    image: p3,
+    image: goldJhumkaEarrings,
     isNew: true,
     isBestSeller: true,
     description: 'Heavy polki and ruby studded oversized bridal earrings.',
@@ -186,7 +199,7 @@ export const products = [
     rating: 5.0,
     reviews: 112,
     badge: 'Luxury',
-    image: p2,
+    image: platinumSolitaireRing,
     isNew: false,
     isBestSeller: true,
     description: 'Breathtaking 2-carat solitaire diamond engagement and bridal ring.',
@@ -203,7 +216,7 @@ export const products = [
     rating: 4.7,
     reviews: 55,
     badge: 'New',
-    image: p5,
+    image: bridalMaangTikka,
     isNew: true,
     isBestSeller: false,
     description: 'Traditional oversized Kundan maang tikka with pearl drops for the modern bride.',
@@ -220,7 +233,7 @@ export const products = [
     rating: 4.8,
     reviews: 93,
     badge: 'Classic',
-    image: p1,
+    image: diamondMangalsutra,
     isNew: false,
     isBestSeller: true,
     description: 'Classic pearl and ruby studded Maharashtrian bridal nose ring (Nath).',
@@ -237,7 +250,7 @@ export const products = [
     rating: 5.0,
     reviews: 34,
     badge: 'Luxury',
-    image: p5,
+    image: antiqueTempleNecklace,
     isNew: false,
     isBestSeller: false,
     description: 'Magnificent antique finish bridal choker with elaborate emerald and ruby detailing.',
@@ -253,7 +266,7 @@ export const products = [
     rating: 4.9,
     reviews: 82,
     badge: 'New',
-    image: p1,
+    image: roseGoldDiamondBracelet,
     isNew: true,
     isBestSeller: false,
     description: 'Elegant rose gold bracelet encrusted with fine diamonds for a sophisticated look.',
@@ -269,7 +282,7 @@ export const products = [
     rating: 4.8,
     reviews: 45,
     badge: 'New',
-    image: p2,
+    image: platinumDiamondHoopEarrings,
     isNew: true,
     isBestSeller: false,
     description: 'Classic hoop earrings set in platinum featuring a continuous line of brilliant-cut diamonds.',
