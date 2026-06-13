@@ -243,6 +243,21 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
+// Route consolidated delivery API calls to delivery.js
+app.all('/api/delivery/:action', async (req, res) => {
+  const { action } = req.params;
+  req.query.action = action;
+  const path = require('path');
+  const apiFilePath = path.resolve(__dirname, '..', 'api', 'delivery.js');
+  try {
+    const apiModule = await import(`file://${apiFilePath}`);
+    await apiModule.default(req, res);
+  } catch (err) {
+    console.error(`Error running consolidated delivery handler for ${action}:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Dynamic serverless handler loader for nested API files (e.g. /api/payment/create-order)
 app.all('/api/:folder/:file', async (req, res) => {
   const { folder, file } = req.params;
