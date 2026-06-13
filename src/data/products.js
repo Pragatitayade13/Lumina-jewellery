@@ -10,6 +10,7 @@ import m2 from '../assets/products/mens_gold_chain_1780299628514.png';
 import m3 from '../assets/products/mens_cufflinks_1780299644045.png';
 import m4 from '../assets/products/mens_gold_kada_1780299659696.png';
 import m5 from '../assets/products/mens_om_pendant_1780299676039.png';
+import silverEarrings from '../assets/products/antique_silver_earrings.png';
 
 export const products = [
   {
@@ -101,7 +102,7 @@ export const products = [
     rating: 4.5,
     reviews: 120,
     badge: 'Trending',
-    image: p3,
+    image: silverEarrings,
     isNew: true,
     isBestSeller: false,
     description: 'Beautifully crafted antique finish silver earrings with tiny ghungroos.',
