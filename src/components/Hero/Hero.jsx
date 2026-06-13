@@ -7,7 +7,6 @@ import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
 import './Hero.css';
 
 const defaultStats = [
@@ -87,8 +86,8 @@ export default function Hero() {
 
 
   const heroVideos = [
-    "https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-woman-putting-on-a-gold-ring-41619-large.mp4",
-    localHeroVideo2
+    "/hero_video_1.mp4",
+    "/hero_video_2.mp4"
   ];
 
   const next = useCallback(() => setActive(p => (p + 1) % heroVideos.length), [heroVideos.length]);
