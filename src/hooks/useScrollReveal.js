@@ -13,15 +13,15 @@ export function useScrollReveal() {
     const revealElements = document.querySelectorAll('.reveal');
     revealElements.forEach((el) => {
       gsap.fromTo(el, 
-        { y: 50, opacity: 0 },
+        { y: 30, opacity: 0 },
         {
           y: 0,
           opacity: 1,
-          duration: 0.7,
+          duration: 0.4,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 98%',
+            start: 'top 100%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -32,15 +32,15 @@ export function useScrollReveal() {
     const revealLeftElements = document.querySelectorAll('.reveal-left');
     revealLeftElements.forEach((el) => {
       gsap.fromTo(el, 
-        { x: -50, opacity: 0 },
+        { x: -30, opacity: 0 },
         {
           x: 0,
           opacity: 1,
-          duration: 0.7,
+          duration: 0.4,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 98%',
+            start: 'top 100%',
             toggleActions: 'play none none reverse',
           }
         }
@@ -51,15 +51,15 @@ export function useScrollReveal() {
     const revealRightElements = document.querySelectorAll('.reveal-right');
     revealRightElements.forEach((el) => {
       gsap.fromTo(el, 
-        { x: 50, opacity: 0 },
+        { x: 30, opacity: 0 },
         {
           x: 0,
           opacity: 1,
-          duration: 0.7,
+          duration: 0.4,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: el,
-            start: 'top 98%',
+            start: 'top 100%',
             toggleActions: 'play none none reverse',
           }
         }
