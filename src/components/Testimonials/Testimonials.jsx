@@ -94,7 +94,7 @@ export default function Testimonials() {
   useEffect(() => {
     const timer = setInterval(() => {
       paginate(1);
-    }, 6000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [activeTestimonials.length]);
 
