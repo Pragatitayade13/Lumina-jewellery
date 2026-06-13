@@ -2,6 +2,7 @@ import Razorpay from 'razorpay';
 import { withAuth, withRateLimit } from '../middleware/security.js';
 
 async function handler(req, res) {
+  if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
@@ -25,14 +26,15 @@ async function handler(req, res) {
 
     const order = await razorpay.orders.create(options);
     
-    res.status(200).json({
+    return res.status(200).json({
       id: order.id,
       currency: order.currency,
       amount: order.amount,
     });
   } catch (error) {
     console.error("Razorpay order creation failed:", error);
-    res.status(500).json({ message: 'Failed to create order', error: error.message });
+    return res.status(500).json({ message: 'Failed to create order', error: error.message });
+  }
 }
 
 export default withAuth(withRateLimit(handler, 10, 60000));

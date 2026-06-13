@@ -140,6 +140,7 @@ async function handler(req, res) {
     // Determine if it's a verification error or a logical error
     const statusCode = error.message.includes('Unauthorized') || error.message.includes('Invalid status') ? 403 : 500;
     return res.status(statusCode).json({ success: false, message: error.message });
+  }
 }
 
 export default withAuth(withRateLimit(handler, 20, 60000));

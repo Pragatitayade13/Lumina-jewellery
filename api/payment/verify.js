@@ -164,6 +164,7 @@ async function handler(req, res) {
   } catch (error) {
     console.error("Payment verification failed:", error);
     return res.status(500).json({ success: false, message: 'Internal Server Error', error: error.message });
+  }
 }
 
 export default withAuth(withRateLimit(handler, 10, 60000));

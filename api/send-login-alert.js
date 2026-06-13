@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { withRateLimit, withCSRF } from './middleware/security.js';
 
 async function handler(req, res) {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -62,6 +63,7 @@ async function handler(req, res) {
   } catch (error) {
     console.error('Error sending login alert:', error);
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
 }
 
 export default withCSRF(withRateLimit(handler, 5, 60000));
