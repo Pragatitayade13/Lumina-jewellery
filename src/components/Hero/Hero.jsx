@@ -7,7 +7,6 @@ import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
 import './Hero.css';
 
 const defaultStats = [
@@ -87,8 +86,8 @@ export default function Hero() {
 
 
   const heroVideos = [
-    "https://template.canva.com/EAGsXwSDdUk/2/document_1440w-Fjnbdu4HcPk.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH7DHWAQDT%2F20260608%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260608T203948Z&X-Amz-Expires=75672&X-Amz-Signature=1bb3b3a331874f056f9e4630b9435b590ae83bbe31b60f934b4bd38fa60c6e5a&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Tue%2C%2009%20Jun%202026%2017%3A41%3A00%20GMT",
-    localHeroVideo2
+    "/hero_video_1.mp4",
+    "/hero_video_2.mp4"
   ];
 
   const next = useCallback(() => setActive(p => (p + 1) % heroVideos.length), [heroVideos.length]);
