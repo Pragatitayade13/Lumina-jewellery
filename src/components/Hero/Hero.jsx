@@ -90,8 +90,14 @@ export default function Hero() {
     "/hero_video_2.mp4"
   ];
 
-  const next = useCallback(() => setActive(p => (p + 1) % heroVideos.length), [heroVideos.length]);
-  const prev = useCallback(() => setActive(p => (p - 1 + heroVideos.length) % heroVideos.length), [heroVideos.length]);
+  const next = useCallback(() => setActive(p => (p + 1) % slides.length), [slides.length]);
+  const prev = useCallback(() => setActive(p => (p - 1 + slides.length) % slides.length), [slides.length]);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(next, 6000);
+    return () => clearInterval(interval);
+  }, [next, isPaused]);
 
   const handleCTA = (href) => {
     const el = document.querySelector(href);
@@ -122,14 +128,106 @@ export default function Hero() {
             preload="metadata"
             onEnded={next}
             className="hero-slide-bg"
-            src={heroVideos[active]}
+            src={heroVideos[active % heroVideos.length]}
           />
           <div className="hero-overlay" />
           <FloatingParticles count={40} />
         </motion.div>
       </AnimatePresence>
 
+      {/* Content */}
+      <motion.div className="hero-content-wrap" style={{ y: contentY, opacity: contentOpacity }}>
+        <div className="hero-container">
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`content-${active}`}
+              className="hero-slide-content"
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
+                exit: { opacity: 0, transition: { duration: 0.3 } }
+              }}
+            >
+              <motion.span 
+                className="hero-badge"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              >
+                <Sparkles size={12} />{t(slides[active].badgeKey)}
+              </motion.span>
+              
+              <motion.h1 
+                className="hero-title"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              >
+                {slides[active].isCms ? slides[active].title : t(slides[active].titleKey)}
+                <span>{slides[active].isCms ? slides[active].titleAccent : t(slides[active].titleAccentKey)}</span>
+              </motion.h1>
+              
+              <motion.p 
+                className="hero-subtitle"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              >
+                {slides[active].isCms ? slides[active].subtitle : t(slides[active].subtitleKey)}
+              </motion.p>
 
+              
+              <motion.div 
+                className="hero-actions"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              >
+                {slides[active].ctas.map((cta, i) => (
+                  <button
+                    key={cta.labelKey || `cta-${i}`}
+                    className={`btn ${cta.primary ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => handleCTA(cta.href)}
+                    id={`hero-cta-${(cta.labelKey || cta.label || `cta-${i}`).replace(/\./g, '-')}`}
+                  >
+                    {cta.label || (cta.labelKey ? t(cta.labelKey) : 'Shop Now')}
+                  </button>
+                ))}
+              </motion.div>
+              
+              <motion.div 
+                className="hero-stats"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+              >
+                {currentStats.map(s => (
+                  <div key={s.labelKey}>
+                    <div className="hero-stat-value">{s.valueKey}</div>
+                    <div className="hero-stat-label">{t(s.labelKey)}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      {/* Arrows */}
+      <button className="hero-arrow hero-arrow-prev" onClick={prev} id="hero-prev-btn" aria-label="Previous slide">
+        <ChevronLeft size={20} />
+      </button>
+      <button className="hero-arrow hero-arrow-next" onClick={next} id="hero-next-btn" aria-label="Next slide">
+        <ChevronRight size={20} />
+      </button>
+
+      {/* Dots */}
+      <div className="hero-dots">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            className={`hero-dot${i === active ? ' active' : ''}`}
+            onClick={() => setActive(i)}
+            id={`hero-dot-${i}`}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Scroll Indicator */}
       <div className="hero-scroll-indicator">
         <span>{t('common.scrollDown')}</span>
         <div className="scroll-line" />
