@@ -250,10 +250,27 @@ app.all('/api/delivery/:action', async (req, res) => {
   const path = require('path');
   const apiFilePath = path.resolve(__dirname, '..', 'api', 'delivery.js');
   try {
-    const apiModule = await import(`file://${apiFilePath}`);
+    const apiModule = await import(require('url').pathToFileURL(apiFilePath).href);
     await apiModule.default(req, res);
   } catch (err) {
     console.error(`Error running consolidated delivery handler for ${action}:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Route consolidated AI agent API calls to ai.js
+app.all('/api/ai/:subpath*', async (req, res) => {
+  const { subpath } = req.params;
+  const pathParam = subpath + (req.params[0] || '');
+  req.query.path = pathParam;
+  req.body.path = pathParam;
+  const path = require('path');
+  const apiFilePath = path.resolve(__dirname, '..', 'api', 'ai.js');
+  try {
+    const apiModule = await import(require('url').pathToFileURL(apiFilePath).href);
+    await apiModule.default(req, res);
+  } catch (err) {
+    console.error(`Error running consolidated AI handler for ${pathParam}:`, err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -268,7 +285,7 @@ app.all('/api/:folder/:file', async (req, res) => {
 
   if (fs.existsSync(apiFilePath)) {
     try {
-      const apiModule = await import(`file://${apiFilePath}`);
+      const apiModule = await import(require('url').pathToFileURL(apiFilePath).href);
       await apiModule.default(req, res);
     } catch (err) {
       console.error(`Error running serverless handler ${folder}/${file}:`, err);
@@ -289,7 +306,7 @@ app.all('/api/:file', async (req, res) => {
 
   if (fs.existsSync(apiFilePath)) {
     try {
-      const apiModule = await import(`file://${apiFilePath}`);
+      const apiModule = await import(require('url').pathToFileURL(apiFilePath).href);
       await apiModule.default(req, res);
     } catch (err) {
       console.error(`Error running serverless handler ${file}:`, err);
