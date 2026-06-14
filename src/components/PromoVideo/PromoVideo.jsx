@@ -34,6 +34,7 @@ export default function PromoVideo() {
           muted 
           loop 
           playsInline
+          preload="none"
           poster=""
         />
         <div className="promo-video-overlay">

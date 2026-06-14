@@ -119,6 +119,7 @@ export default function Hero() {
             autoPlay
             muted
             playsInline
+            preload="metadata"
             onEnded={next}
             className="hero-slide-bg"
             src={heroVideos[active]}

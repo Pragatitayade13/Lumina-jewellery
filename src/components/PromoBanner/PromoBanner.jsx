@@ -11,6 +11,7 @@ export default function PromoBanner() {
             src={promoImage} 
             alt="Jewelry of Everlasting Beauty - Discover our newest collection of elegant jewelry" 
             className="promo-banner-image"
+            loading="lazy"
           />
         </div>
       </div>

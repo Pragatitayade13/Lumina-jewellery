@@ -59,7 +59,7 @@ export default function BrandStory() {
           {/* Image Side */}
           <div className="brand-image-col reveal-left">
             <div className="brand-img-frame">
-              <img src={brandImg} alt="Master craftsman at work" className="brand-img" />
+              <img src={brandImg} alt="Master craftsman at work" className="brand-img" loading="lazy" />
               <div className="brand-img-overlay" />
               <div className="brand-exp-badge">
                 <div className="brand-exp-num">{bs.yearsOfExcellence}</div>
