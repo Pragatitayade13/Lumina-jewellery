@@ -11,7 +11,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api/|assets/|favicon\\.svg|icons\\.svg|hero_video_1\\.mp4|hero_video_2\\.mp4).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
