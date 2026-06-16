@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, Package, Tag, AlertCircle, Info, X } from 'lucide-react';
+import { Bell, Package, Tag, AlertCircle, Info, X, Calendar, HelpCircle, Star } from 'lucide-react';
 import { useInventory } from '../../hooks/useInventory';
 import { useOrders } from '../../hooks/useOrders';
 import { useLogistics } from '../../hooks/useLogistics';
+import { useAppointments } from '../../hooks/useAppointments';
+import { useSchemes } from '../../hooks/useSchemes';
+import { useCustomerSupport } from '../../hooks/useCustomerSupport';
 import './NotificationDropdown.css';
 import { useApp } from '../../context/AppContext';
 
@@ -43,6 +46,12 @@ export default function NotificationDropdown({ userRole }) {
   const { inventory } = useInventory(activeStoreId);
   const { orders } = useOrders(activeStoreId);
   const { shipments } = useLogistics(null, activeStoreId);
+  
+  // Real-time hooks for customer activities
+  const isCustomer = userRole === 'customer' && user;
+  const { userSchemes } = useSchemes(isCustomer ? user.uid : null, activeStoreId);
+  const { appointments } = useAppointments(isCustomer ? user.uid : null, activeStoreId);
+  const { tickets } = useCustomerSupport(isCustomer ? user.uid : null, activeStoreId);
 
   useEffect(() => {
     let newAlerts = [];
@@ -60,17 +69,71 @@ export default function NotificationDropdown({ userRole }) {
       })));
     }
 
-    // 2. Customer Notifications (Orders)
-    if (userRole === 'customer' && orders) {
-      const recentOrders = orders.filter(o => o.status !== 'delivered').slice(0, 3);
-      newAlerts.push(...recentOrders.map(o => ({
-        id: `order-${o.id}`,
-        title: `Order Update`,
-        desc: `Your order #${o.id.slice(0,8)} is currently ${o.status || 'processing'}.`,
-        time: o.updatedAt ? new Date(o.updatedAt.seconds * 1000).toLocaleString() : 'Recent',
-        icon: <Package size={16} />,
-        unread: true
-      })));
+    // 2. Customer Notifications (Orders, Schemes, Appointments, Tickets)
+    if (userRole === 'customer') {
+      // (a) Order Updates
+      if (orders && orders.length > 0) {
+        const recentOrders = orders.filter(o => o.status !== 'delivered').slice(0, 3);
+        newAlerts.push(...recentOrders.map(o => ({
+          id: `order-${o.id}`,
+          title: `Order Update`,
+          desc: `Your order #${o.id.slice(0, 8)} is currently ${o.status || 'processing'}.`,
+          time: o.updatedAt ? new Date(o.updatedAt.seconds * 1000).toLocaleString() : 'Recent',
+          icon: <Package size={16} />,
+          unread: true
+        })));
+      }
+
+      // (b) Scheme Updates
+      if (userSchemes && userSchemes.length > 0) {
+        userSchemes.forEach(s => {
+          if (s.status === 'matured') {
+            newAlerts.push({
+              id: `scheme-${s.id}`,
+              title: `Scheme Mature Alert`,
+              desc: `Your savings scheme "${s.planName}" has matured! Redeem your zero making charges benefits.`,
+              time: 'Matured',
+              icon: <Star size={16} color="var(--gold)" />,
+              unread: true
+            });
+          } else if (s.status === 'active') {
+            newAlerts.push({
+              id: `scheme-${s.id}`,
+              title: `Scheme Installment`,
+              desc: `Installment for scheme "${s.planName}" (${s.monthsPaid}/${s.durationMonths} months paid) is active.`,
+              time: 'Monthly Savings Plan',
+              icon: <Star size={16} />,
+              unread: false
+            });
+          }
+        });
+      }
+
+      // (c) Appointment Updates
+      if (appointments && appointments.length > 0) {
+        const activeAppointments = appointments.filter(a => a.status === 'confirmed' || a.status === 'pending' || a.status === 'cancelled').slice(0, 3);
+        newAlerts.push(...activeAppointments.map(a => ({
+          id: `apt-${a.id}`,
+          title: `Appointment ${a.status.charAt(0).toUpperCase() + a.status.slice(1)}`,
+          desc: `Your appointment for "${a.type}" is ${a.status}.`,
+          time: `${a.date} at ${a.time}`,
+          icon: <Calendar size={16} />,
+          unread: a.status === 'confirmed' || a.status === 'cancelled'
+        })));
+      }
+
+      // (d) Support Ticket Updates
+      if (tickets && tickets.length > 0) {
+        const recentTickets = tickets.filter(t => t.status === 'in_progress' || t.status === 'resolved').slice(0, 3);
+        newAlerts.push(...recentTickets.map(t => ({
+          id: `ticket-${t.id}`,
+          title: `Support Ticket Update`,
+          desc: `Ticket #${t.id.slice(0, 6)} is now ${t.status === 'in_progress' ? 'In Progress' : 'Resolved'}.`,
+          time: 'Support Hub',
+          icon: <HelpCircle size={16} />,
+          unread: true
+        })));
+      }
     }
 
     // 3. Delivery Notifications (Shipments)
@@ -87,7 +150,7 @@ export default function NotificationDropdown({ userRole }) {
     }
 
     setDynamicNotifs(newAlerts);
-  }, [inventory, orders, shipments, userRole]);
+  }, [inventory, orders, shipments, userSchemes, appointments, tickets, userRole]);
 
   useEffect(() => {
     if (isOpen) {
