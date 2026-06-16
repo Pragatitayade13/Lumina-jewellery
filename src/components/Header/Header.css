@@ -337,7 +337,7 @@
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1360px) {
   .nav { display: none; }
   .header-search { display: none; }
   .hamburger { display: flex; }
