@@ -239,7 +239,7 @@ export default function CartModal({ isOpen, onClose }) {
 
   return (
     <div className="auth-modal-overlay" style={{ zIndex: 9999 }} data-lenis-prevent="true">
-      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} data-lenis-prevent="true">
+      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflowY: 'auto' }} data-lenis-prevent="true">
         
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
