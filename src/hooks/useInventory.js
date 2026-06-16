@@ -17,7 +17,7 @@ export function useInventory(activeStoreId = null) {
   const { logAudit } = useAudit(activeStoreId);
   const { submitApprovalRequest } = useApprovals(activeStoreId);
   const { user } = useApp();
-  const userRole = user?.role || 'staff';
+  const userRole = user?.role || 'customer';
 
   const getFallbackData = () => {
     if (!mockInventory || !mockProducts) return [];
@@ -161,30 +161,38 @@ export function useInventory(activeStoreId = null) {
       setError(err);
     });
 
-    const unsubscribePO = onSnapshot(poQuery, (snapshot) => {
-      const poData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
-      }));
-      setPurchaseOrders(poData);
-    }, (err) => console.error("Error fetching POs:", err));
+    const userRole = user?.role || 'customer';
+    const isStaff = ['staff', 'manager', 'admin', 'superadmin', 'super admin'].includes(userRole);
 
-    const unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
-      const transferData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
-      }));
-      setStockTransfers(transferData);
-    }, (err) => console.error("Error fetching Transfers:", err));
+    let unsubscribePO = () => {};
+    let unsubscribeTransfers = () => {};
+
+    if (isStaff) {
+      unsubscribePO = onSnapshot(poQuery, (snapshot) => {
+        const poData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+        }));
+        setPurchaseOrders(poData);
+      }, (err) => console.error("Error fetching POs:", err));
+
+      unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
+        const transferData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+        }));
+        setStockTransfers(transferData);
+      }, (err) => console.error("Error fetching Transfers:", err));
+    }
 
     return () => {
       unsubscribe();
       unsubscribePO();
       unsubscribeTransfers();
     };
-  }, [activeStoreId]);
+  }, [activeStoreId, user]);
 
   const updateStock = async (id, updateData) => {
     if (!db) throw new Error("Firebase not initialized");

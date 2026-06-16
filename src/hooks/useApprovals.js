@@ -3,10 +3,14 @@ import { db } from '../config/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStoreQuery } from '../utils/storeQuery';
+import { useApp } from '../context/AppContext';
 
 export function useApprovals(activeStoreId = null) {
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const appContext = useApp();
+  const user = appContext?.user;
+  const userRole = user?.role || 'customer';
 
   useEffect(() => {
     setApprovals([]);
@@ -17,6 +21,13 @@ export function useApprovals(activeStoreId = null) {
     }
 
     if (!activeStoreId || activeStoreId === 'NONE') {
+      setApprovals([]);
+      setLoading(false);
+      return;
+    }
+
+    const isStaff = ['staff', 'manager', 'admin', 'superadmin', 'super admin'].includes(userRole);
+    if (!isStaff) {
       setApprovals([]);
       setLoading(false);
       return;
@@ -40,7 +51,7 @@ export function useApprovals(activeStoreId = null) {
       console.warn("Approvals listener error:", err);
       setLoading(false);
     }
-  }, [activeStoreId]);
+  }, [activeStoreId, userRole]);
 
   const submitApprovalRequest = async (type, payload, entityId = null, module = 'System') => {
     try {
