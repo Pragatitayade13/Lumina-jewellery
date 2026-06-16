@@ -7,10 +7,6 @@
       "destination": "/api/delivery?action=:action"
     },
     {
-      "source": "/api/ai/:subpath*",
-      "destination": "/api/ai?path=:subpath*"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

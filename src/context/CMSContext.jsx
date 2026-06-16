@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useApp } from './AppContext';
 
 const CMSContext = createContext();
 
@@ -7,11 +8,16 @@ export function CMSProvider({ children }) {
   const [socialMediaData, setSocialMediaData] = useState(null);
   const [systemSettingsData, setSystemSettingsData] = useState(null);
   const [cmsLoading, setCmsLoading] = useState(true);
+  const { customerSelectedStore } = useApp() || {};
 
   useEffect(() => {
-    let unsubscribeLanding = () => {};
+    let unsubscribeLandingLegacy = () => {};
+    let unsubscribeLandingNewStore = () => {};
+    let unsubscribeLandingNewGlobal = () => {};
     let unsubscribeSocial = () => {};
     let unsubscribeSystem = () => {};
+
+    setCmsLoading(true);
 
     import('../config/firebase').then(async ({ db }) => {
       if (!db) {
@@ -20,9 +26,61 @@ export function CMSProvider({ children }) {
       }
       const { doc, onSnapshot } = await import('firebase/firestore');
       
-      unsubscribeLanding = onSnapshot(doc(db, 'cms', 'landingPage'), (docSnap) => {
+      // 1. Subscribe to Legacy landingPage data as base for all other CMS sections
+      unsubscribeLandingLegacy = onSnapshot(doc(db, 'cms', 'landingPage'), (docSnap) => {
         if (docSnap.exists()) {
-          setLandingPageData(docSnap.data());
+          const legacyData = docSnap.data();
+          setLandingPageData(prev => {
+            return {
+              ...legacyData,
+              hero: prev?.hero || legacyData.hero
+            };
+          });
+        }
+      });
+
+      // Helper function to update state with new hero banner data
+      const applyHeroData = (heroDocData) => {
+        if (heroDocData) {
+          setLandingPageData(prev => ({
+            ...prev,
+            hero: {
+              slides: [
+                {
+                  title: heroDocData.title || '',
+                  subtitle: heroDocData.subtitle || '',
+                  ctaText: heroDocData.ctaText || 'Shop Now',
+                  ctaLink: '#categories',
+                  mediaType: heroDocData.mediaType || 'image',
+                  mediaUrl: heroDocData.mediaUrl || '',
+                  isActive: heroDocData.isActive !== false,
+                  sortOrder: heroDocData.sortOrder || 1
+                }
+              ]
+            }
+          }));
+        }
+      };
+
+      // 2. Subscribe to store-specific/global landingCMS heroBanners
+      const storeId = customerSelectedStore || 'global';
+      
+      unsubscribeLandingNewStore = onSnapshot(doc(db, 'landingCMS', storeId, 'sections', 'heroBanners'), (docSnap) => {
+        if (docSnap.exists()) {
+          unsubscribeLandingNewGlobal();
+          applyHeroData(docSnap.data());
+        } else if (storeId !== 'global') {
+          // If store-specific does not exist, subscribe to global as fallback
+          unsubscribeLandingNewGlobal = onSnapshot(doc(db, 'landingCMS', 'global', 'sections', 'heroBanners'), (globalSnap) => {
+            if (globalSnap.exists()) {
+              applyHeroData(globalSnap.data());
+            } else {
+              setLandingPageData(prev => ({
+                ...prev,
+                hero: prev?.hero || { slides: [] }
+              }));
+            }
+          });
         }
       });
 
@@ -45,11 +103,13 @@ export function CMSProvider({ children }) {
     });
 
     return () => {
-      unsubscribeLanding();
+      unsubscribeLandingLegacy();
+      unsubscribeLandingNewStore();
+      unsubscribeLandingNewGlobal();
       unsubscribeSocial();
       unsubscribeSystem();
     };
-  }, []);
+  }, [customerSelectedStore]);
 
   return (
     <CMSContext.Provider value={{ landingPageData, socialMediaData, systemSettingsData, cmsLoading }}>

@@ -83,6 +83,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    
+    match /landingCMS/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
 
     // User Profiles
     match /users/{userId} {
@@ -186,6 +191,20 @@ service cloud.firestore {
     match /userStores/{docId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isStaffOrHigher());
       allow write: if isStaffOrHigher();
+    }
+
+    // Purchase Orders & Stock Transfers
+    match /purchase_orders/{docId} {
+      allow read, write: if isStaffOrHigher() || isFinance();
+    }
+    match /stock_transfers/{docId} {
+      allow read, write: if isStaffOrHigher();
+    }
+
+    // Delivery Locations tracking
+    match /locations/{userId} {
+      allow read: if isStaffOrHigher() || isLogistics() || isDeliveryPartner() || isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isStaffOrHigher());
     }
 
     // Tracking History

@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { products as mockProducts } from '../data/mockData';
 import { useProducts } from '../../hooks/useProducts';
+import { useApprovals } from '../../hooks/useApprovals';
 import { useApp } from '../../context/AppContext';
-import { db } from '../../config/firebase';
+import { db, storage } from '../../config/firebase';
 import { Gem, Edit2, Trash2, Search, FileCheck, PieChart, Database, Plus, AlertTriangle, CheckCircle, XCircle, Percent } from 'lucide-react';
 
 export default function ProductManagement() {
@@ -19,44 +20,84 @@ export default function ProductManagement() {
   const [transparencyModal, setTransparencyModal] = useState(null);
   const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
   const [bulkPricingModalOpen, setBulkPricingModalOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   const [localProducts, setLocalProducts] = useState([]);
-  const [pendingProducts, setPendingProducts] = useState([
-    {
-      id: 'prd-pend-1',
-      name: '24K Gold Antique Bangle',
-      sku: 'SKU-PEND-101',
-      category: 'Gold Jewellery',
-      subcategory: 'Bangles',
-      price: 85000,
-      mrp: 90000,
-      stock: 5,
-      status: 'pending_approval',
-      purity: '24KT',
-      weight: '20g',
-      image: ''
-    },
-    {
-      id: 'prd-pend-2',
-      name: 'Diamond Solitaire Pendant',
-      sku: 'SKU-PEND-102',
-      category: 'Diamond Jewellery',
-      subcategory: 'Necklaces',
-      price: 125000,
-      mrp: 140000,
-      stock: 2,
-      status: 'pending_approval',
-      purity: '18KT',
-      weight: '8g',
-      image: ''
-    }
-  ]);
+  const [pendingProducts, setPendingProducts] = useState([]);
   
   const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
   
   const { user, showToast, globalSearch, currentStore } = useApp();
   const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
   const { products, loading, error, removeProduct, addProduct, updateProduct, bulkAssignStore } = useProducts(activeStoreId);
+  const { approvals, submitApprovalRequest, processApproval } = useApprovals(activeStoreId);
+
+  const handleProductImageUpload = async (file, callback) => {
+    if (!file) return;
+
+    const compressImage = (imgFile) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 400;
+            const MAX_HEIGHT = 400;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(imgFile);
+      });
+    };
+
+    if (!storage) {
+      showToast("Storage not available. Saving compressed image...");
+      const compressed = await compressImage(file);
+      callback(compressed);
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const fileExt = file.name.split('.').pop();
+      const fileName = `products/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const storageRef = ref(storage, fileName);
+      
+      showToast("Uploading image...");
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      callback(downloadURL);
+      showToast("Image uploaded successfully!");
+    } catch (err) {
+      console.warn("Storage upload failed, falling back to compression:", err);
+      const compressed = await compressImage(file);
+      callback(compressed);
+      showToast("Saved compressed image instead.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSeedDatabase = async () => {
     if (!confirm("This will upload all mock products to your live Firebase database. Proceed?")) return;
@@ -92,18 +133,38 @@ export default function ProductManagement() {
       mrp: Number(newProduct.mrp),
       stock: Number(newProduct.stock)
     };
+
+    const needsApproval = user?.role !== 'superadmin' || activeStoreId === 'NONE';
+
     try {
-      showToast("Adding product to database...");
-      await addProduct(productData);
-      showToast("Product added successfully to live database!");
-    } catch(e) {
-      const fallbackId = `prd-local-${Date.now()}`;
-      // By default, staff adding a product goes to pending
-      setPendingProducts(prev => [{...productData, id: fallbackId, status: 'pending_approval'}, ...prev]);
+      if (needsApproval) {
+        const fallbackId = `prd-local-${Date.now()}`;
+        setPendingProducts(prev => [{...productData, id: fallbackId, status: 'pending_approval'}, ...prev]);
+        setActiveTab('approvals');
+        showToast("Submitting product for manager approval...");
+        await submitApprovalRequest('CREATE_PRODUCT', productData, null, 'Products');
+        showToast("Product submitted for manager approval successfully!");
+      } else {
+        const optimisticId = `prd-opt-${Date.now()}`;
+        const optimisticProduct = { ...productData, id: optimisticId };
+        setLocalProducts(prev => [optimisticProduct, ...prev]);
+        setActiveTab('inventory');
+        showToast("Adding product to database...");
+        await addProduct(productData);
+        setLocalProducts(prev => prev.filter(p => p.id !== optimisticId));
+        showToast("Product added successfully to live database!");
+      }
+    } catch (err) {
+      console.error(err);
+      if (!needsApproval) {
+        const fallbackId = `prd-local-${Date.now()}`;
+        setPendingProducts(prev => [{...productData, id: fallbackId, status: 'pending_approval'}, ...prev]);
+      }
       showToast("Product submitted for manager approval.");
+    } finally {
+      setIsAddModalOpen(false);
+      setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
     }
-    setIsAddModalOpen(false);
-    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
   };
 
   const handleEditSubmit = async (e) => {
@@ -131,28 +192,74 @@ export default function ProductManagement() {
     try {
       showToast(`Approving ${product.name}...`);
       await addProduct({...product, status: 'active'});
-      setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      if (product.isFirestoreApproval) {
+        await processApproval(product.approvalId, 'approved', 'Approved by manager');
+      } else {
+        setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      }
       setLocalProducts(prev => [{...product, status: 'active'}, ...prev]);
       showToast(`${product.name} has been approved and is now live.`);
     } catch(err) {
       showToast(`Failed to approve ${product.name} in database. Approved locally.`, "error");
-      setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      if (!product.isFirestoreApproval) {
+        setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      }
       setLocalProducts(prev => [{...product, status: 'active'}, ...prev]);
     }
   };
 
-  const handleReject = (id) => {
-    setPendingProducts(prev => prev.filter(p => p.id !== id));
-    showToast(`Product listing rejected.`, "error");
+  const handleReject = async (product) => {
+    if (product.isFirestoreApproval) {
+      try {
+        await processApproval(product.approvalId, 'rejected', 'Rejected by manager');
+        showToast(`Product listing rejected.`, "info");
+      } catch (e) {
+        showToast(`Failed to reject product listing in database.`, "error");
+      }
+    } else {
+      setPendingProducts(prev => prev.filter(p => p.id !== product.id));
+      showToast(`Product listing rejected.`, "error");
+    }
   };
 
   // Products from Firebase (with fallback for unassigned products)
   const displayProducts = [...localProducts, ...products];
   const unassignedCount = products.filter(p => p._needsStoreAssignment).length;
 
+  const firestorePendingProducts = (approvals || [])
+    .filter(app => app.status === 'pending' && app.module === 'Products' && app.type === 'CREATE_PRODUCT')
+    .map(app => ({
+      id: app.id,
+      name: app.payload.name,
+      sku: app.payload.sku,
+      category: app.payload.category,
+      subcategory: app.payload.subcategory,
+      price: app.payload.price,
+      mrp: app.payload.mrp,
+      stock: app.payload.stock,
+      purity: app.payload.purity,
+      weight: app.payload.weight,
+      image: app.payload.image,
+      modelUrl: app.payload.modelUrl,
+      arOffsetX: app.payload.arOffsetX,
+      arOffsetY: app.payload.arOffsetY,
+      arOffsetZ: app.payload.arOffsetZ,
+      arRotX: app.payload.arRotX,
+      arRotY: app.payload.arRotY,
+      arRotZ: app.payload.arRotZ,
+      arScale: app.payload.arScale,
+      status: 'pending_approval',
+      isFirestoreApproval: true,
+      approvalId: app.id
+    }));
+
+  const allPendingProducts = [...pendingProducts, ...firestorePendingProducts];
+
   const effectiveSearchTerm = globalSearch || searchTerm;
 
   const filteredProducts = displayProducts.filter(p => {
+    if (!p.image || p.image === '') return false;
+
     let matchesSearch = true;
     const s = effectiveSearchTerm.trim();
     if (s) {
@@ -182,11 +289,6 @@ export default function ProductManagement() {
           <p className="page-subtitle">Supervise listings, manage pricing strategies, and verify offers.</p>
         </div>
         <div className="page-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button className="btn btn-outline" onClick={() => setBulkPricingModalOpen(true)}>
-            <Percent size={16} style={{ marginRight: 8 }} />
-            Bulk Pricing
-          </button>
-          <button className="btn btn-outline" onClick={() => setBulkImportModalOpen(true)}><FileCheck size={16} /> Bulk Import</button>
           <button className="btn btn-gold" onClick={() => setIsAddModalOpen(true)} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>
             <Plus size={16} /> Add New Product
           </button>
@@ -241,9 +343,9 @@ export default function ProductManagement() {
             display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}>
           Pending Approvals
-          {pendingProducts.length > 0 && (
+          {allPendingProducts.length > 0 && (
             <span style={{ background: 'var(--status-red)', color: 'white', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '10px' }}>
-              {pendingProducts.length}
+              {allPendingProducts.length}
             </span>
           )}
         </button>
@@ -366,9 +468,9 @@ export default function ProductManagement() {
               </tr>
             </thead>
             <tbody>
-              {pendingProducts.length === 0 ? (
+              {allPendingProducts.length === 0 ? (
                 <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No pending approvals.</td></tr>
-              ) : pendingProducts.map(p => (
+              ) : allPendingProducts.map(p => (
                 <tr key={p.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -398,7 +500,7 @@ export default function ProductManagement() {
                       <button className="btn btn-sm btn-outline" style={{ color: 'var(--status-green)', borderColor: 'var(--status-green)' }} onClick={() => handleApprove(p)}>
                         <CheckCircle size={14} style={{ marginRight: '4px' }} /> Approve
                       </button>
-                      <button className="btn btn-sm btn-outline" style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)' }} onClick={() => handleReject(p.id)}>
+                      <button className="btn btn-sm btn-outline" style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)' }} onClick={() => handleReject(p)}>
                         <XCircle size={14} style={{ marginRight: '4px' }} /> Reject
                       </button>
                     </div>
@@ -455,7 +557,7 @@ export default function ProductManagement() {
       {/* Full Edit Product Modal */}
       {editingProduct && (
         <div className="modal-overlay" onClick={() => setEditingProduct(null)}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
             <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Edit Product Details</h3>
               <button className="modal-close" onClick={() => setEditingProduct(null)}>×</button>
@@ -522,14 +624,12 @@ export default function ProductManagement() {
                     Update Product Image 
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Recommended: 800x800px, 1:1 Ratio)</span>
                   </label>
-                  <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} onChange={e => {
+                  <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} disabled={uploadingImage} onChange={e => {
                     const file = e.target.files[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setEditingProduct({...editingProduct, image: reader.result});
-                      };
-                      reader.readAsDataURL(file);
+                      handleProductImageUpload(file, (url) => {
+                        setEditingProduct({...editingProduct, image: url});
+                      });
                     }
                   }} />
                   {editingProduct.image && (
@@ -587,7 +687,7 @@ export default function ProductManagement() {
       {/* Add Product Modal (Reused) */}
       {isAddModalOpen && (
         <div className="modal-overlay" onClick={() => setIsAddModalOpen(false)}>
-          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+          <div className="modal-box modal-box-lg" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflow: 'hidden' }}>
             <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 className="modal-title">Add New Product</h3>
               <button className="modal-close" onClick={() => setIsAddModalOpen(false)}>×</button>
@@ -651,14 +751,12 @@ export default function ProductManagement() {
                     Product Image
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem', fontWeight: 'normal' }}>(Recommended: 800x800px, 1:1 Ratio)</span>
                   </label>
-                  <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} onChange={e => {
+                  <input type="file" accept="image/*" className="form-input" style={{ padding: '0.4rem' }} disabled={uploadingImage} onChange={e => {
                     const file = e.target.files[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setNewProduct({...newProduct, image: reader.result});
-                      };
-                      reader.readAsDataURL(file);
+                      handleProductImageUpload(file, (url) => {
+                        setNewProduct({...newProduct, image: url});
+                      });
                     }
                   }} />
                   {newProduct.image && (
@@ -706,7 +804,9 @@ export default function ProductManagement() {
               </div>
               <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '1rem', flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Submit for Approval</button>
+                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>
+                  { (user?.role !== 'superadmin' || activeStoreId === 'NONE') ? 'Submit for Approval' : 'Add Product' }
+                </button>
               </div>
             </form>
           </div>

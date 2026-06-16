@@ -157,6 +157,14 @@
         { "fieldPath": "storeId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "loginActivity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "loginTime", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -37,3 +37,7 @@ out/
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch folder
+scratch/
+docx/

@@ -38,7 +38,7 @@ export default function ProductShowcase() {
 
   const validImages = (ps.images || []).filter(img => img && img.trim() !== '');
   const defaultImages = [slide1, slide2, slide3, slide4, slide5, slide6, slide7, slide8, slide9];
-  const combinedImages = validImages.length > 0 ? [...validImages, ...defaultImages] : defaultImages;
+  const combinedImages = validImages.length > 0 ? [...defaultImages, ...validImages] : defaultImages;
   const showcaseImages = [...combinedImages, ...combinedImages];
 
   return (

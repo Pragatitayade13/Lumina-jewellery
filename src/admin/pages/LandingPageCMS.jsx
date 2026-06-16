@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Save, Image as ImageIcon, CheckCircle, RefreshCcw, Loader, Type, List, Search, UploadCloud, Link as LinkIcon, BookOpen, LayoutTemplate, Plus, Trash2, Clock, TrendingUp, MessageSquare, ShieldCheck, Zap } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import '../admin.css';
 
 export default function LandingPageCMS() {
-  const { showToast } = useApp();
+  const { showToast, assignedStores, user } = useApp();
   const [activeTab, setActiveTab] = useState('hero');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -16,6 +16,21 @@ export default function LandingPageCMS() {
   const [uploadingNewArrival, setUploadingNewArrival] = useState(null);
   const [uploadingBestSeller, setUploadingBestSeller] = useState(null);
   const [originalData, setOriginalData] = useState(null);
+  const [selectedStore, setSelectedStore] = useState('global');
+  const [heroBanner, setHeroBanner] = useState({
+    title: '',
+    subtitle: '',
+    ctaText: 'Shop Now',
+    mediaType: 'image',
+    mediaUrl: '',
+    isActive: true,
+    sortOrder: 1
+  });
+  const [originalHeroBanner, setOriginalHeroBanner] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
   const [data, setData] = useState({
     hero: {
       slides: [
@@ -118,14 +133,208 @@ export default function LandingPageCMS() {
       banners: [
         { title: 'Festival Offers', sub: 'Up to 35% on gold', icon: '✦', bg: 'linear-gradient(135deg, #2a1f00, #1a0800)' },
         { title: 'First Purchase', sub: '₹500 cashback', icon: '◈', bg: 'linear-gradient(135deg, #1a002a, #0d0015)' },
-        { title: 'Refer & Earn', sub: '₹1000 for every referral', icon: '◉', bg: 'linear-gradient(135deg, #001a10, #000d08)' },
+        { title: 'Refer & Earn', sub: '₹1000 for every referral', icon: '◉', bg: 'linear-gradient(135deg, #001a10, #000d08)' }
       ]
     }
   });
 
   useEffect(() => {
     fetchData();
-  }, []);
+    fetchHeroBanner(selectedStore);
+  }, [selectedStore]);
+
+  const fetchHeroBanner = async (storeId) => {
+    try {
+      if (!db) return;
+      const draftRef = doc(db, 'landingCMS', storeId, 'sections', 'heroBannersDraft');
+      const draftSnap = await getDoc(draftRef);
+      if (draftSnap.exists()) {
+        const d = draftSnap.data();
+        setHeroBanner(d);
+        setOriginalHeroBanner(d);
+        return;
+      }
+
+      const publishRef = doc(db, 'landingCMS', storeId, 'sections', 'heroBanners');
+      const publishSnap = await getDoc(publishRef);
+      if (publishSnap.exists()) {
+        const d = publishSnap.data();
+        setHeroBanner(d);
+        setOriginalHeroBanner(d);
+      } else {
+        const defaults = {
+          title: '',
+          subtitle: '',
+          ctaText: 'Shop Now',
+          mediaType: 'image',
+          mediaUrl: '',
+          isActive: true,
+          sortOrder: 1
+        };
+        setHeroBanner(defaults);
+        setOriginalHeroBanner(defaults);
+      }
+    } catch (err) {
+      console.error("Error fetching hero banner CMS:", err);
+    }
+  };
+
+  const handleMediaUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) {
+      showToast("Invalid file type. Please upload an image or video.", "error");
+      return;
+    }
+
+    if (isImage) {
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("Image size exceeds 2MB limit.", "error");
+        return;
+      }
+      const allowedExts = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedExts.includes(file.type)) {
+        showToast("Allowed image formats: JPG, JPEG, PNG, WEBP.", "error");
+        return;
+      }
+    }
+
+    if (isVideo) {
+      if (file.size > 20 * 1024 * 1024) {
+        showToast("Video size exceeds 20MB limit.", "error");
+        return;
+      }
+      const allowedExts = ['video/mp4', 'video/webm'];
+      if (!allowedExts.includes(file.type)) {
+        showToast("Allowed video formats: MP4, WEBM.", "error");
+        return;
+      }
+    }
+
+    if (!storage) {
+      showToast("Firebase Storage not configured. Loading file locally...", "info");
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setHeroBanner(prev => ({
+          ...prev,
+          mediaUrl: reader.result,
+          mediaType: isVideo ? 'video' : 'image'
+        }));
+        showToast("File loaded locally successfully!");
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (isOffline) {
+      showToast("Offline: Loading file locally...", "info");
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setHeroBanner(prev => ({
+          ...prev,
+          mediaUrl: reader.result,
+          mediaType: isVideo ? 'video' : 'image'
+        }));
+        showToast("File loaded locally successfully!");
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    setUploadingMedia(true);
+    setUploadProgress(0);
+
+    const folder = isVideo ? 'videos' : 'images';
+    const storageRef = ref(storage, `cms/landing/${selectedStore}/${folder}/${Date.now()}_${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const total = snapshot.totalBytes || 0;
+        const transferred = snapshot.bytesTransferred || 0;
+        const progress = total > 0 ? Math.round((transferred / total) * 100) : 0;
+        setUploadProgress(isNaN(progress) ? 0 : progress);
+      }, 
+      (error) => {
+        console.error("Upload error:", error);
+        showToast("Network upload failed. Loading file locally instead...", "warning");
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setHeroBanner(prev => ({
+            ...prev,
+            mediaUrl: reader.result,
+            mediaType: isVideo ? 'video' : 'image'
+          }));
+          setUploadingMedia(false);
+          showToast("File loaded locally successfully!");
+        };
+        reader.readAsDataURL(file);
+      }, 
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        setHeroBanner(prev => ({
+          ...prev,
+          mediaUrl: downloadURL,
+          mediaType: isVideo ? 'video' : 'image'
+        }));
+        setUploadingMedia(false);
+        showToast("File uploaded successfully!");
+      }
+    );
+  };
+
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    try {
+      if (!db) throw new Error("Database not initialized");
+      const draftRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBannersDraft');
+      await setDoc(draftRef, {
+        ...heroBanner,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin'
+      }, { merge: true });
+      setOriginalHeroBanner(heroBanner);
+      showToast("Draft saved successfully!");
+    } catch (err) {
+      console.error("Error saving draft:", err);
+      showToast("Failed to save draft.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      if (!db) throw new Error("Database not initialized");
+      const publishRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBanners');
+      await setDoc(publishRef, {
+        ...heroBanner,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin'
+      }, { merge: true });
+      
+      const draftRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBannersDraft');
+      await setDoc(draftRef, {
+        ...heroBanner,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin'
+      }, { merge: true });
+
+      setOriginalHeroBanner(heroBanner);
+      showToast("Changes published to live landing page!");
+    } catch (err) {
+      console.error("Error publishing changes:", err);
+      showToast("Failed to publish changes.", "error");
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -204,7 +413,11 @@ export default function LandingPageCMS() {
         setOriginalData(data);
       }
     } catch (e) {
-      console.error("Error fetching CMS data:", e);
+      if (typeof navigator !== 'undefined' && !navigator.onLine || e.code === 'unavailable' || e.message?.includes('offline')) {
+        console.warn("Offline: Using cached or default CMS data");
+      } else {
+        console.error("Error fetching CMS data:", e);
+      }
     } finally {
       setLoading(false);
     }
@@ -236,12 +449,130 @@ export default function LandingPageCMS() {
     setSaving(true);
     try {
       if (!db) throw new Error("Database not initialized");
-      await setDoc(doc(db, 'cms', 'landingPage'), {
+
+      // Save custom New Arrivals to main products collection
+      const newArrivalsItems = data.newArrivals?.items || [];
+      const updatedNewArrivalsItems = [];
+      for (let item of newArrivalsItems) {
+        if (!item.name) continue;
+        
+        const q = query(
+          collection(db, 'products'),
+          where('name', '==', item.name),
+          where('storeId', '==', selectedStore)
+        );
+        const snap = await getDocs(q);
+        let productId = item.id;
+        
+        const productPayload = {
+          name: item.name,
+          category: item.category || 'Necklaces',
+          price: Number(item.price) || 0,
+          originalPrice: Number(item.originalPrice) || 0,
+          mrp: Number(item.originalPrice) || 0,
+          image: item.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80',
+          badge: item.badge || 'New',
+          rating: Number(item.rating) || 5,
+          reviews: Number(item.reviews) || 0,
+          storeId: selectedStore,
+          stock: 10,
+          minStock: 3,
+          warehouse: 'Mumbai HQ',
+          status: 'ok',
+          isNew: true,
+          updatedAt: serverTimestamp()
+        };
+
+        if (!snap.empty) {
+          productId = snap.docs[0].id;
+          await setDoc(doc(db, 'products', productId), productPayload, { merge: true });
+        } else {
+          const docRef = await addDoc(collection(db, 'products'), {
+            ...productPayload,
+            createdAt: serverTimestamp()
+          });
+          productId = docRef.id;
+        }
+        
+        updatedNewArrivalsItems.push({
+          ...item,
+          id: productId,
+          image: productPayload.image
+        });
+      }
+
+      // Save custom Best Sellers to main products collection
+      const bestSellersItems = data.bestSellers?.items || [];
+      const updatedBestSellersItems = [];
+      for (let item of bestSellersItems) {
+        if (!item.name) continue;
+        
+        const q = query(
+          collection(db, 'products'),
+          where('name', '==', item.name),
+          where('storeId', '==', selectedStore)
+        );
+        const snap = await getDocs(q);
+        let productId = item.id;
+        
+        const productPayload = {
+          name: item.name,
+          category: item.category || 'Rings',
+          price: Number(item.price) || 0,
+          originalPrice: Number(item.originalPrice) || 0,
+          mrp: Number(item.originalPrice) || 0,
+          image: item.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80',
+          badge: item.badge || 'Best Seller',
+          rating: Number(item.rating) || 5,
+          reviews: Number(item.reviews) || 0,
+          storeId: selectedStore,
+          stock: 10,
+          minStock: 3,
+          warehouse: 'Mumbai HQ',
+          status: 'ok',
+          isBestSeller: true,
+          updatedAt: serverTimestamp()
+        };
+
+        if (!snap.empty) {
+          productId = snap.docs[0].id;
+          await setDoc(doc(db, 'products', productId), productPayload, { merge: true });
+        } else {
+          const docRef = await addDoc(collection(db, 'products'), {
+            ...productPayload,
+            createdAt: serverTimestamp()
+          });
+          productId = docRef.id;
+        }
+        
+        updatedBestSellersItems.push({
+          ...item,
+          id: productId,
+          image: productPayload.image
+        });
+      }
+
+      // Update CMS data structure with the synchronized IDs and images
+      const finalData = {
         ...data,
+        newArrivals: {
+          ...data.newArrivals,
+          items: updatedNewArrivalsItems
+        },
+        bestSellers: {
+          ...data.bestSellers,
+          items: updatedBestSellersItems
+        }
+      };
+
+      await setDoc(doc(db, 'cms', 'landingPage'), {
+        ...finalData,
         updatedAt: serverTimestamp()
       }, { merge: true });
-      setOriginalData(data);
-      showToast("Landing page content saved successfully!");
+
+      setData(finalData);
+      setOriginalData(finalData);
+      showToast("Landing page and product database saved successfully!");
     } catch (e) {
       console.error("Error saving CMS data:", e);
       showToast("Error saving content", "error");
@@ -655,6 +986,24 @@ export default function LandingPageCMS() {
         </div>
       </div>
 
+      {/* Store Selection Dropdown */}
+      <div className="admin-card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <label style={{ fontWeight: 'bold', minWidth: '100px' }}>Select Store:</label>
+          <select 
+            className="form-input" 
+            style={{ maxWidth: '300px' }} 
+            value={selectedStore} 
+            onChange={(e) => setSelectedStore(e.target.value)}
+          >
+            <option value="global">Global (Fallback)</option>
+            {assignedStores && assignedStores.map(store => (
+              <option key={store.id} value={store.id}>{store.name || store.id}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: '2rem' }}>
         <div style={{ width: '250px', flexShrink: 0 }}>
           <div className="admin-card" style={{ padding: '1rem 0' }}>
@@ -694,49 +1043,146 @@ export default function LandingPageCMS() {
         <div style={{ flex: 1 }}>
           {activeTab === 'hero' && (
             <div className="admin-card">
-              <div className="card-header"><div className="card-title">Hero Banners</div></div>
-              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                {data.hero.slides.map((slide, i) => (
-                  <div key={i} style={{ padding: '1.5rem', border: '1px solid var(--border)', borderRadius: '8px', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h4 style={{ color: 'var(--gold)', margin: 0 }}>Slide {i + 1}</h4>
-                      <button className="btn btn-outline" style={{ padding: '0.4rem', color: 'var(--status-red)', borderColor: 'var(--status-red)' }} onClick={() => removeHeroSlide(i)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="grid-2">
-                      <div className="form-group">
-                        <label>Title</label>
-                        <input type="text" className="form-input" value={slide.title} onChange={e => handleHeroChange(i, 'title', e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>Subtitle</label>
-                        <input type="text" className="form-input" value={slide.subtitle} onChange={e => handleHeroChange(i, 'subtitle', e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>CTA Button Text</label>
-                        <input type="text" className="form-input" value={slide.ctaText} onChange={e => handleHeroChange(i, 'ctaText', e.target.value)} />
-                      </div>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Background Image</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Recommended size: 1920x1080px (Max 2MB)</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                          <input type="text" className="form-input" style={{ flex: 1 }} placeholder="https://..." value={slide.bgImage} onChange={e => handleHeroChange(i, 'bgImage', e.target.value)} />
-                          <label className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            <UploadCloud size={16} /> Upload
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, i)} />
-                          </label>
-                        </div>
-                        {uploadingSlide === i && <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading image...</div>}
-                      </div>
-                    </div>
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="card-title">Hero Banner Editor</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    onClick={handleSaveDraft} 
+                    disabled={saving || uploadingMedia || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner)}
+                  >
+                    {saving ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
+                    Save Draft
+                  </button>
+                  <button 
+                    className="btn btn-gold" 
+                    style={{ color: '#fff', fontWeight: 'bold' }} 
+                    onClick={handlePublish} 
+                    disabled={publishing || uploadingMedia || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner)}
+                  >
+                    {publishing ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
+                    Publish to Live
+                  </button>
+                </div>
+              </div>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Title</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={heroBanner.title} 
+                      onChange={e => setHeroBanner({ ...heroBanner, title: e.target.value })} 
+                    />
                   </div>
-                ))}
-                <button className="btn btn-outline" onClick={addHeroSlide} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Plus size={16} /> Add Slide
-                </button>
+                  <div className="form-group">
+                    <label>Subtitle</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={heroBanner.subtitle} 
+                      onChange={e => setHeroBanner({ ...heroBanner, subtitle: e.target.value })} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>CTA Button Text</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={heroBanner.ctaText} 
+                      onChange={e => setHeroBanner({ ...heroBanner, ctaText: e.target.value })} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Media Type</label>
+                    <select 
+                      className="form-input"
+                      value={heroBanner.mediaType}
+                      onChange={e => setHeroBanner({ ...heroBanner, mediaType: e.target.value })}
+                    >
+                      <option value="image">Image</option>
+                      <option value="video">Video</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Media Upload ({heroBanner.mediaType})</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {heroBanner.mediaType === 'image' ? 'Formats: JPG, PNG, WEBP (Max 2MB)' : 'Formats: MP4, WEBM (Max 20MB)'}
+                    </span>
+                  </label>
+                  
+                  {heroBanner.mediaUrl ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        {heroBanner.mediaType === 'video' ? (
+                          <video src={heroBanner.mediaUrl} controls muted style={{ width: '100%', display: 'block' }} />
+                        ) : (
+                          <img src={heroBanner.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
+                        )}
+                        <button 
+                          type="button"
+                          className="btn btn-outline" 
+                          style={{ 
+                            position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(255,255,255,0.9)', 
+                            color: 'var(--status-red)', borderColor: 'var(--status-red)', padding: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.25rem' 
+                          }}
+                          onClick={() => setHeroBanner({ ...heroBanner, mediaUrl: '' })}
+                        >
+                          <Trash2 size={14} /> Delete Media
+                        </button>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                        Media URL: <a href={heroBanner.mediaUrl} target="_blank" rel="noreferrer">{heroBanner.mediaUrl}</a>
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <label className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <UploadCloud size={16} /> Choose File & Upload
+                        <input 
+                          type="file" 
+                          accept={heroBanner.mediaType === 'image' ? 'image/*' : 'video/*'} 
+                          style={{ display: 'none' }} 
+                          onChange={handleMediaUpload} 
+                          disabled={uploadingMedia}
+                        />
+                      </label>
+                      {uploadingMedia && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                          <div style={{ flex: 1, height: '6px', backgroundColor: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: 'var(--gold)', borderRadius: '3px' }} />
+                          </div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{uploadProgress}%</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid-2" style={{ marginTop: '1rem' }}>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input 
+                      type="checkbox" 
+                      id="hero-banner-active"
+                      checked={heroBanner.isActive} 
+                      onChange={e => setHeroBanner({ ...heroBanner, isActive: e.target.checked })} 
+                    />
+                    <label htmlFor="hero-banner-active" style={{ cursor: 'pointer', userSelect: 'none' }}>Active (Display on Homepage)</label>
+                  </div>
+                  <div className="form-group">
+                    <label>Sort Order</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={heroBanner.sortOrder} 
+                      onChange={e => setHeroBanner({ ...heroBanner, sortOrder: parseInt(e.target.value) || 1 })} 
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -894,10 +1340,9 @@ export default function LandingPageCMS() {
                             <Trash2 size={14} />
                           </button>
                           <h5 style={{ margin: '0 0 0.5rem 0', color: 'var(--gold)', fontSize: '0.85rem' }}>Badge {i + 1}</h5>
-                          {i === 3 && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem 0' }}>(Automatically synced with "Our Promise" stats)</p>}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <input type="text" className="form-input" placeholder="Title (e.g. 50,000+)" value={badge.label} onChange={e => handleBrandStoryBadgeChange(i, 'label', e.target.value)} disabled={i === 3} />
-                            <input type="text" className="form-input" placeholder="Subtitle (e.g. Happy Customers)" value={badge.sub} onChange={e => handleBrandStoryBadgeChange(i, 'sub', e.target.value)} disabled={i === 3} />
+                            <input type="text" className="form-input" placeholder="Title (e.g. 50,000+)" value={badge.label} onChange={e => handleBrandStoryBadgeChange(i, 'label', e.target.value)} />
+                            <input type="text" className="form-input" placeholder="Subtitle (e.g. Happy Customers)" value={badge.sub} onChange={e => handleBrandStoryBadgeChange(i, 'sub', e.target.value)} />
                           </div>
                         </div>
                       ))}
@@ -1019,12 +1464,29 @@ export default function LandingPageCMS() {
                                     </div>
                                   )}
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                  <label style={{ display: 'block', marginBottom: '0.5rem' }}>Product Image <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Max 2MB)</span></label>
-                                  <input type="file" accept="image/*" onChange={(e) => handleNewArrivalsImageUpload(e, i)} style={{ fontSize: '0.9rem' }} />
-                                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Upload a square image (Max 2MB) for best results.</p>
-                                  {uploadingNewArrival === i && <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading image...</div>}
-                                </div>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                   <div className="form-group" style={{ margin: 0 }}>
+                                     <label style={{ display: 'block', marginBottom: '0.3rem' }}>Product Image URL / Path</label>
+                                     <input 
+                                       type="text" 
+                                       className="form-input" 
+                                       placeholder="e.g. /src/assets/rings.png or https://images.unsplash.com/..." 
+                                       value={item.image || ''} 
+                                       onChange={e => handleNewArrivalsItemChange(i, 'image', e.target.value)} 
+                                     />
+                                   </div>
+                                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                     <label className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                                       <UploadCloud size={14} /> Upload Image
+                                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleNewArrivalsImageUpload(e, i)} />
+                                     </label>
+                                     {uploadingNewArrival === i ? (
+                                       <div style={{ fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading...</div>
+                                     ) : (
+                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 2MB limit</span>
+                                     )}
+                                   </div>
+                                 </div>
                               </div>
                               
                               <div className="form-group">
@@ -1092,12 +1554,29 @@ export default function LandingPageCMS() {
                                     </div>
                                   )}
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                  <label style={{ display: 'block', marginBottom: '0.5rem' }}>Product Image <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Max 2MB)</span></label>
-                                  <input type="file" accept="image/*" onChange={(e) => handleBestSellersImageUpload(e, i)} style={{ fontSize: '0.9rem' }} />
-                                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Upload a square image (Max 2MB) for best results.</p>
-                                  {uploadingBestSeller === i && <div style={{ fontSize: '0.8rem', color: 'var(--gold)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading image...</div>}
-                                </div>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                   <div className="form-group" style={{ margin: 0 }}>
+                                     <label style={{ display: 'block', marginBottom: '0.3rem' }}>Product Image URL / Path</label>
+                                     <input 
+                                       type="text" 
+                                       className="form-input" 
+                                       placeholder="e.g. /src/assets/rings.png or https://images.unsplash.com/..." 
+                                       value={item.image || ''} 
+                                       onChange={e => handleBestSellersItemChange(i, 'image', e.target.value)} 
+                                     />
+                                   </div>
+                                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                     <label className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                                       <UploadCloud size={14} /> Upload Image
+                                       <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleBestSellersImageUpload(e, i)} />
+                                     </label>
+                                     {uploadingBestSeller === i ? (
+                                       <div style={{ fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading...</div>
+                                     ) : (
+                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 2MB limit</span>
+                                     )}
+                                   </div>
+                                 </div>
                               </div>
                               
                               <div className="form-group">

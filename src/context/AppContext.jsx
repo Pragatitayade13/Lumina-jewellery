@@ -273,7 +273,11 @@ export function AppProvider({ children }) {
               console.warn("Failed to log activity:", err);
             }
           } catch (err) {
-            console.error("Error fetching user role", err);
+            if (typeof navigator !== 'undefined' && !navigator.onLine || err.code === 'unavailable' || err.message?.includes('offline')) {
+              console.warn("Offline: Using cached or default user role configuration");
+            } else {
+              console.error("Error fetching user role", err);
+            }
             setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: 'Customer' });
           }
         } else {

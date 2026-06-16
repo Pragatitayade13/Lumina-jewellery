@@ -86,14 +86,6 @@ export default function Hero() {
 
 
 
-  const heroVideos = [
-    "https://template.canva.com/EAGsXwSDdUk/2/document_1440w-Fjnbdu4HcPk.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH7DHWAQDT%2F20260608%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260608T203948Z&X-Amz-Expires=75672&X-Amz-Signature=1bb3b3a331874f056f9e4630b9435b590ae83bbe31b60f934b4bd38fa60c6e5a&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Tue%2C%2009%20Jun%202026%2017%3A41%3A00%20GMT",
-    localHeroVideo2
-  ];
-
-  const next = useCallback(() => setActive(p => (p + 1) % heroVideos.length), [heroVideos.length]);
-  const prev = useCallback(() => setActive(p => (p - 1 + heroVideos.length) % heroVideos.length), [heroVideos.length]);
-
   const handleCTA = (href) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -104,31 +96,73 @@ export default function Hero() {
   const contentY = useTransform(scrollY, [0, 800], ['0%', '40%']);
   const contentOpacity = useTransform(scrollY, [0, 400], [1, 0]);
 
+  const activeSlide = slides && slides.find(s => s.isActive);
+  const hasMedia = activeSlide && activeSlide.mediaUrl;
+  const isVideo = activeSlide ? activeSlide.mediaType === 'video' : true;
+
   return (
     <section className="hero" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
-      {/* Background Slides */}
-      <AnimatePresence initial={false}>
-        <motion.div 
-          key={`video-${active}`}
-          className="hero-slide active"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        >
+      <div className="hero-slide active">
+        {hasMedia ? (
+          isVideo ? (
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="hero-slide-bg"
+              src={activeSlide.mediaUrl}
+            />
+          ) : (
+            <img
+              className="hero-slide-bg"
+              src={activeSlide.mediaUrl}
+              alt="Hero Banner"
+            />
+          )
+        ) : (
           <video
             autoPlay
             muted
+            loop
             playsInline
-            onEnded={next}
             className="hero-slide-bg"
-            src={heroVideos[active]}
+            src={localHeroVideo2}
           />
-          <div className="hero-overlay" />
-          <FloatingParticles count={40} />
-        </motion.div>
-      </AnimatePresence>
+        )}
+        <div className="hero-overlay" />
+        
+        {/* Content Overlay */}
+        {!isVideo && (
+          <div className="hero-content-wrap">
+            <div className="hero-container">
+              <div className="hero-slide-content">
+                <div className="hero-badge">
+                  <Sparkles size={14} />
+                  <span>{t('hero.slide1.badge')}</span>
+                </div>
+                <h1 className="hero-title">
+                  {activeSlide?.title || t('hero.slide1.title')}
+                </h1>
+                <p className="hero-subtitle">
+                  {activeSlide?.subtitle || t('hero.slide1.subtitle')}
+                </p>
+                <div className="hero-actions">
+                  <button 
+                    className="btn btn-gold" 
+                    onClick={() => handleCTA('#new-arrivals')}
+                    style={{ color: '#fff', fontWeight: 'bold' }}
+                  >
+                    {activeSlide?.ctaText || t('hero.slide1.cta1')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
+        <FloatingParticles count={40} />
+      </div>
 
       <div className="hero-scroll-indicator">
         <span>{t('common.scrollDown')}</span>

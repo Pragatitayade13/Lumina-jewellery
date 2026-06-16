@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApp, getApps } from 'firebase/app';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { initializeFirestore, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,12 +17,46 @@ const firebaseConfig = {
 let app, auth, db, storage;
 
 try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+    storage = getStorage(app);
+
+    // Connect to local Firebase Emulators in development / local hostname environments
+    if (
+      import.meta.env.DEV ||
+      import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+    ) {
+      try {
+        connectFirestoreEmulator(db, '127.0.0.1', 8080);
+        connectAuthEmulator(auth, 'http://127.0.0.1:9099');
+        connectStorageEmulator(storage, '127.0.0.1', 9199);
+        console.log('🔌 Connected to Firebase Emulators (Auth: 9099, Firestore: 8080, Storage: 9199)');
+      } catch (emulatorErr) {
+        console.warn('Could not connect to Firebase Emulators:', emulatorErr);
+      }
+    }
+  } else {
+    app = getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  }
 } catch (error) {
-  console.error("Firebase initialization error. Did you forget to add your .env variables?", error);
+  console.warn("Firebase normal initialization warning (possibly HMR):", error);
+  try {
+    app = getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  } catch (err) {
+    console.error("Firebase critical initialization error. Did you forget to add your .env variables?", err);
+  }
 }
 
 export { auth, db, storage, app };

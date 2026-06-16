@@ -15,6 +15,11 @@ let intervalId = null;
 let lastFetchTime = 0;
 
 const fetchLiveRates = async () => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    console.warn("Offline: Skipping live gold rates fetch, using last known/mock rates.");
+    return;
+  }
+
   try {
     let goldRes, silverRes, goldData, silverData;
 
@@ -29,6 +34,17 @@ const fetchLiveRates = async () => {
       // Fetch Gold & Silver Rates via our secure Vercel backend proxy
       goldRes = await fetch('/api/gold-rates?symbol=XAU&currency=INR');
       silverRes = await fetch('/api/gold-rates?symbol=XAG&currency=INR');
+    }
+
+    if (!goldRes.ok || !silverRes.ok) {
+      throw new Error(`Failed to fetch rates: gold status ${goldRes.status}, silver status ${silverRes.status}`);
+    }
+
+    const goldContentType = goldRes.headers.get('content-type') || '';
+    const silverContentType = silverRes.headers.get('content-type') || '';
+
+    if (!goldContentType.includes('application/json') || !silverContentType.includes('application/json')) {
+      throw new Error('Received non-JSON response from rates API');
     }
 
     goldData = await goldRes.json();
@@ -46,7 +62,7 @@ const fetchLiveRates = async () => {
 
     listeners.forEach(l => l({ ...globalRates }));
   } catch (error) {
-    console.error("Failed to fetch live gold rates:", error);
+    console.warn("Failed to fetch live gold rates (using mock fallback rates):", error);
   }
 };
 

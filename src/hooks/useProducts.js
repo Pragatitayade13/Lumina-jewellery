@@ -116,13 +116,21 @@ export function useProducts(activeStoreId = null) {
   const addProduct = async (productData) => {
     const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
     try {
-      if ((!activeStoreId || activeStoreId === 'NONE') && !isTest) {
-        throw new Error("Cannot create product without an active store context.");
-      }
       const productPayload = { ...productData };
-      productPayload.storeId = isTest ? (activeStoreId || 'GLOBAL') : activeStoreId;
+      if (!productPayload.storeId || productPayload.storeId === 'NONE') {
+        productPayload.storeId = activeStoreId && activeStoreId !== 'NONE' ? activeStoreId : 'GLOBAL';
+      }
+      
+      // Clean up internal UI flags before writing to Firestore
+      delete productPayload.id;
+      delete productPayload.isFirestoreApproval;
+      delete productPayload.approvalId;
+
       const docRef = await addDoc(collection(db, 'products'), productPayload);
       await logAudit('PRODUCT_CREATED', 'Products', docRef.id, null, { name: productData.name });
+      
+      setProducts(prev => [{ id: docRef.id, ...productPayload }, ...prev]);
+      
       return docRef.id;
     } catch (err) {
       console.error("Error adding product: ", err);
@@ -138,6 +146,9 @@ export function useProducts(activeStoreId = null) {
       }
       await deleteDoc(doc(db, 'products', id));
       await logAudit('PRODUCT_DELETED', 'Products', id);
+      
+      setProducts(prev => prev.filter(p => p.id !== id));
+      
       return { status: 'success' };
     } catch (err) {
       console.error("Error removing product: ", err);
@@ -157,6 +168,9 @@ export function useProducts(activeStoreId = null) {
       }
       await updateDoc(doc(db, 'products', id), updateData);
       await logAudit('PRODUCT_UPDATED', 'Products', id, null, updateData);
+      
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updateData } : p));
+      
       return { status: 'success' };
     } catch (err) {
       console.error("Error updating product: ", err);

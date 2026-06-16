@@ -9,7 +9,6 @@ import NotificationDropdown from '../components/NotificationDropdown/Notificatio
 import { useRates } from '../hooks/useRates';
 import { useAudit } from '../hooks/useAudit';
 import { useCMS } from '../context/CMSContext';
-import CustomerSupportAgent from '../components/CustomerSupportAgent/CustomerSupportAgent';
 
 const navItems = [
   { path: '/account', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true },
@@ -235,7 +234,6 @@ export default function CustomerLayout({ children }) {
           </div>
         </main>
       </div>
-      <CustomerSupportAgent />
     </div>
   );
 }

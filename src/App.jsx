@@ -66,12 +66,6 @@ function GlobalModals() {
 function StoreLayout() {
   useScrollReveal();
   const { isCartOpen, setIsCartOpen, isWishlistOpen, setIsWishlistOpen } = useApp();
-  const { landingPageData, systemSettingsData } = useCMS();
-
-  useEffect(() => {
-    const title = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
-    document.title = title;
-  }, [systemSettingsData?.storeName, landingPageData?.branding?.storeName, landingPageData?.seo?.title]);
 
   return (
     <SmoothScroll>
@@ -155,6 +149,26 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+function GlobalBrandingApplier() {
+  const { landingPageData, systemSettingsData } = useCMS();
+  
+  useEffect(() => {
+    const title = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
+    document.title = title;
+
+    // Dynamically update favicon if store logo is set
+    const logoUrl = landingPageData?.branding?.logoUrl;
+    if (logoUrl) {
+      const links = document.querySelectorAll("link[rel*='icon']");
+      links.forEach(link => {
+        link.href = logoUrl;
+      });
+    }
+  }, [systemSettingsData?.storeName, landingPageData?.branding?.storeName, landingPageData?.seo?.title, landingPageData?.branding?.logoUrl]);
+
+  return null;
+}
+
 export default function App() {
   useEffect(() => {
     // Basic Performance Monitoring
@@ -188,6 +202,7 @@ export default function App() {
     <ErrorBoundary>
       <AppProvider>
         <CMSProvider>
+          <GlobalBrandingApplier />
           <BrowserRouter>
             <ScrollToTop />
             <GlobalModals />
