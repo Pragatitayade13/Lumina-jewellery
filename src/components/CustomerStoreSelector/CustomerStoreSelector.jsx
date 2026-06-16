@@ -132,11 +132,11 @@ export default function CustomerStoreSelector() {
 
           {/* Shop All Stores option */}
           <div
-            className={`css-store-card css-all-stores${!customerSelectedStore && !isCustomerStorePromptOpen ? ' active' : ''}`}
-            onClick={() => handleSelect(null)}
+            className={`css-store-card css-all-stores${customerSelectedStore === 'GLOBAL' ? ' active' : ''}`}
+            onClick={() => handleSelect('GLOBAL')}
             role="button"
             tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && handleSelect(null)}
+            onKeyDown={e => e.key === 'Enter' && handleSelect('GLOBAL')}
           >
             <div className="css-store-icon-col">
               <Globe size={20} color="var(--text-muted)" />

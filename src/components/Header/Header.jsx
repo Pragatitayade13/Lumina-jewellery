@@ -27,9 +27,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
   const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme, user, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
   
   // Resolve store name for customer chip
-  const customerStoreName = customerSelectedStore
-    ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || null)
-    : null;
+  const customerStoreName = customerSelectedStore === 'GLOBAL'
+    ? 'All Showrooms'
+    : customerSelectedStore
+      ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || null)
+      : null;
   const isCustomer = user?.role === 'customer' || (!user?.role && !!user);
   const { socialMediaData, landingPageData, systemSettingsData } = useCMS();
   const { rates } = useRates();

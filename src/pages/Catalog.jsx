@@ -11,9 +11,11 @@ export default function Catalog() {
   const { inventory, loading } = useInventory(customerSelectedStore);
   
   // Resolve active store name
-  const activeStoreName = customerSelectedStore
-    ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || 'Selected Store')
-    : null;
+  const activeStoreName = customerSelectedStore === 'GLOBAL'
+    ? 'All Showrooms'
+    : customerSelectedStore
+      ? (allPublicStores.find(s => s.id === customerSelectedStore)?.name || 'Selected Store')
+      : null;
   
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
