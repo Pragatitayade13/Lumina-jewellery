@@ -73,10 +73,13 @@ export default function AuthModal() {
     try {
       let ipAddress = 'Unknown';
       try {
-        const res = await fetch('https://api.ipify.org?format=json');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await res.json();
         ipAddress = data.ip;
-      } catch (e) { console.warn('Could not fetch IP', e); }
+      } catch (e) { console.warn('Could not fetch IP within timeout', e); }
 
       const deviceInfo = navigator.userAgent;
       const role = userDocData ? userDocData.role : (selectedOption?.id || 'unknown');
@@ -189,8 +192,8 @@ export default function AuthModal() {
               localStorage.removeItem('jw_currentStore');
             }
             
-            // Record successful login
-            await recordLoginActivity(data, userCredential.user.uid, email, 'success');
+            // Record successful login asynchronously (do not block user login transition)
+            recordLoginActivity(data, userCredential.user.uid, email, 'success');
             await logAudit('USER_LOGIN', 'Auth', userCredential.user.uid, null, { email, role: data.role });
           }
         }
@@ -200,7 +203,7 @@ export default function AuthModal() {
           navigate(selectedOption.path);
         }
       } catch (error) {
-        // Record failed attempt
+        // Record failed attempt asynchronously
         try {
           const q = query(collection(db, 'users'), where('email', '==', email));
           const querySnapshot = await getDocs(q);
@@ -225,7 +228,7 @@ export default function AuthModal() {
               alert(`Account blocked due to ${maxFailed} failed login attempts.`);
             }
           }
-          await recordLoginActivity(userDocData, uid, email, 'failed', error.message);
+          recordLoginActivity(userDocData, uid, email, 'failed', error.message);
         } catch (innerErr) {
           console.error("Error tracking failed login:", innerErr);
         }
