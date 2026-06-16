@@ -17,7 +17,7 @@ export function useInventory(activeStoreId = null) {
   const { logAudit } = useAudit(activeStoreId);
   const { submitApprovalRequest } = useApprovals(activeStoreId);
   const { user } = useApp();
-  const userRole = user?.role || 'customer';
+  const userRole = user?.role || 'staff';
 
   const getFallbackData = () => {
     if (!mockInventory || !mockProducts) return [];
@@ -36,14 +36,13 @@ export function useInventory(activeStoreId = null) {
       return;
     }
 
+    const isStaff = user && ['staff', 'manager', 'admin', 'superadmin', 'super admin', 'store admin', 'company admin', 'finance'].includes(user?.role);
     let q;
     let poQuery;
     let transferQuery;
 
     try {
       q = getStoreQuery(db, 'inventory', activeStoreId);
-      poQuery = getStoreQuery(db, 'purchase_orders', activeStoreId);
-      transferQuery = getStoreQuery(db, 'stock_transfers', activeStoreId);
     } catch (err) {
       if (err instanceof StoreIsolationError) {
         console.warn(err.message);
@@ -161,30 +160,34 @@ export function useInventory(activeStoreId = null) {
       setError(err);
     });
 
-    const userRole = user?.role || 'customer';
-    const isStaff = ['staff', 'manager', 'admin', 'superadmin', 'super admin'].includes(userRole);
-
     let unsubscribePO = () => {};
     let unsubscribeTransfers = () => {};
 
     if (isStaff) {
-      unsubscribePO = onSnapshot(poQuery, (snapshot) => {
-        const poData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
-        }));
-        setPurchaseOrders(poData);
-      }, (err) => console.error("Error fetching POs:", err));
+      try {
+        poQuery = getStoreQuery(db, 'purchase_orders', activeStoreId);
+        transferQuery = getStoreQuery(db, 'stock_transfers', activeStoreId);
 
-      unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
-        const transferData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
-        }));
-        setStockTransfers(transferData);
-      }, (err) => console.error("Error fetching Transfers:", err));
+        unsubscribePO = onSnapshot(poQuery, (snapshot) => {
+          const poData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+          }));
+          setPurchaseOrders(poData);
+        }, (err) => console.error("Error fetching POs:", err));
+
+        unsubscribeTransfers = onSnapshot(transferQuery, (snapshot) => {
+          const transferData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            date: doc.data().createdAt?.toDate()?.toLocaleDateString('en-GB') || 'Just now'
+          }));
+          setStockTransfers(transferData);
+        }, (err) => console.error("Error fetching Transfers:", err));
+      } catch (e) {
+        console.warn("Staff queries skipped:", e.message);
+      }
     }
 
     return () => {
@@ -192,7 +195,7 @@ export function useInventory(activeStoreId = null) {
       unsubscribePO();
       unsubscribeTransfers();
     };
-  }, [activeStoreId, user]);
+  }, [activeStoreId]);
 
   const updateStock = async (id, updateData) => {
     if (!db) throw new Error("Firebase not initialized");

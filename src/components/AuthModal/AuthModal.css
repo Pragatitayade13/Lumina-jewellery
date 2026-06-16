@@ -640,3 +640,22 @@
   }
 }
 
+/* Custom slim scrollbar for auth-modal */
+.auth-modal::-webkit-scrollbar {
+  width: 4px;
+}
+.auth-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+.auth-modal::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.3);
+  border-radius: 4px;
+}
+.auth-modal::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+.auth-modal {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 168, 76, 0.3) transparent;
+}
+

@@ -2,15 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { db } from '../config/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getStoreQuery } from '../utils/storeQuery';
 import { useApp } from '../context/AppContext';
+import { getStoreQuery } from '../utils/storeQuery';
 
 export function useApprovals(activeStoreId = null) {
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const appContext = useApp();
-  const user = appContext?.user;
-  const userRole = user?.role || 'customer';
+  const { user } = useApp() || {};
 
   useEffect(() => {
     setApprovals([]);
@@ -26,7 +24,7 @@ export function useApprovals(activeStoreId = null) {
       return;
     }
 
-    const isStaff = ['staff', 'manager', 'admin', 'superadmin', 'super admin'].includes(userRole);
+    const isStaff = user && ['staff', 'manager', 'admin', 'superadmin', 'super admin', 'store admin', 'company admin', 'finance'].includes(user?.role);
     if (!isStaff) {
       setApprovals([]);
       setLoading(false);
@@ -51,7 +49,7 @@ export function useApprovals(activeStoreId = null) {
       console.warn("Approvals listener error:", err);
       setLoading(false);
     }
-  }, [activeStoreId, userRole]);
+  }, [activeStoreId, user]);
 
   const submitApprovalRequest = async (type, payload, entityId = null, module = 'System') => {
     try {
