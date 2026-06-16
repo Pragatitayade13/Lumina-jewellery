@@ -46,6 +46,7 @@ service cloud.firestore {
       return isAuthenticated() && 
         (getUserRole() == 'admin' || 
          getUserRole() == 'superadmin' || 
+         getUserRole() == 'super admin' || 
          getUserRole() == 'staff' || 
          getUserRole() == 'manager' ||
          isStoreAdmin() ||
@@ -56,6 +57,7 @@ service cloud.firestore {
     function isAssignedToStore(storeId) {
       return isAuthenticated() && (
         isSuperAdmin() || 
+        isAdmin() ||
         isCompanyAdmin() ||
         exists(/databases/$(database)/documents/userStores/$(request.auth.uid + '_' + storeId))
       );

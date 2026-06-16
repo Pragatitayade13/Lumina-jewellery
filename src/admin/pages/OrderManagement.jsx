@@ -170,7 +170,6 @@ export default function OrderManagement() {
     showToast(`Initiating invoice generation for ${filteredAndSortedOrders.length} orders...`);
     
     try {
-      const printWindow = window.open('', '_blank');
       let invoicesHtml = '';
       
       filteredAndSortedOrders.forEach((order, index) => {
@@ -266,7 +265,16 @@ export default function OrderManagement() {
         `;
       });
 
-      printWindow.document.write(`
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      iframe.contentDocument.write(`
         <html>
           <head>
             <title>Bulk Invoices - ${filteredAndSortedOrders.length} Orders</title>
@@ -287,13 +295,13 @@ export default function OrderManagement() {
           </body>
         </html>
       `);
-      printWindow.document.close();
-      printWindow.focus();
-      
-      // Allow time for rendering before printing
+      iframe.contentDocument.close();
+
       setTimeout(() => {
-        printWindow.print();
-        showToast(`Successfully generated and opened ${filteredAndSortedOrders.length} invoices.`);
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        document.body.removeChild(iframe);
+        showToast(`Successfully generated and printed ${filteredAndSortedOrders.length} invoices.`);
       }, 500);
       
     } catch (error) {
@@ -308,8 +316,16 @@ export default function OrderManagement() {
     const billStoreName = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
     const billStoreAddress = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    iframe.contentDocument.write(`
       <html>
         <head>
           <title>Invoice - ${viewInvoice.id}</title>
@@ -411,11 +427,15 @@ export default function OrderManagement() {
         </body>
       </html>
     `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    iframe.contentDocument.close();
+
     showToast("Generating PDF Invoice...");
-    setTimeout(() => setViewInvoice(null), 1000);
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      document.body.removeChild(iframe);
+      setViewInvoice(null);
+    }, 500);
   };
 
   return (

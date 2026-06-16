@@ -193,8 +193,16 @@ export default function Analytics() {
   const handleDownloadReport = (reportType) => {
     showToast(`Generating ${reportType}...`);
     setTimeout(() => {
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      iframe.contentDocument.write(`
         <html>
           <head>
             <title>${reportType} - Lumina Jewels</title>
@@ -264,9 +272,13 @@ export default function Analytics() {
           </body>
         </html>
       `);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
+      iframe.contentDocument.close();
+
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        document.body.removeChild(iframe);
+      }, 500);
     }, 800);
   };
 

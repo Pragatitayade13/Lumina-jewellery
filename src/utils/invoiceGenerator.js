@@ -156,16 +156,21 @@ export function generateInvoiceHTML(inv, isCreditNote = false, calculateTax, glo
 
 export const downloadInvoice = (inv, isCreditNote = false, calculateTax, globalShopName = null) => {
   const htmlStr = generateInvoiceHTML(inv, isCreditNote, calculateTax, globalShopName);
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(htmlStr);
-    printWindow.document.close();
-    printWindow.focus();
-    // Use a slight delay so images/fonts load
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
-  } else {
-    alert("Please allow popups to download your invoice.");
-  }
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+  
+  iframe.contentDocument.write(htmlStr);
+  iframe.contentDocument.close();
+  
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    document.body.removeChild(iframe);
+  }, 500);
 };
