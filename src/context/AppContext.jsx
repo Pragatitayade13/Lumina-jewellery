@@ -209,9 +209,9 @@ export function AppProvider({ children }) {
                  if (!userAssignedStores.find(s => s.id === activeStore)) {
                    activeStore = null; 
                    setCurrentStore(null);
-                   if (userData.role !== 'customer' && userData.role !== 'superadmin') {
-                     setIsStoreSelectionOpen(true);
-                   }
+                    if (userData.role !== 'customer') {
+                      setIsStoreSelectionOpen(true);
+                    }
                  }
               } else {
                  setCurrentStore(null);
