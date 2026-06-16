@@ -166,7 +166,8 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.2rem;
+  flex-shrink: 0;
 }
 
 .header-search {
@@ -317,7 +318,7 @@
 
 .mobile-nav-link:hover { color: var(--gold); }
 
-@media (max-width: 1024px) {
+@media (max-width: 1250px) {
   .nav { display: none; }
   .header-search { display: none; }
   .hamburger { display: flex; }
