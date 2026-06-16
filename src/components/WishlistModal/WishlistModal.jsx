@@ -1,11 +1,13 @@
 import { useApp } from '../../context/AppContext';
 import { useScrollLock } from '../../hooks/useScrollLock';
 import { X, Trash2, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import '../CartModal/CartModal.css';
 
 export default function WishlistModal({ isOpen, onClose }) {
   useScrollLock(isOpen);
   const { wishlist, toggleWishlist, addToCart } = useApp();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -28,7 +30,7 @@ export default function WishlistModal({ isOpen, onClose }) {
             <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
               <Heart size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />
               <p style={{ fontSize: '1.1rem' }}>Your wishlist is empty.</p>
-              <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={onClose}>Continue Shopping</button>
+              <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={() => { onClose(); navigate('/collections'); }}>Continue Shopping</button>
             </div>
           ) : (
             wishlist.map(item => (

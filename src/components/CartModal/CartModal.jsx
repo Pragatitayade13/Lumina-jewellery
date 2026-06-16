@@ -297,7 +297,7 @@ export default function CartModal({ isOpen, onClose }) {
                 <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
                   <ShoppingBag size={56} style={{ opacity: 0.15, marginBottom: '1.5rem' }} />
                   <p style={{ fontSize: '1.1rem' }}>Your cart is empty.</p>
-                  <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={onClose}>Continue Shopping</button>
+                  <button className="btn btn-gold" style={{ marginTop: '1.5rem' }} onClick={() => { onClose(); navigate('/collections'); }}>Continue Shopping</button>
                 </div>
               ) : (
                 cart.map(item => (
@@ -504,7 +504,7 @@ export default function CartModal({ isOpen, onClose }) {
             >
               <Truck size={18} /> View & Track Order
             </button>
-            <button className="btn btn-outline" style={{ width: '100%', padding: '1rem' }} onClick={onClose}>
+            <button className="btn btn-outline" style={{ width: '100%', padding: '1rem' }} onClick={() => { onClose(); navigate('/collections'); }}>
               Continue Shopping
             </button>
           </div>
