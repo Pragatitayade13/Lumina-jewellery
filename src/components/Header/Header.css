@@ -318,7 +318,26 @@
 
 .mobile-nav-link:hover { color: var(--gold); }
 
-@media (max-width: 1250px) {
+@media (max-width: 1400px) {
+  .nav-link {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .header-actions {
+    gap: 0.8rem;
+  }
+  .header-search {
+    width: 130px;
+  }
+  .header-search:focus-within {
+    width: 170px;
+  }
+  .logo-name {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 1280px) {
   .nav { display: none; }
   .header-search { display: none; }
   .hamburger { display: flex; }
