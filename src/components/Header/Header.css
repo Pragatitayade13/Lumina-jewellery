@@ -134,6 +134,8 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .nav-link {
@@ -337,7 +339,7 @@
   }
 }
 
-@media (max-width: 1360px) {
+@media (max-width: 1440px) {
   .nav { display: none; }
   .header-search { display: none; }
   .hamburger { display: flex; }
