@@ -398,7 +398,7 @@ export default function CartModal({ isOpen, onClose }) {
 
         {/* STEP 1: ADDRESS */}
         {step === 1 && (
-          <form onSubmit={handleAddressSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <form onSubmit={handleAddressSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
               
               <div className="checkout-grid-2-col">
@@ -450,7 +450,7 @@ export default function CartModal({ isOpen, onClose }) {
 
         {/* STEP 2: PAYMENT */}
         {step === 2 && (
-          <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Please select your preferred payment method for a secure transaction.</p>
                
