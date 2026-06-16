@@ -34,7 +34,15 @@ export default function WishlistModal({ isOpen, onClose }) {
             wishlist.map(item => (
               <div key={item.id} className="cart-item-card">
                 <div className="cart-item-image-wrapper">
-                  <img src={item.image} alt={item.name} className="cart-item-image" />
+                  <img 
+                    src={item.image && !item.image.includes('/src/assets') ? item.image : 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200'} 
+                    alt={item.name} 
+                    className="cart-item-image" 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200';
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', color: '#fff' }}>{item.name}</div>
