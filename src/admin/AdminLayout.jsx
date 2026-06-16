@@ -164,33 +164,44 @@ export default function AdminLayout({ children }) {
         const { signOut } = await import('firebase/auth');
         
         if (db) {
-           await updateDoc(doc(db, 'users', user.uid), {
-             lastCheckOut: serverTimestamp(),
-             status: 'offline'
-           });
+          try {
+            await updateDoc(doc(db, 'users', user.uid), {
+              lastCheckOut: serverTimestamp(),
+              status: 'offline'
+            });
+          } catch (userDbErr) {
+            console.warn("Failed to update user offline status in DB:", userDbErr);
+          }
 
-           // Update login activity record
-           try {
-             const q = query(
-               collection(db, 'loginActivity'), 
-               where('userId', '==', user.uid),
-               orderBy('loginTime', 'desc'),
-               limit(1)
-             );
-             const snapshot = await getDocs(q);
-             if (!snapshot.empty) {
-               await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
-                 logoutTime: new Date().toISOString(),
-                 status: 'completed'
-               });
-             }
-           } catch (err) {
-             console.error("Error closing login session", err);
-           }
-           await logAudit('USER_LOGOUT', 'Auth', user.uid, null, null, currentStore);
+          // Update login activity record
+          try {
+            const q = query(
+              collection(db, 'loginActivity'), 
+              where('userId', '==', user.uid),
+              orderBy('loginTime', 'desc'),
+              limit(1)
+            );
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+                logoutTime: new Date().toISOString(),
+                status: 'completed'
+              });
+            }
+          } catch (err) {
+            console.error("Error closing login session", err);
+          }
+
+          try {
+            await logAudit('USER_LOGOUT', 'Auth', user.uid, null, null, currentStore);
+          } catch (auditErr) {
+            console.warn("Failed to log logout audit:", auditErr);
+          }
         }
         if (auth) await signOut(auth);
-      } catch (e) { console.error("Logout error", e); }
+      } catch (e) { 
+        console.error("Logout error during auth operations", e); 
+      }
     }
     localStorage.removeItem('jw_currentStore'); // Force prompt on next login
     setCurrentStore(null); // Clear context state so it doesn't re-save to localStorage
