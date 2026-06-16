@@ -25,13 +25,8 @@ try {
     });
     storage = getStorage(app);
 
-    // Connect to local Firebase Emulators in development / local hostname environments
-    if (
-      import.meta.env.DEV ||
-      import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' ||
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    ) {
+    // Connect to local Firebase Emulators only if explicitly configured
+    if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
       try {
         connectFirestoreEmulator(db, '127.0.0.1', 8080);
         connectAuthEmulator(auth, 'http://127.0.0.1:9099');
