@@ -20,7 +20,6 @@ const navItems = [
   { path: '/account/appointments', label: 'Store Appointments', icon: <Calendar size={18} /> },
   { path: '/account/planner', label: 'Bridal Planner', icon: <Sparkles size={18} /> },
   { path: '/account/buyback', label: 'Buyback Calculator', icon: <Calculator size={18} /> },
-  { path: '/account/certificate', label: 'Certificate Verification', icon: <ShieldCheck size={18} /> },
   { section: 'Help' },
   { path: '/account/support', label: 'Customer Support', icon: <LifeBuoy size={18} /> },
 ];
@@ -34,7 +33,6 @@ const pageTitles = {
   '/account/appointments': 'My Appointments',
   '/account/planner': 'Bridal Planner Studio',
   '/account/buyback': 'Buyback Exchange Calculator',
-  '/account/certificate': 'Certificate Verification',
   '/account/support': 'Support & Tickets',
 };
 
