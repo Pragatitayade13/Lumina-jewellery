@@ -12,6 +12,7 @@ import catBangles from '../../assets/category_bangles_1779901402606.png';
 import catBridal from '../../assets/category_bridal_1779901298512.png';
 import catMens from '../../assets/products/mens_platinum_band_1780299606035.png';
 import './FeaturedCategories.css';
+import ProductCard from '../ProductCard/ProductCard';
 
 const categoryImages = [catGold, catSilver, catDiamond, catRings, catNecklaces, catEarrings, catBangles, catBridal, catMens];
 const categoryBgs = ['cat-gold','cat-silver','cat-diamond','cat-rings','cat-necklaces','cat-earrings','cat-bangles','cat-bridal', 'cat-mens'];
@@ -194,17 +195,7 @@ export default function FeaturedCategories() {
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
                       {groupList.map(product => (
-                        <div key={product.id} className="product-card">
-                          <div className="product-image-wrap">
-                            <img src={product.image} alt={product.name} className="product-img" loading="lazy" />
-                          </div>
-                          <div className="product-info">
-                            <h4 className="product-title" style={{ fontSize: '1rem' }}>{product.name}</h4>
-                            <div className="product-price-wrap" style={{ marginTop: '0.5rem' }}>
-                              <span className="price-current">₹{product.price.toLocaleString('en-IN')}</span>
-                            </div>
-                          </div>
-                        </div>
+                        <ProductCard key={product.id} product={product} />
                       ))}
                     </div>
                   </div>
