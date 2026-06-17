@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminUsers } from '../data/mockData';
-import { Info, Edit, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText, RefreshCw } from 'lucide-react';
+import { Info, Edit, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText, RefreshCw, Eye, EyeOff, Copy, Key } from 'lucide-react';
 import { db } from '../../config/firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useApp } from '../../context/AppContext';
@@ -9,6 +9,7 @@ import { useMessages } from '../../hooks/useMessages';
 import { useStores } from '../../hooks/useStores';
 import { useAudit } from '../../hooks/useAudit';
 import { useScrollLock } from '../../hooks/useScrollLock';
+import { useTasks } from '../../hooks/useTasks';
 
 export default function StaffManagement() {
   const { user, showToast, globalSearch, currentStore } = useApp();
@@ -44,18 +45,18 @@ export default function StaffManagement() {
 
   useEffect(() => {
     if (!usersLoading) {
-      let staffOnly = firebaseUsers.filter(u => u.role?.toLowerCase() !== 'customer');
-      if (activeStoreId && activeStoreId !== 'GLOBAL') {
-        const assignedUserIds = allUserStores.filter(us => us.storeId === activeStoreId).map(us => us.userId);
-        staffOnly = staffOnly.filter(u => assignedUserIds.includes(u.id));
-      }
+      const staffOnly = firebaseUsers.filter(u => u.role?.toLowerCase() !== 'customer');
       setUsers(staffOnly);
     }
-  }, [firebaseUsers, usersLoading, allUserStores, activeStoreId]);
+  }, [firebaseUsers, usersLoading, activeStoreId]);
 
   const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  // Track which staff rows have their password revealed
+  const [revealedPasswords, setRevealedPasswords] = useState({});
+  const toggleReveal = (uid) => setRevealedPasswords(prev => ({ ...prev, [uid]: !prev[uid] }));
+  const copyToClipboard = (text, label) => { navigator.clipboard.writeText(text); showToast(`${label} copied to clipboard!`); };
   const [editingUserStores, setEditingUserStores] = useState([]);
 
   const handleEditClick = (usr) => {
@@ -64,11 +65,7 @@ export default function StaffManagement() {
   };
 
   // Tasks State
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Restock Gold Rings', assignee: 'Jane Smith', status: 'In Progress', deadline: 'Today, 5:00 PM' },
-    { id: 2, title: 'Call Customer #1092', assignee: 'Michael Doe', status: 'Pending', deadline: 'Tomorrow, 10:00 AM' },
-    { id: 3, title: 'Audit Weekly Inventory', assignee: 'Sarah Admin', status: 'Completed', deadline: 'Yesterday' },
-  ]);
+  const { tasks, addTask: dbAddTask, updateTaskStatus: dbUpdateTaskStatus } = useTasks(null, activeStoreId);
 
   // Schedules State
   const [staffSchedules, setStaffSchedules] = useState({});
@@ -101,16 +98,20 @@ export default function StaffManagement() {
   const handleSaveSchedules = async () => {
     try {
       showToast("Saving schedules...");
-      await Promise.all(Object.keys(staffSchedules).map(userId => 
-        updateUserSchedule(userId, staffSchedules[userId])
-      ));
+      await Promise.all(Object.keys(staffSchedules).map(userId => {
+        // Only trigger database writes for actual Firestore user strings, not mock IDs
+        if (typeof userId === 'string' && isNaN(Number(userId)) && userId.length > 5) {
+          return updateUserSchedule(userId, staffSchedules[userId]);
+        }
+        return Promise.resolve();
+      }));
       showToast("Schedules saved successfully!");
     } catch (e) {
       showToast("Failed to save schedules", "error");
     }
   };
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', assignee: '', deadline: '' });
+  const [newTask, setNewTask] = useState({ title: '', assigneeId: '', deadline: '' });
 
   useScrollLock(isAddUserModalOpen || !!editingUser || newTaskOpen);
 
@@ -190,6 +191,8 @@ export default function StaffManagement() {
       const newUid = authData.localId;
 
       // Step 2: Write Firestore user doc using the real uid
+      // tempPassword is stored so admin can share login credentials with staff.
+      // mustChangePassword flag reminds admin the staff is using initial credentials.
       await setDoc(doc(db, 'users', newUid), {
         uid: newUid,
         name: newUser.name,
@@ -199,6 +202,8 @@ export default function StaffManagement() {
         department: newUser.role === 'admin' ? '' : newUser.department,
         status: 'active',
         storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
+        tempPassword: password,
+        mustChangePassword: true,
         createdAt: serverTimestamp()
       });
 
@@ -209,9 +214,34 @@ export default function StaffManagement() {
 
       await logAudit('USER_CREATED', 'Users', newUid, null, { email: newUser.email, role: newUser.role });
 
+      // ── Optimistically add new user to local list so they appear immediately ──
+      const avatarColors = ['#c9a84c', '#3498db', '#2ecc71', '#9b59b6', '#e74c3c', '#1abc9c'];
+      const avatarColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
+      const newUserEntry = {
+        id: newUid,
+        uid: newUid,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone || 'N/A',
+        role: newUser.role,
+        department: newUser.role === 'admin' ? '' : newUser.department,
+        status: 'active',
+        storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
+        tempPassword: password,
+        mustChangePassword: true,
+        avatar: newUser.name.substring(0, 2).toUpperCase(),
+        avatarColor,
+        lastCheckIn: '--',
+        lastCheckOut: '--',
+        createdAt: new Date().toISOString()
+      };
+      setUsers(prev => [newUserEntry, ...prev]);
+
+      // Close modal and reset form
+      const createdEmail = newUser.email;
       setIsAddUserModalOpen(false);
       setNewUser({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
-      showToast(`✅ Account created! Share these credentials: Email: ${newUser.email} | Password: ${password}`);
+      showToast(`✅ Staff account created! Email: ${createdEmail} | Password: ${password}`);
     } catch (err) {
       console.error('Create account error:', err);
       const msg = err.message.includes('EMAIL_EXISTS')
@@ -225,19 +255,29 @@ export default function StaffManagement() {
     }
   };
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
-    const taskEntry = {
-      id: Date.now(),
-      title: newTask.title,
-      assignee: newTask.assignee || users[0].name,
-      status: 'Pending',
-      deadline: newTask.deadline || 'No deadline'
-    };
-    setTasks([taskEntry, ...tasks]);
-    setNewTaskOpen(false);
-    setNewTask({ title: '', assignee: '', deadline: '' });
-    showToast("Task assigned successfully.");
+    const assignedUser = users.find(u => u.id === newTask.assigneeId);
+    if (!assignedUser) {
+      showToast("Please select a staff member.", "error");
+      return;
+    }
+    try {
+      await dbAddTask({
+        title: newTask.title,
+        assigneeId: assignedUser.id,
+        assigneeName: assignedUser.name,
+        deadline: newTask.deadline || 'No deadline',
+        status: 'Pending',
+        createdBy: user?.uid || 'System'
+      });
+      setNewTaskOpen(false);
+      setNewTask({ title: '', assigneeId: '', deadline: '' });
+      showToast("Task assigned successfully.");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to assign task.", "error");
+    }
   };
 
   const handleSendMessage = async (e) => {
@@ -365,13 +405,14 @@ export default function StaffManagement() {
                   <th>User Details</th>
                   <th>Role & Access</th>
                   <th>Department</th>
+                  <th>Login Credentials</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
-                  <tr><td colSpan="5">
+                  <tr><td colSpan="6">
                   <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 No users found.<br/>
                 <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>
@@ -391,8 +432,55 @@ export default function StaffManagement() {
                           </div>
                         </div>
                       </td>
-                      <td><span className={`badge badge-${user.role}`}>{user.role.toUpperCase()}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className={`badge badge-${user.role}`}>{user.role.toUpperCase()}</span>
+                          {user.mustChangePassword && (
+                            <span title="Using initial password — admin-set credentials" style={{ color: '#f39c12', display: 'flex', alignItems: 'center' }}>
+                              <Key size={12} />
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td>{user.department}</td>
+                      <td>
+                        {user.tempPassword ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+                            {/* Email row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', width: '22px' }}>@</span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</span>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title="Copy email"
+                                onClick={() => copyToClipboard(user.email, 'Email')}
+                              ><Copy size={11} /></button>
+                            </div>
+                            {/* Password row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', width: '22px' }}>🔑</span>
+                              <span style={{ fontSize: '0.78rem', fontFamily: 'monospace', color: 'var(--text-primary)', flex: 1, letterSpacing: revealedPasswords[user.id] ? '0' : '2px' }}>
+                                {revealedPasswords[user.id] ? user.tempPassword : '••••••••'}
+                              </span>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title={revealedPasswords[user.id] ? 'Hide password' : 'Reveal password'}
+                                onClick={() => toggleReveal(user.id)}
+                              >{revealedPasswords[user.id] ? <EyeOff size={11} /> : <Eye size={11} />}</button>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title="Copy password"
+                                onClick={() => copyToClipboard(user.tempPassword, 'Password')}
+                              ><Copy size={11} /></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`badge badge-${user.status === 'active' ? 'active' : user.status === 'blocked' ? 'blocked' : 'pending'}`}>
                           {user.status.toUpperCase()}
@@ -637,7 +725,7 @@ export default function StaffManagement() {
                 {tasks.map(t => (
                   <tr key={t.id}>
                     <td style={{ fontWeight: 600 }}>{t.title}</td>
-                    <td>{t.assignee}</td>
+                    <td>{t.assigneeName || t.assignee}</td>
                     <td>
                       <span className={`badge ${t.status === 'Completed' ? 'badge-active' : t.status === 'In Progress' ? 'badge-new' : 'badge-pending'}`}>
                         {t.status}
@@ -647,7 +735,8 @@ export default function StaffManagement() {
                     <td>
                       {canManageStaff ? (
                         <button className="btn btn-sm btn-outline" onClick={() => {
-                          setTasks(tasks.map(x => x.id === t.id ? { ...x, status: x.status === 'Pending' ? 'In Progress' : 'Completed' } : x));
+                          const nextStatus = t.status === 'Pending' ? 'In Progress' : t.status === 'In Progress' ? 'Completed' : 'Pending';
+                          dbUpdateTaskStatus(t.id, nextStatus);
                           showToast(`Status updated for task: ${t.title}`);
                         }}>
                           Update Status
@@ -658,6 +747,13 @@ export default function StaffManagement() {
                     </td>
                   </tr>
                 ))}
+                {tasks.length === 0 && (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No tasks assigned yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -831,11 +927,11 @@ export default function StaffManagement() {
                     {allStores.map(store => (
                       <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
                         <input 
-                          type="checkbox" 
+                          type="radio" 
+                          name="newUserStore"
                           checked={newUser.storeIds.includes(store.id)}
                           onChange={e => {
-                            if (e.target.checked) setNewUser({...newUser, storeIds: [...newUser.storeIds, store.id]});
-                            else setNewUser({...newUser, storeIds: newUser.storeIds.filter(id => id !== store.id)});
+                            if (e.target.checked) setNewUser({...newUser, storeIds: [store.id]});
                           }}
                         />
                         {store.name}
@@ -899,12 +995,12 @@ export default function StaffManagement() {
                     {allStores.map(store => (
                       <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', opacity: editingUser.role === 'superadmin' ? 0.5 : 1 }}>
                         <input 
-                          type="checkbox" 
+                          type="radio" 
+                          name="editingUserStore"
                           checked={editingUserStores.includes(store.id)}
                           disabled={!canManageStaff || editingUser.role === 'superadmin'}
                           onChange={e => {
-                            if (e.target.checked) setEditingUserStores([...editingUserStores, store.id]);
-                            else setEditingUserStores(editingUserStores.filter(id => id !== store.id));
+                            if (e.target.checked) setEditingUserStores([store.id]);
                           }}
                         />
                         {store.name}
@@ -940,10 +1036,10 @@ export default function StaffManagement() {
                 </div>
                 <div className="form-group mb-1">
                   <label className="form-label">Assign To</label>
-                  <select className="form-input" value={newTask.assignee} onChange={e => setNewTask({...newTask, assignee: e.target.value})}>
+                  <select className="form-input" required value={newTask.assigneeId} onChange={e => setNewTask({...newTask, assigneeId: e.target.value})}>
                     <option value="">Select staff member...</option>
                     {users.filter(u => u.role !== 'superadmin').map(u => (
-                      <option key={u.id} value={u.name}>{u.name}</option>
+                      <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>

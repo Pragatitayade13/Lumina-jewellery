@@ -16,7 +16,7 @@ export default function SocialMediaSettings() {
       instagram: { enabled: true, url: '', handle: '' },
       facebook: { enabled: true, url: '', handle: '' },
       pinterest: { enabled: false, url: '', handle: '' },
-      whatsapp: { enabled: true, url: '', phoneNumber: '', floatingButton: true, handle: '' },
+      whatsapp: { enabled: false, url: '', phoneNumber: '', floatingButton: false, handle: '' },
       youtube: { enabled: false, url: '', handle: '' },
       twitter: { enabled: false, url: '', handle: '' }
     },
@@ -157,7 +157,7 @@ export default function SocialMediaSettings() {
         <div className="admin-card">
           <div className="card-header"><div className="card-title">Social Platforms</div></div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {Object.keys(data.platforms).filter(p => p !== 'linkedin' && p !== 'telegram').map((platform) => (
+            {Object.keys(data.platforms).filter(p => p !== 'linkedin' && p !== 'telegram' && p !== 'whatsapp').map((platform) => (
               <div key={platform} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
                   {platform === 'whatsapp' ? <MessageCircle size={24} /> : <Globe size={24} />}
@@ -235,16 +235,7 @@ export default function SocialMediaSettings() {
                   onChange={(e) => setData({ ...data, contact: { ...data.contact, email: e.target.value } })} 
                 />
               </div>
-              <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={data.platforms.whatsapp.floatingButton} 
-                    onChange={() => setData({ ...data, platforms: { ...data.platforms, whatsapp: { ...data.platforms.whatsapp, floatingButton: !data.platforms.whatsapp.floatingButton } } })} 
-                  />
-                  Enable Floating WhatsApp Button (Uses Phone Number above)
-                </label>
-              </div>
+
             </div>
           </div>
         </div>

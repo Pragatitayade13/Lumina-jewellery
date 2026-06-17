@@ -3,25 +3,30 @@ import admin from 'firebase-admin';
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY
-          ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-          : undefined,
-      }),
-    });
+    if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+    } else {
+      console.warn('Firebase Admin credentials missing from env variables.');
+    }
   } catch (error) {
     console.error('Firebase Admin init error in middleware:', error);
   }
 }
 
-
-const db = admin.firestore();
+const db = admin.apps.length ? admin.firestore() : null;
 
 const logSecurityEvent = async (type, ip, details) => {
   try {
+    if (!db) {
+      console.warn('Firebase Admin not initialized, skipping security logging.');
+      return;
+    }
     await db.collection('security_events').add({
       type,
       ip,
@@ -89,6 +94,8 @@ export const withCSRF = (handler) => {
     // In production, ensure the origin matches your deployed domain.
     const allowedOrigin = process.env.VITE_APP_URL || 'http://localhost:5173';
 
+    const isLocal = (url) => url && (url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:'));
+
     if (!origin && !referer) {
       // Browsers generally send at least one for cross-origin POSTs.
       // If both are missing, it might be a direct curl request (abuse).
@@ -96,13 +103,13 @@ export const withCSRF = (handler) => {
       return res.status(403).json({ error: 'Missing Origin/Referer header' });
     }
 
-    if (origin && !origin.startsWith(allowedOrigin)) {
+    if (origin && !isLocal(origin) && !origin.startsWith(allowedOrigin)) {
       console.warn(`CSRF blocked from origin: ${origin}`);
       await logSecurityEvent('CSRF_INVALID_ORIGIN', req.socket.remoteAddress, { origin, path: req.url });
       return res.status(403).json({ error: 'CSRF Validation Failed' });
     }
 
-    if (referer && !referer.startsWith(allowedOrigin)) {
+    if (referer && !isLocal(referer) && !referer.startsWith(allowedOrigin)) {
       console.warn(`CSRF blocked from referer: ${referer}`);
       await logSecurityEvent('CSRF_INVALID_REFERER', req.socket.remoteAddress, { referer, path: req.url });
       return res.status(403).json({ error: 'CSRF Validation Failed' });

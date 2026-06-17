@@ -261,44 +261,7 @@ export default function SystemSettings() {
             </div>
          </div>
       </div>
-      
-      {/* Super Admin Database Tools */}
-      <div className="admin-card" style={{ marginTop: '1.5rem', border: '1px solid var(--status-red)' }}>
-         <div className="card-header">
-            <div>
-              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-red)' }}>
-                <AlertTriangle size={18} />
-                Super Admin Database Tools
-              </div>
-              <div className="card-subtitle">Danger Zone: Operations for database initialization and seeding</div>
-            </div>
-         </div>
-         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button className="btn btn-outline" onClick={async () => {
-              try {
-                const { seedOrders } = await import('../../scripts/seedERPData');
-                const count = await seedOrders();
-                alert(`Successfully seeded ${count} orders to Firebase!`);
-              } catch (e) { alert("Error: " + e.message); }
-            }}>Seed Orders DB</button>
-            
-            <button className="btn btn-outline" onClick={async () => {
-              try {
-                const { seedTransactions } = await import('../../scripts/seedERPData');
-                const count = await seedTransactions();
-                alert(`Successfully seeded ${count} transactions to Firebase!`);
-              } catch (e) { alert("Error: " + e.message); }
-            }}>Seed Finance DB</button>
-            
-            <button className="btn btn-outline" onClick={async () => {
-              try {
-                const { seedSupportTickets } = await import('../../scripts/seedERPData');
-                const count = await seedSupportTickets();
-                alert(`Successfully seeded ${count} support tickets to Firebase!`);
-              } catch (e) { alert("Error: " + e.message); }
-            }}>Seed Support Tickets DB</button>
-         </div>
-      </div>
+
     </div>
   );
 }

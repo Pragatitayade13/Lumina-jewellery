@@ -81,23 +81,26 @@ export default function AuthModal() {
         ipAddress = data.ip;
       } catch (e) { console.warn('Could not fetch IP within timeout', e); }
 
-      const deviceInfo = navigator.userAgent;
-      const role = userDocData ? userDocData.role : (selectedOption?.id || 'unknown');
-      const userName = userDocData ? userDocData.name : (uid === 'unknown' ? 'Unknown' : 'User');
+      const deviceInfo = navigator.userAgent || 'Unknown Device';
+      const role = (userDocData ? userDocData.role : (selectedOption?.id || 'unknown')) || 'unknown';
+      const userName = (userDocData?.name || userDocData?.displayName || (uid === 'unknown' ? 'Unknown' : 'User')) || 'Unknown';
       
       const payload = {
-        userId: uid,
+        userId: uid || 'unknown',
         userName,
-        email: currentEmail,
+        email: currentEmail || 'unknown',
         role,
         loginTime: new Date().toISOString(),
-        ipAddress,
-        deviceInfo,
-        status,
-        errorMessage: errorMsg
+        ipAddress: ipAddress || 'Unknown',
+        deviceInfo: deviceInfo || 'Unknown Device',
+        status: status || 'failed',
+        errorMessage: errorMsg || ''
       };
 
       const docRef = await addDoc(collection(db, 'loginActivity'), payload);
+      if (status === 'success') {
+        sessionStorage.setItem('jw_login_activity_id', docRef.id);
+      }
 
       // Trigger email alert asynchronously
       fetch('/api/send-login-alert', {

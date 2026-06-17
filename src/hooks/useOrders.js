@@ -344,6 +344,9 @@ export function useOrders(activeStoreId = null) {
         });
       });
 
+      // Update local state immediately for live reflection
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status: status } : o));
+
       // Shadow write to Logistics Engine
       const linkedShipment = shipments.find(s => s.orderId === id);
       if (linkedShipment) {
@@ -375,6 +378,9 @@ export function useOrders(activeStoreId = null) {
         deliveryPartnerName: partnerName,
         updatedAt: serverTimestamp()
       });
+
+      // Update local state immediately for live reflection
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'assigned', deliveryPartnerId: partnerId, deliveryPartnerName: partnerName } : o));
 
       await logAudit('ASSIGN_ORDER_PARTNER', 'Orders', realId, null, { partnerId, partnerName });
     } catch (err) {

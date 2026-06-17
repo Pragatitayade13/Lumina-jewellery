@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { collection, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment, writeBatch } from 'firebase/firestore';
+import { collection, doc, updateDoc, serverTimestamp, setDoc, addDoc, increment, writeBatch, getDoc } from 'firebase/firestore';
 import { inventory as mockInventory, products as mockProducts } from '../admin/data/mockData';
 import { getStoreQuery, StoreIsolationError } from '../utils/storeQuery';
 import { onSnapshot } from 'firebase/firestore';
@@ -21,10 +21,16 @@ export function useInventory(activeStoreId = null) {
 
   const getFallbackData = () => {
     if (!mockInventory || !mockProducts) return [];
-    return mockInventory.map(item => {
-      const prod = mockProducts.find(p => p.sku === item.sku);
-      return { ...item, price: prod?.price || 50000, mrp: prod?.mrp || 60000 };
+    const unique = [];
+    const seen = new Set();
+    mockInventory.forEach(item => {
+      if (!seen.has(item.sku)) {
+        seen.add(item.sku);
+        const prod = mockProducts.find(p => p.sku === item.sku);
+        unique.push({ ...item, price: prod?.price || 50000, mrp: prod?.mrp || 60000 });
+      }
     });
+    return unique;
   };
 
   useEffect(() => {
@@ -96,10 +102,14 @@ export function useInventory(activeStoreId = null) {
 
       const inventoryData = snapshot.docs.map(doc => {
         const data = doc.data();
+        // Always compute status from actual stock vs minStock (ground truth).
+        // The stored `status` field in Firestore is written on save as a mirror,
+        // but we always re-derive here so it's never stale.
         let status = 'ok';
         if (data.stock === 0) status = 'out';
         else if (data.stock <= Math.floor(data.minStock / 2)) status = 'critical';
         else if (data.stock <= data.minStock) status = 'low';
+
 
         // Helper to format last updated time
         const formatTime = (date) => {
@@ -150,7 +160,18 @@ export function useInventory(activeStoreId = null) {
           storeId: data.storeId || 'DEFAULT'
         };
       });
-      setInventory(inventoryData);
+
+      // Remove duplicate items by SKU
+      const uniqueInventory = [];
+      const seenSkus = new Set();
+      for (const item of inventoryData) {
+        if (!seenSkus.has(item.sku)) {
+          seenSkus.add(item.sku);
+          uniqueInventory.push(item);
+        }
+      }
+
+      setInventory(uniqueInventory);
       setLoading(false);
     }, (err) => {
       console.error("Error fetching inventory (likely permissions):", err);
@@ -204,13 +225,22 @@ export function useInventory(activeStoreId = null) {
         await submitApprovalRequest('INVENTORY_ADJUSTMENT', updateData, id, 'Inventory');
         return { status: 'pending' };
       }
-      
+
+      // Compute the new status based on updated stock values
+      const newStock = parseInt(updateData.stock, 10);
+      const newMinStock = parseInt(updateData.minStock, 10) || 5;
+      let computedStatus = 'ok';
+      if (newStock === 0) computedStatus = 'out';
+      else if (newStock <= Math.floor(newMinStock / 2)) computedStatus = 'critical';
+      else if (newStock <= newMinStock) computedStatus = 'low';
+
       const docRef = doc(db, 'inventory', id);
       await updateDoc(docRef, {
         ...updateData,
+        status: computedStatus,
         updatedAt: serverTimestamp()
       });
-      await logAudit('INVENTORY_ADJUSTED', 'Inventory', id, null, updateData);
+      await logAudit('INVENTORY_ADJUSTED', 'Inventory', id, null, { ...updateData, status: computedStatus });
     } catch (err) {
       console.error("Error updating stock:", err);
       throw err;
@@ -239,17 +269,40 @@ export function useInventory(activeStoreId = null) {
   const receivePurchaseOrder = async (poId, sku, quantity) => {
     if (!db) throw new Error("Firebase not initialized");
     try {
+      // Mark PO as processed
       await updateDoc(doc(db, 'purchase_orders', poId), {
-        status: 'received',
+        status: 'processed',
         updatedAt: serverTimestamp()
       });
+
       const currentStoreId = activeStoreId && activeStoreId !== 'GLOBAL' ? activeStoreId : 'DEFAULT';
       const compositeId = `${currentStoreId}_${sku}`;
-      await updateDoc(doc(db, 'inventory', compositeId), {
+      const invRef = doc(db, 'inventory', compositeId);
+
+      // Fetch current inventory doc to compute new stock level
+      const invSnap = await getDoc(invRef);
+      const currentData = invSnap.exists() ? invSnap.data() : {};
+      const currentStock = currentData.stock || 0;
+      const minStock = currentData.minStock || 5;
+      const newStock = currentStock + quantity;
+
+      // Compute new status based on updated stock
+      let newStatus = 'ok';
+      if (newStock === 0) newStatus = 'out';
+      else if (newStock <= Math.floor(minStock / 2)) newStatus = 'critical';
+      else if (newStock <= minStock) newStatus = 'low';
+      // If above minStock threshold, mark as healthy
+
+      await updateDoc(invRef, {
         stock: increment(quantity),
+        status: newStatus,
         updatedAt: serverTimestamp()
       });
-      await logAudit('INVENTORY_ADJUSTED', 'Inventory', compositeId, null, { stockIncrement: quantity, reason: 'PO Received' });
+
+      await logAudit('INVENTORY_ADJUSTED', 'Inventory', compositeId, 
+        { stock: currentStock, status: currentData.status || 'unknown' }, 
+        { stock: newStock, status: newStatus, reason: 'PO Received & Processed' }
+      );
     } catch (err) {
       console.error("Error receiving PO:", err);
       throw err;

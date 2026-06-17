@@ -19,7 +19,12 @@ export function useAppointments(userId = null, activeStoreId = null) {
     }
 
     try {
-      const q = getStoreQuery(db, 'appointments', activeStoreId, queryConstraints);
+      let q;
+      if (userId) {
+        q = query(collection(db, 'appointments'), ...queryConstraints);
+      } else {
+        q = getStoreQuery(db, 'appointments', activeStoreId, queryConstraints);
+      }
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({
           id: doc.id,

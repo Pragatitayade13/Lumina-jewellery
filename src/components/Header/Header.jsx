@@ -50,7 +50,8 @@ export default function Header({ onCartClick, onWishlistClick }) {
     { label: t('nav.contactUs'), href: '#support' },
   ];
 
-  const currentNavLinks = landingPageData?.navBar?.length ? landingPageData.navBar : defaultNavLinks;
+  const currentNavLinks = (landingPageData?.navBar?.length ? landingPageData.navBar : defaultNavLinks)
+    .filter(link => link.label?.toLowerCase() !== 'rings');
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -66,12 +67,20 @@ export default function Header({ onCartClick, onWishlistClick }) {
     }
     
     if (href.startsWith('/#')) {
+      const hash = href.replace('/#', '');
       if (location.pathname !== '/') {
-        navigate(href);
+        // Queue the hash scroll for after navigation to home
+        sessionStorage.setItem('jw_scroll_to', hash);
+        navigate('/');
       } else {
-        const id = href.replace('/#', '#');
-        const el = document.querySelector(id);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        const el = document.getElementById(hash);
+        if (el) {
+          if (window.lenis) {
+            window.lenis.scrollTo(el, { duration: 1.2, offset: -80 });
+          } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
       }
     } else if (href !== '#support') {
       navigate(href);

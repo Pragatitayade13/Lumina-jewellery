@@ -97,14 +97,6 @@ export default function CustomerManagement() {
           <div className="stat-label">Total Customers</div>
           <div className="stat-value">{totalCustomers.toLocaleString()}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">VIP Members</div>
-          <div className="stat-value" style={{ color: 'var(--gold)' }}>{vipMembers}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Avg. Order Value</div>
-          <div className="stat-value">{aovDisplay}</div>
-        </div>
       </div>
 
       <div className="admin-card">
@@ -117,12 +109,7 @@ export default function CustomerManagement() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select className="form-input" style={{ width: '160px', padding: '0.475rem 0.875rem' }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option>Customer Type</option>
-            <option>VIP Members</option>
-            <option>Active Customers</option>
-            <option>Inactive (90+ days)</option>
-          </select>
+
         </div>
 
         <div className="admin-table-wrap">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Store, MapPin, ArrowRight, Globe, X, CheckCircle, Search } from 'lucide-react';
 import './CustomerStoreSelector.css';
@@ -14,6 +15,8 @@ export default function CustomerStoreSelector() {
   } = useApp();
 
   const [search, setSearch] = useState('');
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   // Fetch active stores if empty when selector modal is opened
   useEffect(() => {
@@ -107,7 +110,7 @@ export default function CustomerStoreSelector() {
                 <div className="css-store-info">
                   <div className="css-store-name">{store.name}</div>
                   <div className="css-store-meta">
-                    <MapPin size={12} />
+                     <MapPin size={12} />
                     <span>{store.address || store.city || 'Location N/A'}</span>
                     {store.code && <span className="css-store-code">{store.code}</span>}
                   </div>
@@ -131,26 +134,28 @@ export default function CustomerStoreSelector() {
           )}
 
           {/* Shop All Stores option */}
-          <div
-            className={`css-store-card css-all-stores${customerSelectedStore === 'GLOBAL' ? ' active' : ''}`}
-            onClick={() => handleSelect('GLOBAL')}
-            role="button"
-            tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && handleSelect('GLOBAL')}
-          >
-            <div className="css-store-icon-col">
-              <Globe size={20} color="var(--text-muted)" />
-            </div>
-            <div className="css-store-info">
-              <div className="css-store-name" style={{ color: 'var(--text-muted)' }}>Browse All Stores</div>
-              <div className="css-store-meta">
-                <span>View products from all locations</span>
+          {!isLandingPage && (
+            <div
+              className={`css-store-card css-all-stores${customerSelectedStore === 'GLOBAL' ? ' active' : ''}`}
+              onClick={() => handleSelect('GLOBAL')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && handleSelect('GLOBAL')}
+            >
+              <div className="css-store-icon-col">
+                <Globe size={20} color="var(--text-muted)" />
+              </div>
+              <div className="css-store-info">
+                <div className="css-store-name" style={{ color: 'var(--text-muted)' }}>Browse All Stores</div>
+                <div className="css-store-meta">
+                  <span>View products from all locations</span>
+                </div>
+              </div>
+              <div className="css-store-action">
+                <ArrowRight size={20} />
               </div>
             </div>
-            <div className="css-store-action">
-              <ArrowRight size={20} />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Footer note */}

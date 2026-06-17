@@ -17,7 +17,12 @@ export function useCustomerSupport(userId, activeStoreId = null) {
     let queryConstraints = [where('customerId', '==', userId)];
 
     try {
-      const q = getStoreQuery(db, 'support_tickets', activeStoreId, queryConstraints);
+      let q;
+      if (userId) {
+        q = query(collection(db, 'support_tickets'), ...queryConstraints);
+      } else {
+        q = getStoreQuery(db, 'support_tickets', activeStoreId, queryConstraints);
+      }
       
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

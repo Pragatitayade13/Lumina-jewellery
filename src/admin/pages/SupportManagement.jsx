@@ -6,6 +6,17 @@ import { useProducts } from '../../hooks/useProducts';
 import { useApp } from '../../context/AppContext';
 import { getAuth } from 'firebase/auth';
 
+// Same deterministic hash as OrderManagement — produces the same #XXXXXX display ID
+function getSimpleOrderId(orderId) {
+  if (!orderId) return '';
+  if (/^\d+$/.test(orderId)) return orderId;
+  let hash = 0;
+  for (let i = 0; i < orderId.length; i++) {
+    hash = orderId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return String(Math.abs(hash % 900000) + 100000);
+}
+
 export default function SupportManagement() {
   const [activeTab, setActiveTab] = useState('Tickets');
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +38,6 @@ export default function SupportManagement() {
     { id: 'REV-3', customer: 'Raj Patel', product: 'Silver Chain', rating: 2, review: 'The clasp broke after two days of use. Need a replacement.', date: '25 May 2026', replied: false, hidden: false },
   ]);
   const [reviewModal, setReviewModal] = useState({ isOpen: false, review: null, message: '' });
-  const [trackModal, setTrackModal] = useState({ isOpen: false, orderId: null });
 
   const handleReplyReview = (e) => {
     e.preventDefault();
@@ -113,9 +123,7 @@ export default function SupportManagement() {
           <h1 className="page-title">Customer Support & Assistance</h1>
           <p className="page-subtitle">Manage customer queries, track resolutions, and process return requests.</p>
         </div>
-        <div className="page-actions">
-          <button className="btn btn-gold" onClick={() => setCreateModal(true)} style={{ color: '#FFFFFF', fontWeight: 'bold' }}>+ Create Ticket</button>
-        </div>
+
       </div>
 
       <div className="tab-nav">
@@ -176,16 +184,16 @@ export default function SupportManagement() {
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Submitted</th>
-                <th>Action</th>
+
               </tr>
             </thead>
             <tbody>
               {ticketsLoading ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading live tickets...</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Loading live tickets...</td></tr>
               ) : filteredTickets.length === 0 ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No active tickets found.</td></tr>
-              ) : filteredTickets.map((tkt) => (
-                <tr key={tkt.id}>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>No active tickets found.</td></tr>
+              ) : filteredTickets.map((tkt, idx) => (
+                <tr key={`${tkt.firebaseId || tkt.id}-${idx}`}>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--gold)' }}>#{tkt.id.substring(0,6).toUpperCase()}</td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{tkt.customer}</div>
@@ -212,15 +220,6 @@ export default function SupportManagement() {
                     </span>
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>{tkt.date}</td>
-                  <td>
-                    <button 
-                      className="btn btn-sm btn-outline" 
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--admin-border-bright)', color: 'var(--text-primary)' }}
-                      onClick={() => setRespondModal({ isOpen: true, ticket: tkt, message: '' })}
-                    >
-                      <Reply size={12} /> {tkt.status === 'resolved' ? 'View Thread' : 'Respond'}
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -246,25 +245,16 @@ export default function SupportManagement() {
           </div>
           <table className="admin-table">
             <thead>
-              <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status</th><th>ETA / Date</th><th>Action</th></tr>
+              <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status</th><th>ETA / Date</th></tr>
             </thead>
             <tbody>
-              {orders.filter(o => String(o.id || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(o.customer || '').toLowerCase().includes(searchTerm.toLowerCase())).map(o => (
-                <tr key={o.id}>
-                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{o.id}</td>
+              {orders.filter(o => String(o.id || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(o.customer || '').toLowerCase().includes(searchTerm.toLowerCase())).map((o, idx) => (
+                <tr key={`${o.firebaseId || o.id}-${idx}`}>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>#{getSimpleOrderId(o.firebaseId || o.id)}</td>
                   <td>{o.customer}</td>
                   <td>{o.product}</td>
                   <td><span className={`badge ${o.status === 'delivered' ? 'badge-delivered' : 'badge-pending'}`}>{o.status.toUpperCase()}</span></td>
                   <td>{o.date}</td>
-                  <td>
-                    <button 
-                      className="btn btn-sm btn-outline" 
-                      style={{ borderColor: 'var(--gold)', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                      onClick={() => setTrackModal({ isOpen: true, orderId: o.id })}
-                    >
-                      <MapPin size={12} /> Live Track
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -280,9 +270,9 @@ export default function SupportManagement() {
               <tr><th>Order ID</th><th>Customer</th><th>Reason</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {orders.filter(o => o.status === 'return_requested' || o.status === 'returned').map(o => (
-                <tr key={o.id}>
-                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>{o.id}</td>
+              {orders.filter(o => o.status === 'return_requested' || o.status === 'returned').map((o, idx) => (
+                <tr key={`${o.firebaseId || o.id}-rma-${idx}`}>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--gold)' }}>#{getSimpleOrderId(o.firebaseId || o.id)}</td>
                   <td>{o.customer}</td>
                   <td>"Size does not fit"</td>
                   <td><span className="badge badge-warning">{o.status === 'returned' ? 'Approved (Pending Pickup)' : 'Awaiting Approval'}</span></td>
@@ -548,28 +538,7 @@ export default function SupportManagement() {
         </div>
       )}
 
-      {/* Live Track Modal */}
-      {trackModal.isOpen && trackModal.orderId && (
-        <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="modal-box" style={{ maxWidth: '800px', width: '100%', padding: 0, background: 'var(--bg)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid var(--admin-border)', background: 'var(--surface)' }}>
-              <h3 className="modal-title" style={{ margin: 0, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={18} /> Live Order Tracking
-              </h3>
-              <button className="modal-close" onClick={() => setTrackModal({ isOpen: false, orderId: null })}><X size={18} /></button>
-            </div>
-            <div className="modal-body" style={{ padding: 0, height: '700px', overflow: 'hidden' }}>
-              <iframe 
-                src={`/track/${trackModal.orderId}`} 
-                width="100%" 
-                height="100%" 
-                style={{ border: 'none', background: 'var(--bg)' }} 
-                title="Live Tracking Map"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );

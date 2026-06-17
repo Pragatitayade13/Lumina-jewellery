@@ -75,18 +75,27 @@ export default function CustomerLayout({ children }) {
 
           // Update login activity record
           try {
-            const q = query(
-              collection(db, 'loginActivity'), 
-              where('userId', '==', user.uid),
-              orderBy('loginTime', 'desc'),
-              limit(1)
-            );
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-              await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+            const loginActivityId = sessionStorage.getItem('jw_login_activity_id');
+            if (loginActivityId) {
+              await updateDoc(doc(db, 'loginActivity', loginActivityId), {
                 logoutTime: new Date().toISOString(),
                 status: 'completed'
               });
+              sessionStorage.removeItem('jw_login_activity_id');
+            } else {
+              const q = query(
+                collection(db, 'loginActivity'), 
+                where('userId', '==', user.uid),
+                orderBy('loginTime', 'desc'),
+                limit(1)
+              );
+              const snapshot = await getDocs(q);
+              if (!snapshot.empty) {
+                await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+                  logoutTime: new Date().toISOString(),
+                  status: 'completed'
+                });
+              }
             }
           } catch (err) {
             console.error("Error closing login session", err);

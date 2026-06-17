@@ -20,13 +20,13 @@ export default function StoreSwitcherDropdown() {
 
   const isSuperAdmin = user?.role === 'superadmin';
 
-  // Only render if there are multiple assigned stores
-  if (!assignedStores || assignedStores.length <= 1) {
+  // Only superadmin can switch store contexts
+  if (!isSuperAdmin) {
     return null;
   }
 
-  // If not superadmin and no current store, do not render switcher (forces modal selection)
-  if (!currentStore && !isSuperAdmin) {
+  // Only render if there are multiple assigned stores
+  if (!assignedStores || assignedStores.length <= 1) {
     return null;
   }
 

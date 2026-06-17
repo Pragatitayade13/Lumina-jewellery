@@ -45,8 +45,6 @@ const TABS = [
   { id: 'exchanges', label: 'Exchange/Buyback', icon: RefreshCw },
   { id: 'appointments', label: 'Appointments', icon: Calendar },
   { id: 'schemes', label: 'Scheme Enrollments', icon: Star },
-  { id: 'transparency', label: 'Transparency', icon: Eye },
-  { id: 'subscribers', label: 'Subscribers', icon: Users },
 ];
 
 export default function CommunicationManagement() {
@@ -206,11 +204,7 @@ export default function CommunicationManagement() {
           <p className="page-subtitle">Campaigns, notifications, certifications, exchanges, appointments, schemes & price transparency.</p>
         </div>
         <div className="page-actions">
-          {activeTab === 'appointments' && (
-            <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewAptOpen(true)}>
-              <Calendar size={14} /> Book Appointment
-            </button>
-          )}
+
           {activeTab === 'schemes' && (
             <button className="btn btn-gold" style={{ color: '#fff', fontWeight: 'bold' }} onClick={() => setNewSchemeOpen(true)}>
               <Plus size={14} /> Enroll Customer

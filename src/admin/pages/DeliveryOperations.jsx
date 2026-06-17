@@ -249,6 +249,13 @@ export default function DeliveryOperations() {
   const [optimisticStatuses, setOptimisticStatuses] = useState({});
   const [migrationStatus, setMigrationStatus] = useState('');
 
+  const partners = [
+    { name: 'Ramesh Singh', zone: 'South Mumbai', status: 'Online', statusClass: 'success', storeId: 'OCoSBsKDGGOT5NOqZpP1', uid: 'ramesh_singh_uid' },
+    { name: 'Suresh Kumar', zone: 'Andheri East', status: 'On Break', statusClass: 'warning', storeId: 'OCoSBsKDGGOT5NOqZpP1', uid: 'suresh_kumar_uid' },
+    { name: 'Amit Patel', zone: 'Bandra West', status: 'Online', statusClass: 'success', storeId: 'eoNjBBBlw1edDfPWufPD', uid: 'amit_patel_uid' },
+    { name: 'Vikram Desai', zone: 'Navi Mumbai', status: 'Offline', statusClass: 'danger', storeId: 'eoNjBBBlw1edDfPWufPD', uid: 'vikram_desai_uid' }
+  ];
+
   const runMigration = async () => {
     if (!window.confirm("Run logistics data migration? This will enforce active Store ID on all historical shipments.")) return;
     setMigrationStatus('Starting migration...');
@@ -406,7 +413,8 @@ export default function DeliveryOperations() {
       type: o.status === 'cancelled' ? 'Failed Delivery Return' : 'Customer Return',
       estValue: `₹${(o.amount || 0).toLocaleString('en-IN')}`,
       instructions: 'Secure item and return to hub.',
-      isMock: false
+      isMock: false,
+      assignedPartner: o.deliveryPartnerName || ''
     }));
 
   const assignedReturns = dynamicReturns;
@@ -571,8 +579,8 @@ export default function DeliveryOperations() {
     
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {list.map(order => (
-          <div key={order.id} className="admin-card" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
+        {list.map((order, idx) => (
+          <div key={`${order.id}-${idx}`} className="admin-card" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
             {order.type === 'High Value' && (
               <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--status-red)', color: '#fff', fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderBottomLeftRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                 <ShieldAlert size={10} /> HIGH VALUE
@@ -707,8 +715,8 @@ export default function DeliveryOperations() {
           No returned items or gold exchanges currently pending for this store.
         </div>
       ) : (
-        assignedReturns.map(pickup => (
-        <div key={pickup.id} className="admin-card" style={{ padding: '1.25rem' }}>
+        assignedReturns.map((pickup, idx) => (
+        <div key={`${pickup.id}-${idx}`} className="admin-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 700, fontFamily: 'monospace', color: 'var(--gold)' }}>{pickup.id}</span>
             <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>{pickup.type}</span>
@@ -730,53 +738,46 @@ export default function DeliveryOperations() {
               <>
                 <div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Assign Return Custody</div>
-                  {pickup.assignedPartner ? (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>🚚 {pickup.assignedPartner}</span>
-                  ) : (
-                    <select 
-                      className="form-input" 
-                      style={{ 
-                        width: 'auto', 
-                        minWidth: '165px',
-                        padding: '0 0.5rem', 
-                        fontSize: '0.8rem', 
-                        height: '32px', 
-                        background: 'rgba(255,255,255,0.05)', 
-                        color: 'var(--text-primary)', 
-                        border: '1px solid var(--admin-border)', 
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: 600
-                      }}
-                      onChange={(e) => {
-                        const partnerName = e.target.value;
-                        if (partnerName) {
-                          showToast(`Assigned return ${pickup.id} to ${partnerName}`);
+                  <select 
+                    className="form-input" 
+                    style={{ 
+                      width: 'auto', 
+                      minWidth: '165px',
+                      padding: '0 0.5rem', 
+                      fontSize: '0.8rem', 
+                      height: '32px', 
+                      background: 'rgba(255,255,255,0.05)', 
+                      color: 'var(--text-primary)', 
+                      border: '1px solid var(--admin-border)', 
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                    value={pickup.assignedPartner || ""}
+                    onChange={async (e) => {
+                      const partnerName = e.target.value;
+                      if (partnerName) {
+                        const partner = partners.find(p => p.name === partnerName);
+                        const partnerId = partner?.uid || partnerName.toLowerCase().replace(/ /g, '_');
+                        try {
+                          await assignOrderToPartner(pickup.id, partnerId, partnerName);
+                          const linkedShipment = shipments.find(s => s.orderId === pickup.id);
+                          if (linkedShipment) {
+                            await assignPartner(linkedShipment.id, partnerId, partnerName, user?.role);
+                          }
+                          showToast(`✅ Assigned return ${pickup.id} to ${partnerName}`);
+                        } catch (err) {
+                          console.error(err);
+                          showToast("Failed to assign partner.", "error");
                         }
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="" disabled>Select Partner</option>
-                      <option value="Ramesh Singh">Ramesh Singh</option>
-                      <option value="Amit Patel">Amit Patel</option>
-                      <option value="Suresh Kumar">Suresh Kumar</option>
-                    </select>
-                  )}
-                </div>
-                
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button 
-                    className="btn btn-sm" 
-                    style={{ background: '#c9a84c', color: '#FFFFFF', fontWeight: 'bold' }} 
-                    onClick={() => {
-                      if (!pickup.isMock) {
-                        updateOrderStatus(pickup.id, 'returned');
                       }
-                      showToast(`✅ Return verified & stock restored for ${pickup.id}`);
                     }}
                   >
-                    Verify & Close Return
-                  </button>
+                    <option value="" disabled>Select Partner</option>
+                    <option value="Ramesh Singh">Ramesh Singh</option>
+                    <option value="Amit Patel">Amit Patel</option>
+                    <option value="Suresh Kumar">Suresh Kumar</option>
+                  </select>
                 </div>
               </>
             ) : (
@@ -987,7 +988,7 @@ export default function DeliveryOperations() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem' }}>
               {activeTransits.slice(0,3).map((o, idx) => (
-                <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: idx !== activeTransits.slice(0,3).length - 1 ? '1px solid var(--admin-border)' : 'none' }}>
+                <div key={`${o.firebaseId || o.id}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: idx !== activeTransits.slice(0,3).length - 1 ? '1px solid var(--admin-border)' : 'none' }}>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '0.85rem' }}>{o.id}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{o.address}</div>

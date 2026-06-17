@@ -69,100 +69,159 @@ export default function Hero() {
   ];
 
   // Map CMS data if available, otherwise use defaults
-  const hasCmsContent = cmsSlides && cmsSlides.some(s => s.title || s.subtitle || s.bgImage);
+  const hasCmsContent = cmsSlides && cmsSlides.some(s => s.title || s.subtitle || s.bgImage || s.mediaUrl);
   const slides = hasCmsContent ? cmsSlides.map((s, i) => ({
     id: i + 1,
     badgeKey: 'hero.slide1.badge', // Default badge
     title: s.title,
     titleAccent: '',
     subtitle: s.subtitle, 
-    bg: s.bgImage || defaultSlides[i]?.bg || heroBg1,
+    bg: s.bgImage || s.mediaUrl || defaultSlides[i]?.bg || heroBg1,
+    mediaUrl: s.mediaUrl,
+    mediaType: s.mediaType || 'image',
+    isActive: s.isActive !== false,
     ctas: [
       { label: s.ctaText || 'Shop Now', href: s.ctaLink || '#categories', primary: true }
     ],
     isCms: true
-  })) : defaultSlides;
+  })) : [
+    {
+      id: 1,
+      badgeKey: 'hero.slide1.badge',
+      titleKey: 'hero.slide1.title',
+      titleAccentKey: 'hero.slide1.titleAccent',
+      subtitleKey: 'hero.slide1.subtitle',
+      mediaType: 'video',
+      mediaUrl: '',
+      isActive: true,
+      ctas: [
+        { labelKey: 'hero.slide1.cta1', href: '#new-arrivals', primary: true },
+        { labelKey: 'hero.slide1.cta2', href: '#categories', primary: false },
+      ],
+    }
+  ];
 
+  const activeSlides = slides.filter(s => s.isActive);
 
-
+  // Auto-play slideshow transition
+  useEffect(() => {
+    if (activeSlides.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setActive(prev => (prev + 1) % activeSlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [activeSlides.length, isPaused]);
 
   const handleCTA = (href) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const { scrollY } = useScroll();
-  const bgY = useTransform(scrollY, [0, 800], ['0%', '30%']);
-  const contentY = useTransform(scrollY, [0, 800], ['0%', '40%']);
-  const contentOpacity = useTransform(scrollY, [0, 400], [1, 0]);
-
-  const activeSlide = slides && slides.find(s => s.isActive);
-  const hasMedia = activeSlide && activeSlide.mediaUrl;
-  const isVideo = activeSlide ? activeSlide.mediaType === 'video' : true;
-
   return (
     <section className="hero" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
-      <div className="hero-slide active">
-        {hasMedia ? (
-          isVideo ? (
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="hero-slide-bg"
-              src={activeSlide.mediaUrl}
-            />
-          ) : (
-            <img
-              className="hero-slide-bg"
-              src={activeSlide.mediaUrl}
-              alt="Hero Banner"
-            />
-          )
-        ) : (
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="hero-slide-bg"
-            src={localHeroVideo2}
-          />
-        )}
-        <div className="hero-overlay" />
-        
-        {/* Content Overlay */}
-        {!isVideo && (
-          <div className="hero-content-wrap">
-            <div className="hero-container">
-              <div className="hero-slide-content">
-                <div className="hero-badge">
-                  <Sparkles size={14} />
-                  <span>{t('hero.slide1.badge')}</span>
-                </div>
-                <h1 className="hero-title">
-                  {activeSlide?.title || t('hero.slide1.title')}
-                </h1>
-                <p className="hero-subtitle">
-                  {activeSlide?.subtitle || t('hero.slide1.subtitle')}
-                </p>
-                <div className="hero-actions">
-                  <button 
-                    className="btn btn-gold" 
-                    onClick={() => handleCTA('#new-arrivals')}
-                    style={{ color: '#fff', fontWeight: 'bold' }}
-                  >
-                    {activeSlide?.ctaText || t('hero.slide1.cta1')}
-                  </button>
+      {activeSlides.map((slide, idx) => {
+        let mediaSource = slide.mediaUrl;
+        let isVideo = slide.mediaType === 'video';
+
+        if (!mediaSource) {
+          if (isVideo) {
+            mediaSource = localHeroVideo2;
+          } else if (slide.bg) {
+            mediaSource = slide.bg;
+          } else {
+            mediaSource = localHeroVideo2;
+            isVideo = true;
+          }
+        }
+
+        return (
+          <div key={slide.id || idx} className={`hero-slide ${idx === active ? 'active' : ''}`}>
+            {isVideo ? (
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
+                src={mediaSource}
+              />
+            ) : (
+              <img
+                className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
+                src={mediaSource}
+                alt="Hero Banner"
+              />
+            )}
+            <div className="hero-overlay" />
+            
+            {/* Content Overlay */}
+            {!isVideo && (
+              <div className="hero-content-wrap">
+                <div className="hero-container">
+                  <div className="hero-slide-content">
+                    <div className="hero-badge">
+                      <Sparkles size={14} />
+                      <span>{t(slide.badgeKey || 'hero.slide1.badge')}</span>
+                    </div>
+                    {slide.titleKey ? (
+                      <h1 className="hero-title">
+                        {t(slide.titleKey)} <span>{t(slide.titleAccentKey)}</span>
+                      </h1>
+                    ) : (
+                      <h1 className="hero-title">
+                        {slide.title}
+                      </h1>
+                    )}
+                    {slide.subtitleKey ? (
+                      <p className="hero-subtitle">
+                        {t(slide.subtitleKey)}
+                      </p>
+                    ) : (
+                      <p className="hero-subtitle">
+                        {slide.subtitle}
+                      </p>
+                    )}
+                    <div className="hero-actions">
+                      {slide.ctas && slide.ctas.map((cta, ctaIdx) => (
+                        <button 
+                          key={ctaIdx}
+                          className={`btn ${cta.primary ? 'btn-gold' : 'btn-outline'}`} 
+                          onClick={() => handleCTA(cta.href || '#new-arrivals')}
+                          style={cta.primary ? { color: '#fff', fontWeight: 'bold' } : {}}
+                        >
+                          {cta.labelKey ? t(cta.labelKey) : cta.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        <FloatingParticles count={40} />
-      </div>
+            <FloatingParticles count={40} />
+          </div>
+        );
+      })}
+
+      {activeSlides.length > 1 && (
+        <>
+          <button className="hero-arrow hero-arrow-prev" onClick={() => setActive(prev => (prev - 1 + activeSlides.length) % activeSlides.length)}>
+            <ChevronLeft size={24} />
+          </button>
+          <button className="hero-arrow hero-arrow-next" onClick={() => setActive(prev => (prev + 1) % activeSlides.length)}>
+            <ChevronRight size={24} />
+          </button>
+          <div className="hero-dots">
+            {activeSlides.map((_, idx) => (
+              <button
+                key={idx}
+                className={`hero-dot ${idx === active ? 'active' : ''}`}
+                onClick={() => setActive(idx)}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="hero-scroll-indicator">
         <span>{t('common.scrollDown')}</span>

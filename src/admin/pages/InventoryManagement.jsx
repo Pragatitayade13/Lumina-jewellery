@@ -139,14 +139,11 @@ export default function InventoryManagement() {
           <h1 className="page-title">Inventory & Stock Control</h1>
           <p className="page-subtitle">Monitor stock levels, set low-stock alerts, and manage warehouses.</p>
         </div>
-        <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => setIsTransferModalOpen(true)}>Stock Transfer</button>
-          <button className="btn btn-gold" onClick={() => setIsPoModalOpen(true)} style={{ color: '#FFFFFF', fontWeight: 'bold' }}>+ Purchase Order</button>
-        </div>
+
       </div>
 
       <div className="tab-nav">
-        {['Inventory List', 'Purchase Orders', 'Stock Transfers'].map(tab => (
+        {['Inventory List'].map(tab => (
           <button 
             key={tab} 
             className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
@@ -296,7 +293,7 @@ export default function InventoryManagement() {
                   <td>{po.vendor}</td>
                   <td>{po.quantity} Units</td>
                   <td>{po.deliveryDate}</td>
-                  <td><span className={`badge badge-${po.status === 'pending' ? 'warning' : 'active'}`}>{po.status.toUpperCase()}</span></td>
+                  <td><span className={`badge badge-${po.status === 'pending' ? 'warning' : po.status === 'processed' ? 'active' : 'active'}`}>{po.status === 'processed' ? 'PROCESSED' : po.status.toUpperCase()}</span></td>
                   <td>
                     {po.status === 'pending' && (
                       <button className="btn btn-sm btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--status-green)', color: 'var(--status-green)' }} onClick={() => handleReceivePO(po)}>

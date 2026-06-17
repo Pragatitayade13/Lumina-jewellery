@@ -87,10 +87,29 @@ function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
+    // Check if there's a pending hash scroll target (set by Footer when navigating cross-page)
+    const pendingHash = sessionStorage.getItem('jw_scroll_to');
+    if (pendingHash) {
+      sessionStorage.removeItem('jw_scroll_to');
+      // Give the new page time to render before scrolling
+      const timer = setTimeout(() => {
+        const el = document.getElementById(pendingHash);
+        if (el) {
+          if (window.lenis) {
+            window.lenis.scrollTo(el, { duration: 1.4, offset: -80 });
+          } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+
+    // Default: scroll to top on route change
     if (window.lenis) {
-      window.lenis.scrollTo(0, { immediate: true });
+      window.lenis.scrollTo(0, { immediate: false, duration: 1.2 });
     } else {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [pathname]);
 

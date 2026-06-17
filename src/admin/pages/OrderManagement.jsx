@@ -10,6 +10,17 @@ import { useCMS } from '../../context/CMSContext';
 
 const statusClass = { assigned: 'badge-new', in_transit: 'badge-shipped', out_for_delivery: 'badge-shipped', packed: 'badge-confirmed', delivered: 'badge-delivered', pending: 'badge-pending', cancelled: 'badge-cancelled', returned: 'badge-orange' };
 
+function getSimpleOrderId(orderId) {
+  if (!orderId) return '';
+  if (/^\d+$/.test(orderId)) return orderId;
+  let hash = 0;
+  for (let i = 0; i < orderId.length; i++) {
+    hash = orderId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const simpleNumber = Math.abs(hash % 900000) + 100000; // 6-digit number
+  return String(simpleNumber);
+}
+
 export default function OrderManagement() {
   const { user, showToast, globalSearch, currentStore } = useApp();
   const activeStoreId = currentStore || user?.storeId || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
@@ -162,6 +173,15 @@ export default function OrderManagement() {
     }, 800);
   };
 
+  // Returns the same #XXXXXX order number shown in the Orders table
+  const formatOrderNumber = (order) => {
+    // Use the stable Firestore doc ID as source (same as table column)
+    const sourceId = order.firebaseId || order.id || '';
+    const simpleId = getSimpleOrderId(sourceId);
+    return simpleId ? `#${simpleId}` : (order.orderNumber || order.displayId || `#${String(sourceId).substring(0, 8).toUpperCase()}`);
+  };
+
+
   const handleBulkGenerateInvoices = async () => {
     if (!filteredAndSortedOrders || filteredAndSortedOrders.length === 0) {
       showToast("No orders available to generate invoices.");
@@ -172,97 +192,113 @@ export default function OrderManagement() {
     try {
       let invoicesHtml = '';
       
-      filteredAndSortedOrders.forEach((order, index) => {
-        const orderStore = allStores?.find(s => s.id === order.storeId);
-        const billStoreName = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
-        const billStoreAddress = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
+      // Group orders by storeId
+      const ordersByStore = {};
+      filteredAndSortedOrders.forEach(o => {
+        const sid = o.storeId || 'GLOBAL';
+        if (!ordersByStore[sid]) {
+          ordersByStore[sid] = [];
+        }
+        ordersByStore[sid].push(o);
+      });
 
-        invoicesHtml += `
-          <div class="invoice-container" style="${index < filteredAndSortedOrders.length - 1 ? 'page-break-after: always; margin-bottom: 4rem;' : ''}">
-             <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
-               <div>
-                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                   </svg>
-                   <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a; margin: 0;">${billStoreName.toUpperCase()}</h2>
+      const storeKeys = Object.keys(ordersByStore);
+
+      storeKeys.forEach((storeId, sIdx) => {
+        const storeOrders = ordersByStore[storeId];
+        storeOrders.forEach((order, index) => {
+          const orderStore = allStores?.find(s => s.id === order.storeId);
+          const billStoreName = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
+          const billStoreAddress = (order.storeId && order.storeId !== 'GLOBAL' && order.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
+          const isLastOfAll = (sIdx === storeKeys.length - 1) && (index === storeOrders.length - 1);
+
+          invoicesHtml += `
+            <div class="invoice-container" style="${!isLastOfAll ? 'page-break-after: always; margin-bottom: 4rem;' : ''}">
+               <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
+                 <div>
+                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                     </svg>
+                     <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a; margin: 0;">${billStoreName.toUpperCase()}</h2>
+                   </div>
+                   <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
                  </div>
-                 <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
+                 <div style="text-align: right; min-width: 200px;">
+                   <strong style="font-size: 1.2rem; color: #1a1a1a; display: block; margin-bottom: 0.25rem;">${formatOrderNumber(order)}</strong>
+                   <span style="font-size: 0.8rem; color: #555;">Date: ${order.date}</span>
+                 </div>
                </div>
-               <div style="text-align: right; min-width: 200px;">
-                 <strong style="font-size: 1.2rem; color: #1a1a1a; display: block; margin-bottom: 0.25rem;">${order.id}</strong>
-                 <span style="font-size: 0.8rem; color: #555;">Date: ${order.date}</span>
-               </div>
-             </div>
-            
-            <div class="details">
-              <div>
-                <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Billed To:</strong><br/>
-                <strong>${order.customer}</strong><br/>
-                ${order.city}<br/>
-                India
+              
+              <div class="details">
+                <div>
+                  <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Billed To:</strong><br/>
+                  <strong>${order.customer}</strong><br/>
+                  ${order.city}<br/>
+                  India
+                </div>
+                <div>
+                  <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Payment Status:</strong><br/>
+                  <strong>${order.paymentMethod}</strong><br/>
+                  ${order.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
+                </div>
               </div>
-              <div>
-                <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Payment Status:</strong><br/>
-                <strong>${order.paymentMethod}</strong><br/>
-                ${order.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
-              </div>
-            </div>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>Item Description</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Total (INR)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="padding: 1rem 0.5rem;">
-                    <strong style="color: #1a1a1a; font-size: 0.9rem;">${order.product}</strong><br/>
-                    <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
-                  </td>
-                  <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                  <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${((order.subtotal || order.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                ${order.igst > 0 ? `
-                <tr>
-                  <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                  <td style="text-align: right;">₹${(order.igst || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                ` : ''}
-                ${order.cgst > 0 ? `
-                <tr>
-                  <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                  <td style="text-align: right;">₹${(order.cgst || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                ` : ''}
-                ${order.sgst > 0 ? `
-                <tr>
-                  <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                  <td style="text-align: right;">₹${(order.sgst || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                ` : ''}
-                ${!order.igst && !order.cgst && !order.sgst ? `
-                <tr>
-                  <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                  <td style="text-align: right;">₹${((order.gstAmt || order.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                ` : ''}
-                <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
-                  <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                  <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${(order.amount || 0).toLocaleString('en-IN')}</td>
-                </tr>
-              </tbody>
-            </table>
-            
-            <div class="footer">
-              This is a computer generated invoice and does not require a physical signature.<br/>
-              Thank you for choosing ${billStoreName} · ${billStoreAddress}
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Total (INR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 1rem 0.5rem;">
+                      <strong style="color: #1a1a1a; font-size: 0.9rem;">${order.product}</strong><br/>
+                      <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
+                    </td>
+                    <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
+                    <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${((order.subtotal || order.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                  ${order.igst > 0 ? `
+                  <tr>
+                    <td colspan="2" style="text-align: right; color: #666;">IGST</td>
+                    <td style="text-align: right;">₹${(order.igst || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                  ` : ''}
+                  ${order.cgst > 0 ? `
+                  <tr>
+                    <td colspan="2" style="text-align: right; color: #666;">CGST</td>
+                    <td style="text-align: right;">₹${(order.cgst || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                  ` : ''}
+                  ${order.sgst > 0 ? `
+                  <tr>
+                    <td colspan="2" style="text-align: right; color: #666;">SGST</td>
+                    <td style="text-align: right;">₹${(order.sgst || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                  ` : ''}
+                  ${!order.igst && !order.cgst && !order.sgst ? `
+                  <tr>
+                    <td colspan="2" style="text-align: right; color: #666;">GST</td>
+                    <td style="text-align: right;">₹${((order.gstAmt || order.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                  ` : ''}
+                  <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
+                    <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
+                    <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${(order.amount || 0).toLocaleString('en-IN')}</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <div class="footer">
+                This is a computer generated invoice and does not require a physical signature.<br/>
+                Thank you for choosing ${billStoreName} · ${billStoreAddress}
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        });
       });
 
       const iframe = document.createElement('iframe');
@@ -316,126 +352,117 @@ export default function OrderManagement() {
     const billStoreName = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore) ? orderStore.name : shopName;
     const billStoreAddress = (viewInvoice.storeId && viewInvoice.storeId !== 'GLOBAL' && viewInvoice.storeId !== 'NONE' && orderStore?.address) ? orderStore.address : `${shopName}, Mumbai, Maharashtra 400001`;
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
+    const element = document.createElement('div');
+    element.style.padding = '30px 20px';
+    element.style.background = '#fff';
+    element.style.color = '#333';
+    element.style.fontFamily = "'Inter', sans-serif";
+    
+    element.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 15px; margin-bottom: 25px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
+            <h2 style="font-size: 24px; color: #1a1a1a; margin: 0; font-family: serif;">${billStoreName.toUpperCase()}</h2>
+          </div>
+          <div style="font-size: 11px; color: #666; letter-spacing: 0.5px;">TAX INVOICE / BILL OF SUPPLY</div>
+        </div>
+        <div style="text-align: right; min-width: 200px;">
+          <strong style="font-size: 18px; color: #1a1a1a; display: block; margin-bottom: 5px;">${formatOrderNumber(viewInvoice)}</strong>
+          <span style="font-size: 12px; color: #555;">Date: ${viewInvoice.date}</span>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; font-size: 13px; background: #fcfcfc; padding: 15px; border-radius: 8px; border: 1px solid #f0f0f0;">
+        <div>
+          <strong style="text-transform: uppercase; color: #888; font-size: 10px; letter-spacing: 0.5px;">Billed To:</strong><br/>
+          <strong style="color: #1a1a1a;">${viewInvoice.customer}</strong><br/>
+          ${viewInvoice.city || ''}<br/>
+          India
+        </div>
+        <div>
+          <strong style="text-transform: uppercase; color: #888; font-size: 10px; letter-spacing: 0.5px;">Payment Status:</strong><br/>
+          <strong style="color: #1a1a1a;">${viewInvoice.paymentMethod}</strong><br/>
+          ${viewInvoice.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
+        </div>
+      </div>
 
-    iframe.contentDocument.write(`
-      <html>
-        <head>
-          <title>Invoice - ${viewInvoice.id}</title>
-          <style>
-            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; padding: 3rem 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-            h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; font-size: 1.8rem; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
-            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem; font-size: 0.9rem; background: #fcfcfc; padding: 1.5rem; border-radius: 8px; border: 1px solid #f0f0f0; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.9rem; }
-            th, td { padding: 0.75rem 0.5rem; text-align: left; }
-            th { background: #f9f9f9; border-bottom: 2px solid #eee; color: #666; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
-            td { border-bottom: 1px solid #f0f0f0; }
-            .footer { text-align: center; color: #888; font-size: 0.8rem; margin-top: 4rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
-          </style>
-        </head>
-        <body>
-          <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; border-bottom: 2px solid #1a1a1a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <h2 style="font-size: 2rem; letter-spacing: 1px; color: #1a1a1a; margin: 0;">${billStoreName.toUpperCase()}</h2>
-              </div>
-              <div style="font-size: 0.85rem; color: #666; letter-spacing: 0.5px; padding-left: 2.25rem;">TAX INVOICE / BILL OF SUPPLY</div>
-            </div>
-            <div style="text-align: right; min-width: 200px;">
-              <strong style="font-size: 1.2rem; color: #1a1a1a; display: block; margin-bottom: 0.25rem;">${viewInvoice.id}</strong>
-              <span style="font-size: 0.8rem; color: #555;">Date: ${viewInvoice.date}</span>
-            </div>
-          </div>
-          
-          <div class="details">
-            <div>
-              <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Billed To:</strong><br/>
-              <strong>${viewInvoice.customer}</strong><br/>
-              ${viewInvoice.city}<br/>
-              India
-            </div>
-            <div>
-              <strong style="text-transform: uppercase; color: #888; font-size: 0.7rem;">Payment Status:</strong><br/>
-              <strong>${viewInvoice.paymentMethod}</strong><br/>
-              ${viewInvoice.status === 'delivered' ? 'Paid in Full' : 'Pending Authorization'}
-            </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Item Description</th>
-                <th style="text-align: center;">Qty</th>
-                <th style="text-align: right;">Total (INR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding: 1rem 0.5rem;">
-                  <strong style="color: #1a1a1a; font-size: 0.9rem;">${viewInvoice.product}</strong><br/>
-                  <span style="color: #888; font-size: 0.75rem;">HSN Code: 7113</span>
-                </td>
-                <td style="text-align: center; padding: 1rem 0.5rem;">1</td>
-                <td style="text-align: right; padding: 1rem 0.5rem; font-weight: 600;">₹${((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
-              </tr>
-              ${viewInvoice.igst > 0 ? `
-              <tr>
-                <td colspan="2" style="text-align: right; color: #666;">IGST</td>
-                <td style="text-align: right;">₹${(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
-              </tr>
-              ` : ''}
-              ${viewInvoice.cgst > 0 ? `
-              <tr>
-                <td colspan="2" style="text-align: right; color: #666;">CGST</td>
-                <td style="text-align: right;">₹${(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
-              </tr>
-              ` : ''}
-              ${viewInvoice.sgst > 0 ? `
-              <tr>
-                <td colspan="2" style="text-align: right; color: #666;">SGST</td>
-                <td style="text-align: right;">₹${(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
-              </tr>
-              ` : ''}
-              ${!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst ? `
-              <tr>
-                <td colspan="2" style="text-align: right; color: #666;">GST</td>
-                <td style="text-align: right;">₹${((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
-              </tr>
-              ` : ''}
-              <tr style="border-top: 2px solid #1a1a1a; background-color: #fafafa;">
-                <td colspan="2" style="text-align: right; font-weight: bold; padding: 1rem 0.5rem; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total</td>
-                <td style="text-align: right; font-weight: bold; font-size: 1.2rem; padding: 1rem 0.5rem; color: #1a1a1a;">₹${(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
-              </tr>
-            </tbody>
-          </table>
-          
-          <div class="footer">
-            This is a computer generated invoice and does not require a physical signature.<br/>
-            ${billStoreAddress}
-          </div>
-        </body>
-      </html>
-    `);
-    iframe.contentDocument.close();
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+        <thead>
+          <tr style="background: #f9f9f9; border-bottom: 2px solid #eee;">
+            <th style="padding: 10px 5px; text-align: left; color: #666; font-weight: 600; text-transform: uppercase; font-size: 11px;">Item Description</th>
+            <th style="padding: 10px 5px; text-align: center; color: #666; font-weight: 600; text-transform: uppercase; font-size: 11px;">Qty</th>
+            <th style="padding: 10px 5px; text-align: right; color: #666; font-weight: 600; text-transform: uppercase; font-size: 11px;">Total (INR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #f0f0f0;">
+            <td style="padding: 15px 5px;">
+              <strong style="color: #1a1a1a; font-size: 13px;">${viewInvoice.product}</strong><br/>
+              <span style="color: #888; font-size: 11px;">HSN Code: 7113</span>
+            </td>
+            <td style="padding: 15px 5px; text-align: center;">1</td>
+            <td style="padding: 15px 5px; text-align: right; font-weight: 600;">₹${((viewInvoice.subtotal || viewInvoice.amount * 0.97) || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          ${viewInvoice.igst > 0 ? `
+          <tr>
+            <td colspan="2" style="padding: 10px 5px; text-align: right; color: #666;">IGST</td>
+            <td style="padding: 10px 5px; text-align: right;">₹${(viewInvoice.igst || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          ` : ''}
+          ${viewInvoice.cgst > 0 ? `
+          <tr>
+            <td colspan="2" style="padding: 10px 5px; text-align: right; color: #666;">CGST</td>
+            <td style="padding: 10px 5px; text-align: right;">₹${(viewInvoice.cgst || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          ` : ''}
+          ${viewInvoice.sgst > 0 ? `
+          <tr>
+            <td colspan="2" style="padding: 10px 5px; text-align: right; color: #666;">SGST</td>
+            <td style="padding: 10px 5px; text-align: right;">₹${(viewInvoice.sgst || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          ` : ''}
+          ${!viewInvoice.igst && !viewInvoice.cgst && !viewInvoice.sgst ? `
+          <tr>
+            <td colspan="2" style="padding: 10px 5px; text-align: right; color: #666;">GST</td>
+            <td style="padding: 10px 5px; text-align: right;">₹${((viewInvoice.gstAmt || viewInvoice.amount * 0.03) || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          ` : ''}
+          <tr style="background: #fafafa; border-top: 2px solid #1a1a1a;">
+            <td colspan="2" style="padding: 15px 5px; text-align: right; font-weight: bold; color: #1a1a1a;">Grand Total</td>
+            <td style="padding: 15px 5px; text-align: right; font-weight: bold; font-size: 16px; color: #1a1a1a;">₹${(viewInvoice.amount || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div style="text-align: center; color: #888; font-size: 11px; margin-top: 50px; border-top: 1px solid #eee; padding-top: 15px;">
+        This is a computer generated invoice and does not require a physical signature.<br/>
+        ${billStoreAddress}
+      </div>
+    `;
 
     showToast("Generating PDF Invoice...");
-    setTimeout(() => {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      document.body.removeChild(iframe);
-      setViewInvoice(null);
-    }, 500);
+    
+    import('html2pdf.js').then((module) => {
+      const html2pdf = module.default || module;
+      const opt = {
+        margin:       0.5,
+        filename:     `Invoice_${viewInvoice.id}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      html2pdf().from(element).set(opt).save().then(() => {
+        showToast("PDF downloaded successfully!");
+        setViewInvoice(null);
+      }).catch(err => {
+        console.error("PDF generation failed:", err);
+        showToast("Failed to generate PDF.", "error");
+      });
+    }).catch(err => {
+      console.error("Failed to load html2pdf.js:", err);
+      showToast("PDF generator not loaded.", "error");
+    });
   };
 
   return (
@@ -529,7 +556,7 @@ export default function OrderManagement() {
                   <tr key={`${o.id}-${idx}`} style={{ background: o.hasIssue ? 'rgba(255,0,0,0.03)' : 'transparent' }}>
                     <td>
                       <div style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {o.id}
+                        #{getSimpleOrderId(o.id)}
                         {o.hasIssue && <AlertTriangle size={14} color="var(--status-red)" title="Order Issue Reported" />}
                       </div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{o.date}</div>
@@ -594,7 +621,7 @@ export default function OrderManagement() {
           <div className="auth-modal" style={{ maxWidth: '600px', padding: '2rem', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--admin-border)', paddingBottom: '1rem' }}>
               <div>
-                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Order Processing: {selectedOrder.id}</h3>
+                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Order Processing: #{getSimpleOrderId(selectedOrder.id)}</h3>
                 <span className={`badge ${statusClass[selectedOrder.status] || 'badge-pending'}`} style={{ marginTop: '0.5rem', display: 'inline-block' }}>{selectedOrder.status.toUpperCase()}</span>
               </div>
               <button className="btn-icon btn-outline" onClick={() => setSelectedOrder(null)} style={{ border: 'none' }}><X size={18} /></button>
@@ -619,23 +646,7 @@ export default function OrderManagement() {
               </div>
             </div>
 
-            {/* Tracking Link */}
-            <div style={{ background: 'rgba(201,168,76,0.07)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.82rem' }}>
-              <span style={{ color: 'var(--gold)' }}>📦</span>
-              <span style={{ color: 'var(--text-secondary)', flex: 1 }}>Customer tracking link:</span>
-              <a
-                href={`/track/${selectedOrder.id}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: 'var(--gold)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.78rem', textDecoration: 'none' }}
-              >
-                /track/{selectedOrder.id} ↗
-              </a>
-              <button
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/track/${selectedOrder.id}`); showToast('Tracking link copied!'); }}
-                style={{ background: 'none', border: '1px solid var(--admin-border)', borderRadius: '6px', padding: '0.2rem 0.5rem', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem' }}
-              >Copy</button>
-            </div>
+
 
             <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {selectedOrder.hasIssue && (
@@ -707,7 +718,7 @@ export default function OrderManagement() {
                   <div style={{ fontSize: '0.85rem', color: '#666', letterSpacing: '0.5px', paddingLeft: '2.25rem' }}>TAX INVOICE / BILL OF SUPPLY</div>
                 </div>
                 <div style={{ textAlign: 'right', minWidth: '200px' }}>
-                  <strong style={{ fontSize: '1.2rem', color: '#1a1a1a', display: 'block', marginBottom: '0.25rem' }}>{viewInvoice.id}</strong>
+                  <strong style={{ fontSize: '1.2rem', color: '#1a1a1a', display: 'block', marginBottom: '0.25rem' }}>{formatOrderNumber(viewInvoice)}</strong>
                   <span style={{ fontSize: '0.85rem', color: '#555' }}>Date: {viewInvoice.date}</span>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 // src/components/Footer/Footer.jsx
 import { Gem, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useCMS } from '../../context/CMSContext';
 
@@ -87,6 +87,7 @@ export default function Footer() {
   const { setIsSupportOpen } = useApp();
   const { socialMediaData, landingPageData, systemSettingsData } = useCMS();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const isLegalPage = [
     '/privacy-policy', 
@@ -187,11 +188,21 @@ export default function Footer() {
                               e.preventDefault();
                               setIsSupportOpen(true);
                             } else if (route.includes('#')) {
-                              const id = route.split('#')[1];
-                              const el = document.getElementById(id);
+                              const hash = route.split('#')[1];
+                              const el = document.getElementById(hash);
                               if (el) {
+                                // Element exists on current page — scroll directly
                                 e.preventDefault();
-                                el.scrollIntoView({ behavior: 'smooth' });
+                                if (window.lenis) {
+                                  window.lenis.scrollTo(el, { duration: 1.2, offset: -80 });
+                                } else {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                              } else {
+                                // Element is on a different page — queue hash and navigate to home
+                                e.preventDefault();
+                                sessionStorage.setItem('jw_scroll_to', hash);
+                                navigate('/');
                               }
                             }
                           }}

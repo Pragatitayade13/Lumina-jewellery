@@ -168,7 +168,6 @@ export default function SecuritySettings() {
               <div className="card-title">API Keys & Integrations</div>
               <div className="card-subtitle">Keys for payment gateways, SMS providers, and external services</div>
             </div>
-            <button className="btn btn-sm btn-gold" style={{ color: '#000', fontWeight: 'bold' }} onClick={() => setNewKeyModal({ isOpen: true, service: '', env: 'Production' })}>+ Generate New Key</button>
          </div>
 
          <div className="admin-table-wrap">

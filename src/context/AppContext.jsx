@@ -1,5 +1,6 @@
 // src/context/AppContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
+import { doc, getDoc, getDocs, setDoc, updateDoc, query, collection, where, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const AppContext = createContext();
 
@@ -124,8 +125,13 @@ export function AppProvider({ children }) {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           try {
-            const { doc, getDoc } = await import('firebase/firestore');
-            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            // Fetch user, userStores, and active stores in parallel to drastically minimize DB roundtrip latency
+            const [userDoc, userStoresDocs, allStoresDocs] = await Promise.all([
+              getDoc(doc(db, 'users', firebaseUser.uid)),
+              getDocs(query(collection(db, 'userStores'), where('userId', '==', firebaseUser.uid))),
+              getDocs(query(collection(db, 'stores'), where('status', '==', 'active')))
+            ]);
+
             let userData = { uid: firebaseUser.uid, email: firebaseUser.email, role: 'customer', name: firebaseUser.displayName || 'Customer' };
             if (userDoc.exists()) {
               userData = { ...userData, ...userDoc.data() };
@@ -135,7 +141,6 @@ export function AppProvider({ children }) {
                 console.log("Auto-fixing missing role...");
                 userData.role = 'superadmin';
                 try {
-                  const { updateDoc } = await import('firebase/firestore');
                   await updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'superadmin' });
                 } catch (e) {
                   console.warn("Could not auto-fix role in DB:", e);
@@ -150,7 +155,6 @@ export function AppProvider({ children }) {
               
               // Automatically write this to Firestore so it persists
               try {
-                const { setDoc } = await import('firebase/firestore');
                 await setDoc(doc(db, 'users', firebaseUser.uid), {
                   role: 'superadmin',
                   permissions: ['all'],
@@ -174,64 +178,49 @@ export function AppProvider({ children }) {
             }
 
             // --- Multi-Store Context Initialization ---
-            try {
-              console.log("[AppContext] Initializing store context for user:", firebaseUser.uid, "Role:", userData.role);
-              const { query, collection, where, getDocs } = await import('firebase/firestore');
-              
-              const userStoresQ = query(collection(db, 'userStores'), where('userId', '==', firebaseUser.uid));
-              const userStoresDocs = await getDocs(userStoresQ);
-              const assignedStoreIds = userStoresDocs.docs.map(d => d.data().storeId);
-              console.log("[AppContext] Found assigned store IDs:", assignedStoreIds);
+            const assignedStoreIds = userStoresDocs.docs.map(d => d.data().storeId);
+            console.log("[AppContext] Found assigned store IDs:", assignedStoreIds);
 
-              const storesQ = query(collection(db, 'stores'), where('status', '==', 'active'));
-              const allStoresDocs = await getDocs(storesQ);
-              const allStores = allStoresDocs.docs.map(d => ({ id: d.id, ...d.data() }));
-              console.log(`[AppContext] Fetched ${allStores.length} active stores globally.`);
+            const allStores = allStoresDocs.docs.map(d => ({ id: d.id, ...d.data() }));
+            console.log(`[AppContext] Fetched ${allStores.length} active stores globally.`);
 
-              let userAssignedStores = [];
-              if (userData.role === 'superadmin') {
-                 userAssignedStores = allStores;
-              } else if (userData.role !== 'customer') {
-                 userAssignedStores = allStores.filter(store => assignedStoreIds.includes(store.id));
-              }
-              console.log("[AppContext] Final computed assigned stores:", userAssignedStores);
+            let userAssignedStores = [];
+            if (userData.role === 'superadmin') {
+               userAssignedStores = allStores;
+            } else if (userData.role !== 'customer') {
+               userAssignedStores = allStores.filter(store => assignedStoreIds.includes(store.id));
+            }
+            console.log("[AppContext] Final computed assigned stores:", userAssignedStores);
 
-              setAssignedStores(userAssignedStores);
+            setAssignedStores(userAssignedStores);
 
-              let activeStore = localStorage.getItem('jw_currentStore');
-              console.log("[AppContext] Previous active store from localStorage:", activeStore);
-              
-              if (userAssignedStores.length === 1) {
-                 activeStore = userAssignedStores[0].id;
-                 setCurrentStore(activeStore);
-                 setIsStoreSelectionOpen(false);
-              } else if (userAssignedStores.length > 1) {
-                 if (!userAssignedStores.find(s => s.id === activeStore)) {
-                   activeStore = null; 
-                   setCurrentStore(null);
-                    if (userData.role !== 'customer') {
-                      setIsStoreSelectionOpen(true);
-                    }
-                 }
-              } else {
+            let activeStore = localStorage.getItem('jw_currentStore');
+            console.log("[AppContext] Previous active store from localStorage:", activeStore);
+            
+            if (userAssignedStores.length === 1) {
+               activeStore = userAssignedStores[0].id;
+               setCurrentStore(activeStore);
+               setIsStoreSelectionOpen(false);
+            } else if (userAssignedStores.length > 1) {
+               if (!userAssignedStores.find(s => s.id === activeStore)) {
+                 activeStore = null; 
                  setCurrentStore(null);
-                 setIsStoreSelectionOpen(false);
-              }
-            } catch (err) {
-              console.error("[AppContext] CRITICAL: Failed to fetch store context. Usually a Firebase Security Rules permission issue.", err);
+                  if (userData.role !== 'customer') {
+                    setIsStoreSelectionOpen(true);
+                  }
+               }
+            } else {
+               setCurrentStore(null);
+               setIsStoreSelectionOpen(false);
             }
             // ------------------------------------------
 
             // --- Customer Store Context Initialization ---
-            // Works for role === 'customer' OR any user without an explicit admin role.
             const isAdminRole = ['superadmin', 'admin', 'manager', 'staff', 'finance', 'logistics', 'delivery'].includes(userData.role);
             if (!isAdminRole) {
               try {
-                // Reuse allStores already fetched above — no extra read needed
-                const { query: csQ, collection: csCol, where: csWhere, getDocs: csGetDocs } = await import('firebase/firestore');
-                const publicStoresQ = csQ(csCol(db, 'stores'), csWhere('status', '==', 'active'));
-                const publicStoresDocs = await csGetDocs(publicStoresQ);
-                const publicStores = publicStoresDocs.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Reuse active stores list fetched in parallel earlier
+                const publicStores = allStores;
                 setAllPublicStores(publicStores);
 
                 const savedStore = localStorage.getItem('jw_customer_store');
@@ -241,25 +230,21 @@ export function AppProvider({ children }) {
                   setCustomerSelectedStoreState(publicStores[0].id);
                   localStorage.setItem('jw_customer_store', publicStores[0].id);
                 } else if (publicStores.length > 1 && !savedIsValid) {
-                  // No valid store saved — prompt the customer to select
                   setIsCustomerStorePromptOpen(true);
                 }
-                // If savedIsValid: they already picked a store — don't interrupt them
               } catch (err) {
-                console.warn('[AppContext] Could not fetch public stores for customer:', err);
+                console.warn('[AppContext] Could not configure public stores for customer:', err);
               }
             }
             // -------------------------------------------
 
             setUser(userData);
 
-
             // Log activity to Firestore
             try {
-              const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
               const data = userDoc.exists() ? userDoc.data() : { role: 'customer', name: firebaseUser.displayName || 'Customer' };
               
-              await addDoc(collection(db, 'loginActivity'), {
+              const docRef = await addDoc(collection(db, 'loginActivity'), {
                 userId: firebaseUser.uid,
                 userName: data.name || 'Unknown',
                 email: firebaseUser.email,
@@ -269,6 +254,7 @@ export function AppProvider({ children }) {
                 ipAddress: '127.0.0.1', // Captured server-side in production
                 deviceInfo: navigator.userAgent.substring(0, 100)
               });
+              sessionStorage.setItem('jw_login_activity_id', docRef.id);
             } catch (err) {
               console.warn("Failed to log activity:", err);
             }

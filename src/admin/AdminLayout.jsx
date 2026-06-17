@@ -9,7 +9,6 @@ import {
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
 import ProfileDropdown from '../components/ProfileDropdown/ProfileDropdown';
-import QuickActionsDropdown from '../components/QuickActionsDropdown/QuickActionsDropdown';
 import StoreSwitcherDropdown from '../components/StoreSwitcherDropdown/StoreSwitcherDropdown';
 import LanguageSwitcher from '../components/LanguageSwitcher/LanguageSwitcher';
 import { useCMS } from '../context/CMSContext';
@@ -26,16 +25,16 @@ const allNavItems = [
   { path: '/admin/delivery?tab=map', label: 'Route Navigation', icon: <MapPin size={18} />, roles: ['delivery'] },
   { path: '/admin/delivery?tab=returns', label: 'Return Handling', icon: <RotateCcw size={18} />, roles: ['superadmin', 'admin', 'finance', 'delivery'] },
 
-  { section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, badge: '2', roles: ['superadmin', 'manager', 'admin'] },
+  {section: 'Management', roles: ['superadmin', 'admin', 'staff', 'manager'] },
+  { path: '/admin/users', label: 'Staff Management', icon: <Users size={18} />, roles: ['superadmin', 'manager', 'admin'] },
   { path: '/admin/products', label: 'Product Supervision', icon: <Gem size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/orders', label: 'Order Management', icon: <Package size={18} />, badge: '5', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
+  { path: '/admin/orders', label: 'Order Management', icon: <Package size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/customers', label: 'Customers', icon: <UsersRound size={18} />, roles: ['superadmin', 'admin', 'manager', 'staff'] },
-  { path: '/admin/inventory', label: 'Inventory', icon: <Store size={18} />, badge: '3', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
-  { path: '/admin/approvals', label: 'Approvals', icon: <ClipboardCheck size={18} />, badgeType: 'danger', roles: ['superadmin', 'admin', 'manager'] },
+  { path: '/admin/inventory', label: 'Inventory', icon: <Store size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
+  { path: '/admin/approvals', label: 'Approvals', icon: <ClipboardCheck size={18} />, roles: ['superadmin', 'admin', 'manager'] },
   
   { section: 'Customer Services', roles: ['superadmin', 'admin', 'staff', 'manager', 'finance'] },
-  { path: '/admin/support', label: 'Customer Support', icon: <LifeBuoy size={18} />, badge: 'new', badgeType: 'danger', roles: ['superadmin', 'admin', 'staff', 'manager'] },
+  { path: '/admin/support', label: 'Customer Support', icon: <LifeBuoy size={18} />, roles: ['superadmin', 'admin', 'staff', 'manager'] },
   { path: '/admin/communications', label: 'Communications', icon: <Mail size={18} />, roles: ['superadmin', 'admin', 'manager'] },
   { path: '/admin/appointments', label: 'Appointments', icon: <Calendar size={18} />, roles: ['superadmin', 'admin', 'manager'] },
   { path: '/admin/schemes', label: 'Schemes & Buybacks', icon: <RefreshCcw size={18} />, roles: ['superadmin', 'admin', 'manager', 'finance'] },
@@ -99,13 +98,14 @@ export default function AdminLayout({ children }) {
 
   const globalStoreName = landingPageData?.branding?.storeName || systemSettingsData?.storeName || landingPageData?.seo?.title || 'Lumina Jewels';
   
-  // Find the currently active store details
-  const activeStoreObj = assignedStores?.find(s => s.id === currentStore);
+  // Find the currently active store details (falling back to user.storeId if currentStore is empty)
+  const effectiveStoreId = currentStore || user?.storeId || 'GLOBAL';
+  const activeStoreObj = assignedStores?.find(s => s.id === effectiveStoreId);
   const activeStoreName = activeStoreObj?.name || activeStoreObj?.storeName || null;
   const activeStoreCode = activeStoreObj?.code || null;
   const activeStoreLocation = activeStoreObj?.address || null;
   
-  const storeName = currentStore && currentStore !== 'GLOBAL' && currentStore !== 'NONE' && activeStoreName 
+  const storeName = effectiveStoreId && effectiveStoreId !== 'GLOBAL' && effectiveStoreId !== 'NONE' && activeStoreName 
     ? activeStoreName 
     : globalStoreName;
 
@@ -175,18 +175,27 @@ export default function AdminLayout({ children }) {
 
           // Update login activity record
           try {
-            const q = query(
-              collection(db, 'loginActivity'), 
-              where('userId', '==', user.uid),
-              orderBy('loginTime', 'desc'),
-              limit(1)
-            );
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-              await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+            const loginActivityId = sessionStorage.getItem('jw_login_activity_id');
+            if (loginActivityId) {
+              await updateDoc(doc(db, 'loginActivity', loginActivityId), {
                 logoutTime: new Date().toISOString(),
                 status: 'completed'
               });
+              sessionStorage.removeItem('jw_login_activity_id');
+            } else {
+              const q = query(
+                collection(db, 'loginActivity'), 
+                where('userId', '==', user.uid),
+                orderBy('loginTime', 'desc'),
+                limit(1)
+              );
+              const snapshot = await getDocs(q);
+              if (!snapshot.empty) {
+                await updateDoc(doc(db, 'loginActivity', snapshot.docs[0].id), {
+                  logoutTime: new Date().toISOString(),
+                  status: 'completed'
+                });
+              }
             }
           } catch (err) {
             console.error("Error closing login session", err);
@@ -403,7 +412,7 @@ export default function AdminLayout({ children }) {
               {activeStoreCode && <span style={{ opacity: 0.75 }}>({activeStoreCode})</span>}
               {activeStoreLocation && <span style={{ opacity: 0.6 }}>· {activeStoreLocation}</span>}
               <span style={{ opacity: 0.5 }}>| {portalName} › {pageTitle}</span>
-              {assignedStores && assignedStores.length > 1 && (
+              {isSuperAdmin && assignedStores && assignedStores.length > 1 && (
                 <button 
                   onClick={() => setIsStoreSelectionOpen(true)}
                   style={{
@@ -442,7 +451,6 @@ export default function AdminLayout({ children }) {
         <div className="topbar-actions">
           <StoreSwitcherDropdown />
           <NotificationDropdown userRole={userRole} />
-          <QuickActionsDropdown userRole={userRole} />
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
 
           <ProfileDropdown userRole={userRole} userName={user?.name || `${portalName} User`} onLogout={handleLogout} isSuperAdmin={isSuperAdmin} />

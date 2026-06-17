@@ -9,6 +9,7 @@ import { useRates } from '../../hooks/useRates';
 import { useOrders } from '../../hooks/useOrders';
 import { useCustomers } from '../../hooks/useCustomers';
 import { useProducts } from '../../hooks/useProducts';
+import { useTasks } from '../../hooks/useTasks';
 
 function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, accentColor }) {
   return (
@@ -66,8 +67,8 @@ function LineChart({ data }) {
           return (
             <g key={d.month}>
               <circle cx={x} cy={y} r="5" fill="var(--gold)" stroke="var(--surface)" strokeWidth="2" />
-              <text x={x} y={height + 25} fill="var(--text-muted)" fontSize="12" textAnchor="middle">{d.month}</text>
-              <text x={x} y={y - 12} fill="var(--text-primary)" fontSize="11" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
+              <text x={x} y={height + 25} fill="#ffffff" fontSize="12" textAnchor="middle">{d.month}</text>
+              <text x={x} y={y - 12} fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">₹{(d.revenue / 100000).toFixed(1)}L</text>
             </g>
           );
         })}
@@ -100,16 +101,16 @@ function DonutChart({ data }) {
           })}
         </svg>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'Playfair Display,serif', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>74</div>
-          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Today</div>
+          <div style={{ fontFamily: 'Playfair Display,serif', fontSize: '1.5rem', fontWeight: 700, color: '#ffffff' }}>74</div>
+          <div style={{ fontSize: '0.6rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Today</div>
         </div>
       </div>
       <div className="donut-legend">
         {data.map((d, i) => (
           <div key={i} className="donut-legend-item">
             <div className="donut-dot" style={{ background: d.color }} />
-            <span className="donut-legend-label">{d.label}</span>
-            <span className="donut-legend-val">{d.value}%</span>
+            <span className="donut-legend-label" style={{ color: '#ffffff' }}>{d.label}</span>
+            <span className="donut-legend-val" style={{ color: '#ffffff' }}>{d.value}%</span>
           </div>
         ))}
       </div>
@@ -141,6 +142,8 @@ export default function Dashboard() {
   const [liveActivities, setLiveActivities] = useState(initialActivities);
   const [chartData, setChartData] = useState(revenueData);
   const { rates } = useRates();
+  
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super admin';
   
   // Data Fallbacks for Visual Preview
   const displayOrders = firebaseOrders?.length > 0 ? firebaseOrders : mockOrders;
@@ -199,13 +202,39 @@ export default function Dashboard() {
   // Inventory Alerts
   const lowStockProducts = displayProducts?.filter(p => (p.stock || 0) <= (p.minStock || 5)) || [];
   
-  // Mock Assigned Tasks for Staff
-  const assignedTasks = [
-    { id: 'TSK-092', title: 'Quality Check: Polki Necklaces', time: 'Today, 2:30 PM', priority: 'High', status: 'Pending' },
-    { id: 'TSK-093', title: 'Update Diamond Pricing', time: 'Today, 5:00 PM', priority: 'Medium', status: 'Pending' },
-    { id: 'TSK-094', title: 'Follow up with packaging vendor', time: 'Tomorrow, 10:00 AM', priority: 'Low', status: 'In Progress' }
-  ];
+  // Live Assigned Tasks for Staff from Firestore
+  const { tasks: assignedTasks, updateTaskStatus } = useTasks(user?.uid, activeStoreId);
+  const [localTasks, setLocalTasks] = useState([]);
   
+  useEffect(() => {
+    if (assignedTasks && assignedTasks.length > 0) {
+      setLocalTasks(assignedTasks);
+    } else {
+      setLocalTasks([
+        { id: 'task-mock-1', title: 'Verify high discount request for Order #LJ-7888', deadline: 'Today, 5:00 PM', status: 'Pending' },
+        { id: 'task-mock-2', title: 'Restock Antique Temple Necklace (0 units left)', deadline: 'Tomorrow', status: 'In Progress' },
+        { id: 'task-mock-3', title: 'Review and update gold rate for 22KT gold', deadline: 'Today, 10:00 AM', status: 'Completed' },
+      ]);
+    }
+  }, [assignedTasks]);
+  
+  const handleToggleTaskStatus = async (taskId, currentStatus) => {
+    const newStatus = currentStatus === 'Completed' ? 'Pending' : 'Completed';
+    if (String(taskId).startsWith('task-mock-')) {
+      setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+      showToast(`Task marked as ${newStatus}`);
+    } else {
+      try {
+        await updateTaskStatus(taskId, newStatus);
+        showToast(`Task marked as ${newStatus}`);
+      } catch (err) {
+        console.error("Failed to update task status in DB, updating locally:", err);
+        setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+        showToast(`Task marked as ${newStatus} (local)`);
+      }
+    }
+  };
+
   const calculateRealRevenueCr = () => {
      if (!displayOrders || displayOrders.length === 0) return 0;
      const total = displayOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
@@ -265,16 +294,50 @@ export default function Dashboard() {
   useEffect(() => {
     // Simulated activity feed based on actual data sizes
     const activityInterval = setInterval(() => {
-      if (Math.random() > 0.8) {
+      if (Math.random() > 0.5) {
+        const productsList = displayProducts && displayProducts.length > 0 ? displayProducts : mockProducts;
+        const randomProduct = productsList[Math.floor(Math.random() * productsList.length)];
+        
+        const templates = [
+          `User viewed <strong>${randomProduct.name}</strong>`,
+          `User added <strong>${randomProduct.name}</strong> to cart`,
+          `User added <strong>${randomProduct.name}</strong> to wishlist`,
+          `Anonymous visitor started checkout with <strong>${randomProduct.name}</strong>`,
+          `New product inquiry submitted for <strong>${randomProduct.name}</strong>`,
+        ];
+        const randomText = templates[Math.floor(Math.random() * templates.length)];
+        
+        const icons = [<Bell size={16} />, <Package size={16} />, <TrendingUp size={16} />, <Users size={16} />];
+        const colors = [
+          'rgba(52,152,219,0.15)',
+          'rgba(46,204,113,0.15)',
+          'rgba(155,89,182,0.15)',
+          'rgba(243,156,18,0.15)'
+        ];
+        const randomIdx = Math.floor(Math.random() * icons.length);
+        
         const newAct = {
-          icon: <Bell size={16} />,
-          color: 'rgba(52,152,219,0.15)',
-          text: `<strong>Live Event:</strong> User viewed Polki Kundan Choker`,
+          icon: icons[randomIdx],
+          color: colors[randomIdx],
+          text: `<strong>Live Event:</strong> ${randomText}`,
           time: 'Just now'
         };
-        setLiveActivities(prev => [newAct, ...prev.slice(0, 5)]);
+        
+        setLiveActivities(prev => {
+          const aged = prev.map((act) => {
+            let nextTime = act.time;
+            if (act.time === 'Just now') {
+              nextTime = '1 minute ago';
+            } else if (act.time.includes('minute')) {
+              const mins = parseInt(act.time) || 1;
+              nextTime = `${mins + 1} minutes ago`;
+            }
+            return { ...act, time: nextTime };
+          });
+          return [newAct, ...aged.slice(0, 5)];
+        });
       }
-    }, 8000);
+    }, 6000);
 
     const liveDataInterval = setInterval(() => {
       // Simulate live chart fluctuations
@@ -490,8 +553,8 @@ export default function Dashboard() {
               <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
               <tbody>
                 {firebaseOrders && firebaseOrders.length > 0 ? (
-                  firebaseOrders.slice(0, 6).map(o => (
-                    <tr key={o.id}>
+                  firebaseOrders.slice(0, 6).map((o, idx) => (
+                    <tr key={`${o.firebaseId || o.id}-${idx}`}>
                       <td style={{ color: 'var(--gold)', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.78rem' }}>{o.id}</td>
                       <td>{o.customer}</td>
                       <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>₹{(o.amount || 0).toLocaleString('en-IN')}</td>
@@ -578,25 +641,53 @@ export default function Dashboard() {
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <CheckSquare size={18} color="var(--gold)" /> Assigned Tasks
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{assignedTasks.length} Pending</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{localTasks.filter(t => t.status !== 'Completed').length} Pending</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-            {assignedTasks.map(task => (
+            {localTasks.map(task => (
               <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ width: '20px', height: '20px', border: '2px solid var(--gold)', borderRadius: '4px', cursor: 'pointer' }} />
+                  <div 
+                    onClick={() => handleToggleTaskStatus(task.id, task.status)}
+                    style={{ 
+                      width: '20px', 
+                      height: '20px', 
+                      border: '2px solid var(--gold)', 
+                      borderRadius: '4px', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: task.status === 'Completed' ? 'var(--gold)' : 'transparent'
+                    }}
+                  >
+                    {task.status === 'Completed' && <span style={{ color: '#000', fontSize: '0.8rem', fontWeight: 'bold' }}>✓</span>}
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{task.title}</div>
+                    <div style={{ 
+                      fontWeight: 600, 
+                      color: 'var(--text-primary)', 
+                      fontSize: '0.9rem',
+                      textDecoration: task.status === 'Completed' ? 'line-through' : 'none',
+                      opacity: task.status === 'Completed' ? 0.6 : 1
+                    }}>{task.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <span>{task.id}</span> • <span>{task.time}</span>
+                      <span>{task.deadline || 'No deadline'}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <span className={`badge ${task.priority === 'High' ? 'badge-cancelled' : 'badge-pending'}`}>{task.priority}</span>
+                  <span className={`badge ${task.status === 'Completed' ? 'badge-active' : task.status === 'In Progress' ? 'badge-new' : 'badge-pending'}`}>
+                    {task.status}
+                  </span>
                 </div>
               </div>
             ))}
+            {localTasks.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                No tasks assigned to you.
+              </div>
+            )}
           </div>
         </div>
 
@@ -612,7 +703,15 @@ export default function Dashboard() {
               lowStockProducts.slice(0, 4).map(item => (
                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = mockProducts[0]?.image;
+                      }}
+                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} 
+                    />
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.name}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SKU: {item.sku || item.id}</div>

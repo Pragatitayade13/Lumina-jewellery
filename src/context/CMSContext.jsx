@@ -42,21 +42,22 @@ export function CMSProvider({ children }) {
       // Helper function to update state with new hero banner data
       const applyHeroData = (heroDocData) => {
         if (heroDocData) {
+          const slidesArray = Array.isArray(heroDocData.slides) 
+            ? heroDocData.slides 
+            : [heroDocData];
           setLandingPageData(prev => ({
             ...prev,
             hero: {
-              slides: [
-                {
-                  title: heroDocData.title || '',
-                  subtitle: heroDocData.subtitle || '',
-                  ctaText: heroDocData.ctaText || 'Shop Now',
-                  ctaLink: '#categories',
-                  mediaType: heroDocData.mediaType || 'image',
-                  mediaUrl: heroDocData.mediaUrl || '',
-                  isActive: heroDocData.isActive !== false,
-                  sortOrder: heroDocData.sortOrder || 1
-                }
-              ]
+              slides: slidesArray.map(slide => ({
+                title: slide.title || '',
+                subtitle: slide.subtitle || '',
+                ctaText: slide.ctaText || 'Shop Now',
+                ctaLink: slide.ctaLink || '#categories',
+                mediaType: slide.mediaType || 'image',
+                mediaUrl: slide.mediaUrl || '',
+                isActive: slide.isActive !== false,
+                sortOrder: slide.sortOrder || 1
+              }))
             }
           }));
         }

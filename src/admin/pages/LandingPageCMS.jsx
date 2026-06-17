@@ -4,7 +4,51 @@ import { useApp } from '../../context/AppContext';
 import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
+import { uploadToImgBB } from '../../config/imgbb';
+import localHeroVideo2 from '../../assets/hero_video_2.mp4';
 import '../admin.css';
+
+const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = (e) => reject(e);
+      img.src = event.target.result;
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function LandingPageCMS() {
   const { showToast, assignedStores, user } = useApp();
@@ -17,18 +61,20 @@ export default function LandingPageCMS() {
   const [uploadingBestSeller, setUploadingBestSeller] = useState(null);
   const [originalData, setOriginalData] = useState(null);
   const [selectedStore, setSelectedStore] = useState('global');
-  const [heroBanner, setHeroBanner] = useState({
-    title: '',
-    subtitle: '',
-    ctaText: 'Shop Now',
-    mediaType: 'image',
-    mediaUrl: '',
-    isActive: true,
-    sortOrder: 1
-  });
-  const [originalHeroBanner, setOriginalHeroBanner] = useState(null);
+  const [heroBanner, setHeroBanner] = useState([
+    {
+      title: 'Lumina Jewels',
+      subtitle: 'Exclusive luxury jewellery',
+      ctaText: 'Shop Now',
+      mediaType: 'video',
+      mediaUrl: '',
+      isActive: true,
+      sortOrder: 1
+    }
+  ]);
+  const [originalHeroBanner, setOriginalHeroBanner] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(null);
   const [publishing, setPublishing] = useState(false);
 
   const [data, setData] = useState({
@@ -150,8 +196,9 @@ export default function LandingPageCMS() {
       const draftSnap = await getDoc(draftRef);
       if (draftSnap.exists()) {
         const d = draftSnap.data();
-        setHeroBanner(d);
-        setOriginalHeroBanner(d);
+        const slides = Array.isArray(d.slides) ? d.slides : [d];
+        setHeroBanner(slides);
+        setOriginalHeroBanner(slides);
         return;
       }
 
@@ -159,18 +206,21 @@ export default function LandingPageCMS() {
       const publishSnap = await getDoc(publishRef);
       if (publishSnap.exists()) {
         const d = publishSnap.data();
-        setHeroBanner(d);
-        setOriginalHeroBanner(d);
+        const slides = Array.isArray(d.slides) ? d.slides : [d];
+        setHeroBanner(slides);
+        setOriginalHeroBanner(slides);
       } else {
-        const defaults = {
-          title: '',
-          subtitle: '',
-          ctaText: 'Shop Now',
-          mediaType: 'image',
-          mediaUrl: '',
-          isActive: true,
-          sortOrder: 1
-        };
+        const defaults = [
+          {
+            title: 'Lumina Jewels',
+            subtitle: 'Exclusive luxury jewellery',
+            ctaText: 'Shop Now',
+            mediaType: 'video',
+            mediaUrl: '',
+            isActive: true,
+            sortOrder: 1
+          }
+        ];
         setHeroBanner(defaults);
         setOriginalHeroBanner(defaults);
       }
@@ -179,7 +229,7 @@ export default function LandingPageCMS() {
     }
   };
 
-  const handleMediaUpload = (e) => {
+  const handleMediaUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -192,8 +242,8 @@ export default function LandingPageCMS() {
     }
 
     if (isImage) {
-      if (file.size > 2 * 1024 * 1024) {
-        showToast("Image size exceeds 2MB limit.", "error");
+      if (file.size > 50 * 1024 * 1024) {
+        showToast("Image size exceeds 50MB limit.", "error");
         return;
       }
       const allowedExts = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -204,8 +254,8 @@ export default function LandingPageCMS() {
     }
 
     if (isVideo) {
-      if (file.size > 20 * 1024 * 1024) {
-        showToast("Video size exceeds 20MB limit.", "error");
+      if (file.size > 100 * 1024 * 1024) {
+        showToast("Video size exceeds 100MB limit.", "error");
         return;
       }
       const allowedExts = ['video/mp4', 'video/webm'];
@@ -215,86 +265,108 @@ export default function LandingPageCMS() {
       }
     }
 
-    if (!storage) {
-      showToast("Firebase Storage not configured. Loading file locally...", "info");
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setHeroBanner(prev => ({
-          ...prev,
-          mediaUrl: reader.result,
-          mediaType: isVideo ? 'video' : 'image'
-        }));
-        showToast("File loaded locally successfully!");
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-
-    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-    if (isOffline) {
-      showToast("Offline: Loading file locally...", "info");
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setHeroBanner(prev => ({
-          ...prev,
-          mediaUrl: reader.result,
-          mediaType: isVideo ? 'video' : 'image'
-        }));
-        showToast("File loaded locally successfully!");
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-
-    setUploadingMedia(true);
+    setUploadingMedia(index);
     setUploadProgress(0);
 
-    const folder = isVideo ? 'videos' : 'images';
-    const storageRef = ref(storage, `cms/landing/${selectedStore}/${folder}/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    // Set immediate local preview
+    if (isImage) {
+      compressImage(file).then(compressedUrl => {
+        setHeroBanner(prev => {
+          const newBanners = [...prev];
+          newBanners[index] = { ...newBanners[index], mediaUrl: compressedUrl, mediaType: 'image' };
+          return newBanners;
+        });
+      }).catch(() => {
+        const objectUrl = URL.createObjectURL(file);
+        setHeroBanner(prev => {
+          const newBanners = [...prev];
+          newBanners[index] = { ...newBanners[index], mediaUrl: objectUrl, mediaType: 'image' };
+          return newBanners;
+        });
+      });
+    } else if (isVideo) {
+      const objectUrl = URL.createObjectURL(file);
+      setHeroBanner(prev => {
+        const newBanners = [...prev];
+        newBanners[index] = { ...newBanners[index], mediaUrl: objectUrl, mediaType: 'video' };
+        return newBanners;
+      });
+    }
 
-    uploadTask.on('state_changed', 
-      (snapshot) => {
-        const total = snapshot.totalBytes || 0;
-        const transferred = snapshot.bytesTransferred || 0;
-        const progress = total > 0 ? Math.round((transferred / total) * 100) : 0;
-        setUploadProgress(isNaN(progress) ? 0 : progress);
-      }, 
-      (error) => {
-        console.error("Upload error:", error);
-        showToast("Network upload failed. Loading file locally instead...", "warning");
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setHeroBanner(prev => ({
-            ...prev,
-            mediaUrl: reader.result,
-            mediaType: isVideo ? 'video' : 'image'
-          }));
-          setUploadingMedia(false);
-          showToast("File loaded locally successfully!");
-        };
-        reader.readAsDataURL(file);
-      }, 
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        setHeroBanner(prev => ({
-          ...prev,
-          mediaUrl: downloadURL,
-          mediaType: isVideo ? 'video' : 'image'
-        }));
-        setUploadingMedia(false);
-        showToast("File uploaded successfully!");
+    if (isVideo) {
+      showToast("Video hosting requires a premium plan. Loaded locally only.", "warning");
+      setUploadingMedia(null);
+      return;
+    }
+
+    uploadToImgBB(file, setUploadProgress)
+      .then(downloadURL => {
+        setHeroBanner(prev => {
+          const newBanners = [...prev];
+          newBanners[index] = { ...newBanners[index], mediaUrl: downloadURL, mediaType: 'image' };
+          return newBanners;
+        });
+        setUploadingMedia(null);
+        showToast("Image uploaded successfully via ImgBB!");
+      })
+      .catch(error => {
+        console.error("ImgBB upload error:", error);
+        showToast("Upload failed. Loading compressed image locally...", "warning");
+        compressImage(file).then(compressedUrl => {
+          setHeroBanner(prev => {
+            const newBanners = [...prev];
+            newBanners[index] = { ...newBanners[index], mediaUrl: compressedUrl, mediaType: 'image' };
+            return newBanners;
+          });
+          setUploadingMedia(null);
+        }).catch(() => {
+          setUploadingMedia(null);
+        });
+      });
+  };
+
+  const handleSlideChange = (index, field, value) => {
+    setHeroBanner(prev => {
+      const newBanners = [...prev];
+      newBanners[index] = { ...newBanners[index], [field]: value };
+      return newBanners;
+    });
+  };
+
+  const addSlide = () => {
+    setHeroBanner(prev => [
+      ...prev,
+      {
+        title: '',
+        subtitle: '',
+        ctaText: 'Shop Now',
+        mediaType: 'image',
+        mediaUrl: '',
+        isActive: true,
+        sortOrder: prev.length + 1
       }
-    );
+    ]);
+  };
+
+  const removeSlide = (index) => {
+    setHeroBanner(prev => {
+      const newBanners = [...prev];
+      newBanners.splice(index, 1);
+      return newBanners;
+    });
   };
 
   const handleSaveDraft = async () => {
+    if (user?.role !== 'superadmin') {
+      showToast("Access Denied: Only Super Admin can save drafts.", "error");
+      return;
+    }
     setSaving(true);
     try {
       if (!db) throw new Error("Database not initialized");
       const draftRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBannersDraft');
       await setDoc(draftRef, {
-        ...heroBanner,
+        slides: heroBanner,
         updatedAt: serverTimestamp(),
         updatedBy: user?.email || 'admin'
       }, { merge: true });
@@ -309,25 +381,29 @@ export default function LandingPageCMS() {
   };
 
   const handlePublish = async () => {
+    if (user?.role !== 'superadmin') {
+      showToast("Access Denied: Only Super Admin can publish banners.", "error");
+      return;
+    }
     setPublishing(true);
     try {
       if (!db) throw new Error("Database not initialized");
       const publishRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBanners');
       await setDoc(publishRef, {
-        ...heroBanner,
+        slides: heroBanner,
         updatedAt: serverTimestamp(),
         updatedBy: user?.email || 'admin'
       }, { merge: true });
       
       const draftRef = doc(db, 'landingCMS', selectedStore, 'sections', 'heroBannersDraft');
       await setDoc(draftRef, {
-        ...heroBanner,
+        slides: heroBanner,
         updatedAt: serverTimestamp(),
         updatedBy: user?.email || 'admin'
       }, { merge: true });
 
       setOriginalHeroBanner(heroBanner);
-      showToast("Changes published to live landing page!");
+      showToast("Successfully updated! Changes published to live landing page.");
     } catch (err) {
       console.error("Error publishing changes:", err);
       showToast("Failed to publish changes.", "error");
@@ -446,6 +522,10 @@ export default function LandingPageCMS() {
   };
 
   const handleSave = async () => {
+    if (user?.role !== 'superadmin') {
+      showToast("Access Denied: Only Super Admin can publish landing page changes.", "error");
+      return;
+    }
     setSaving(true);
     try {
       if (!db) throw new Error("Database not initialized");
@@ -572,7 +652,7 @@ export default function LandingPageCMS() {
 
       setData(finalData);
       setOriginalData(finalData);
-      showToast("Landing page and product database saved successfully!");
+      showToast("Changes made successfully!");
     } catch (e) {
       console.error("Error saving CMS data:", e);
       showToast("Error saving content", "error");
@@ -602,43 +682,28 @@ export default function LandingPageCMS() {
     const file = e.target.files[0];
     if (!file) return;
     
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Image must be smaller than 2MB", "error");
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("Image must be smaller than 10MB", "error");
       return;
     }
 
-    try {
-      if (!storage) {
-        showToast("Storage is not configured.", "error");
-        return;
-      }
-      setUploadingSlide(index);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `hero_slide_${index}_${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, `cms/landing/${fileName}`);
-      
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      uploadTask.on('state_changed', 
-        (snapshot) => {},
-        (error) => {
-          console.error("Upload error:", error);
-          showToast("Failed to upload image", "error");
+    setUploadingSlide(index);
+    uploadToImgBB(file)
+      .then(downloadURL => {
+        handleHeroChange(index, 'bgImage', downloadURL);
+        setUploadingSlide(null);
+        showToast("Image uploaded successfully via ImgBB!");
+      })
+      .catch(error => {
+        console.error("ImgBB upload error:", error);
+        showToast("Upload failed. Loading compressed image locally...", "warning");
+        compressImage(file).then(compressedUrl => {
+          handleHeroChange(index, 'bgImage', compressedUrl);
           setUploadingSlide(null);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          handleHeroChange(index, 'bgImage', downloadURL);
+        }).catch(() => {
           setUploadingSlide(null);
-          showToast("Image uploaded successfully");
-        }
-      );
-    } catch (error) {
-      console.error("Upload process error:", error);
-      showToast("Failed to start upload", "error");
-      setUploadingSlide(null);
-    }
+        });
+      });
   };
 
   const handleSeoChange = (field, value) => {
@@ -714,43 +779,31 @@ export default function LandingPageCMS() {
     const file = e.target.files[0];
     if (!file) return;
     
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Image must be smaller than 2MB", "error");
+    if (file.size > 50 * 1024 * 1024) {
+      showToast("Image must be smaller than 50MB", "error");
       return;
     }
 
-    try {
-      if (!storage) {
-        showToast("Storage is not configured.", "error");
-        return;
-      }
-      setUploadingNewArrival(index);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `new_arrival_${index}_${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, `cms/landing/${fileName}`);
-      
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      uploadTask.on('state_changed', 
-        (snapshot) => {},
-        (error) => {
-          console.error("Upload error:", error);
-          showToast("Failed to upload image", "error");
+    setUploadingNewArrival(index);
+    const objectUrl = URL.createObjectURL(file);
+    handleNewArrivalsItemChange(index, 'image', objectUrl);
+
+    uploadToImgBB(file)
+      .then(downloadURL => {
+        handleNewArrivalsItemChange(index, 'image', downloadURL);
+        setUploadingNewArrival(null);
+        showToast("Image uploaded successfully via ImgBB!");
+      })
+      .catch(error => {
+        console.error("ImgBB upload error:", error);
+        showToast("Upload failed. Loading compressed image locally...", "warning");
+        compressImage(file).then(compressedUrl => {
+          handleNewArrivalsItemChange(index, 'image', compressedUrl);
           setUploadingNewArrival(null);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          handleNewArrivalsItemChange(index, 'image', downloadURL);
+        }).catch(() => {
           setUploadingNewArrival(null);
-          showToast("Image uploaded successfully");
-        }
-      );
-    } catch (error) {
-      console.error("Upload process error:", error);
-      showToast("Failed to start upload", "error");
-      setUploadingNewArrival(null);
-    }
+        });
+      });
   };
 
   // --- Best Sellers Items ---
@@ -785,43 +838,31 @@ export default function LandingPageCMS() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Image must be smaller than 2MB", "error");
+    if (file.size > 50 * 1024 * 1024) {
+      showToast("Image must be smaller than 50MB", "error");
       return;
     }
 
-    try {
-      if (!storage) {
-        showToast("Storage is not configured.", "error");
-        return;
-      }
-      setUploadingBestSeller(index);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `best_seller_${index}_${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, `cms/landing/${fileName}`);
-      
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      uploadTask.on('state_changed', 
-        (snapshot) => {},
-        (error) => {
-          console.error("Upload error:", error);
-          showToast("Failed to upload image", "error");
+    setUploadingBestSeller(index);
+    const objectUrl = URL.createObjectURL(file);
+    handleBestSellersItemChange(index, 'image', objectUrl);
+
+    uploadToImgBB(file)
+      .then(downloadURL => {
+        handleBestSellersItemChange(index, 'image', downloadURL);
+        setUploadingBestSeller(null);
+        showToast("Image uploaded successfully via ImgBB!");
+      })
+      .catch(error => {
+        console.error("ImgBB upload error:", error);
+        showToast("Upload failed. Loading compressed image locally...", "warning");
+        compressImage(file).then(compressedUrl => {
+          handleBestSellersItemChange(index, 'image', compressedUrl);
           setUploadingBestSeller(null);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          handleBestSellersItemChange(index, 'image', downloadURL);
+        }).catch(() => {
           setUploadingBestSeller(null);
-          showToast("Image uploaded successfully");
-        }
-      );
-    } catch (error) {
-      console.error("Upload process error:", error);
-      showToast("Failed to start upload", "error");
-      setUploadingBestSeller(null);
-    }
+        });
+      });
   };
 
   const handleProductShowcaseChange = (field, value) => {
@@ -925,42 +966,44 @@ export default function LandingPageCMS() {
     const file = e.target.files[0];
     if (!file) return;
     
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Image must be smaller than 2MB", "error");
+    if (file.size > 50 * 1024 * 1024) {
+      showToast("Image must be smaller than 50MB", "error");
       return;
     }
 
+    setUploadingShowcaseImage(index);
+    const objectUrl = URL.createObjectURL(file);
+    handleProductShowcaseImageChange(index, objectUrl);
+
+    uploadToImgBB(file)
+      .then(downloadURL => {
+        handleProductShowcaseImageChange(index, downloadURL);
+        setUploadingShowcaseImage(null);
+        showToast("Image uploaded successfully via ImgBB!");
+      })
+      .catch(error => {
+        console.error("ImgBB upload error:", error);
+        showToast("Upload failed. Loading compressed image locally...", "warning");
+        compressImage(file).then(compressedUrl => {
+          handleProductShowcaseImageChange(index, compressedUrl);
+          setUploadingShowcaseImage(null);
+        }).catch(() => {
+          setUploadingShowcaseImage(null);
+        });
+      });
+  };
+
+  const handleResetAll = async () => {
+    setLoading(true);
     try {
-      if (!storage) {
-        showToast("Storage is not configured.", "error");
-        return;
-      }
-      setUploadingShowcaseImage(index);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `showcase_img_${index}_${Date.now()}.${fileExt}`;
-      const storageRef = ref(storage, `cms/landing/${fileName}`);
-      
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      uploadTask.on('state_changed', 
-        (snapshot) => {},
-        (error) => {
-          console.error("Upload error:", error);
-          showToast("Failed to upload image", "error");
-          setUploadingShowcaseImage(null);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          handleProductShowcaseImageChange(index, downloadURL);
-          setUploadingShowcaseImage(null);
-          showToast("Image uploaded successfully");
-        }
-      );
-    } catch (error) {
-      console.error("Upload process error:", error);
-      showToast("Failed to start upload", "error");
-      setUploadingShowcaseImage(null);
+      await fetchData();
+      await fetchHeroBanner(selectedStore);
+      showToast("Content reset to last saved state.");
+    } catch (err) {
+      console.error("Error resetting content:", err);
+      showToast("Failed to reset content.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -968,7 +1011,8 @@ export default function LandingPageCMS() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}><Loader className="spin" size={24} color="var(--gold)" /></div>;
   }
 
-  const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData);
+  const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData) || JSON.stringify(heroBanner) !== JSON.stringify(originalHeroBanner);
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <div>
@@ -978,13 +1022,24 @@ export default function LandingPageCMS() {
           <p className="page-subtitle">Manage homepage content, banners, and SEO dynamically.</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-outline" onClick={fetchData} disabled={saving || !hasChanges}><RefreshCcw size={16} style={{ marginRight: 6 }} /> Reset</button>
-          <button className="btn btn-gold" onClick={handleSave} disabled={saving || !hasChanges} style={{ color: '#fff', fontWeight: 'bold', opacity: (!hasChanges ? 0.6 : 1) }}>
+          <button className="btn btn-outline" onClick={handleResetAll} disabled={saving || !hasChanges}><RefreshCcw size={16} style={{ marginRight: 6 }} /> Reset</button>
+          <button className="btn btn-gold" onClick={handleSave} disabled={saving || !hasChanges || !isSuperAdmin} style={{ color: '#fff', fontWeight: 'bold', opacity: (!hasChanges || !isSuperAdmin ? 0.6 : 1) }}>
             {saving ? <Loader className="spin" size={16} /> : <Save size={16} />} 
             <span style={{ marginLeft: 6 }}>{saving ? 'Saving...' : 'Publish Changes'}</span>
           </button>
         </div>
       </div>
+
+      {/* Warning alert if not superadmin */}
+      {!isSuperAdmin && (
+        <div style={{
+          marginBottom: '1.5rem', backgroundColor: 'rgba(231,76,60,0.1)', border: '1px solid var(--status-red)', 
+          color: 'var(--status-red)', padding: '1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem'
+        }}>
+          <ShieldCheck size={20} />
+          <span><strong>Access Restricted:</strong> You are logged in as {user?.role || 'staff'}. Only a Super Admin can edit or publish landing page content.</span>
+        </div>
+      )}
 
       {/* Store Selection Dropdown */}
       <div className="admin-card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
@@ -1044,21 +1099,21 @@ export default function LandingPageCMS() {
           {activeTab === 'hero' && (
             <div className="admin-card">
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="card-title">Hero Banner Editor</div>
+                <div className="card-title">Hero Banner Editor ({heroBanner.length} slides)</div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button 
                     className="btn btn-outline" 
                     onClick={handleSaveDraft} 
-                    disabled={saving || uploadingMedia || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner)}
+                    disabled={saving || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
                   >
                     {saving ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Save Draft
                   </button>
                   <button 
                     className="btn btn-gold" 
-                    style={{ color: '#fff', fontWeight: 'bold' }} 
+                    style={{ color: '#fff', fontWeight: 'bold', opacity: (!isSuperAdmin ? 0.6 : 1) }} 
                     onClick={handlePublish} 
-                    disabled={publishing || uploadingMedia || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner)}
+                    disabled={publishing || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
                   >
                     {publishing ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Publish to Live
@@ -1066,123 +1121,185 @@ export default function LandingPageCMS() {
                 </div>
               </div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label>Title</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={heroBanner.title} 
-                      onChange={e => setHeroBanner({ ...heroBanner, title: e.target.value })} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Subtitle</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={heroBanner.subtitle} 
-                      onChange={e => setHeroBanner({ ...heroBanner, subtitle: e.target.value })} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>CTA Button Text</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={heroBanner.ctaText} 
-                      onChange={e => setHeroBanner({ ...heroBanner, ctaText: e.target.value })} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Media Type</label>
-                    <select 
-                      className="form-input"
-                      value={heroBanner.mediaType}
-                      onChange={e => setHeroBanner({ ...heroBanner, mediaType: e.target.value })}
-                    >
-                      <option value="image">Image</option>
-                      <option value="video">Video</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Media Upload ({heroBanner.mediaType})</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {heroBanner.mediaType === 'image' ? 'Formats: JPG, PNG, WEBP (Max 2MB)' : 'Formats: MP4, WEBM (Max 20MB)'}
-                    </span>
-                  </label>
-                  
-                  {heroBanner.mediaUrl ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                        {heroBanner.mediaType === 'video' ? (
-                          <video src={heroBanner.mediaUrl} controls muted style={{ width: '100%', display: 'block' }} />
-                        ) : (
-                          <img src={heroBanner.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
-                        )}
+                {heroBanner.map((slide, index) => (
+                  <div key={index} style={{ border: '1px solid var(--border)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1rem', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--gold)' }}>Slide #{index + 1}</h3>
+                      {heroBanner.length > 1 && (
                         <button 
-                          type="button"
+                          type="button" 
                           className="btn btn-outline" 
-                          style={{ 
-                            position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(255,255,255,0.9)', 
-                            color: 'var(--status-red)', borderColor: 'var(--status-red)', padding: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.25rem' 
-                          }}
-                          onClick={() => setHeroBanner({ ...heroBanner, mediaUrl: '' })}
+                          style={{ color: 'var(--status-red)', borderColor: 'var(--status-red)', padding: '0.4rem 0.8rem' }}
+                          onClick={() => removeSlide(index)}
                         >
-                          <Trash2 size={14} /> Delete Media
+                          <Trash2 size={14} style={{ marginRight: 4 }} /> Remove Slide
                         </button>
-                      </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
-                        Media URL: <a href={heroBanner.mediaUrl} target="_blank" rel="noreferrer">{heroBanner.mediaUrl}</a>
-                      </p>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <label className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <UploadCloud size={16} /> Choose File & Upload
+
+                    <div className="grid-2">
+                      <div className="form-group">
+                        <label>Title</label>
                         <input 
-                          type="file" 
-                          accept={heroBanner.mediaType === 'image' ? 'image/*' : 'video/*'} 
-                          style={{ display: 'none' }} 
-                          onChange={handleMediaUpload} 
-                          disabled={uploadingMedia}
+                          type="text" 
+                          className="form-input" 
+                          value={slide.title || ''} 
+                          onChange={e => handleSlideChange(index, 'title', e.target.value)} 
                         />
+                      </div>
+                      <div className="form-group">
+                        <label>Subtitle</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={slide.subtitle || ''} 
+                          onChange={e => handleSlideChange(index, 'subtitle', e.target.value)} 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>CTA Button Text</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={slide.ctaText || ''} 
+                          onChange={e => handleSlideChange(index, 'ctaText', e.target.value)} 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Media Type</label>
+                        <select 
+                          className="form-input"
+                          value={slide.mediaType || 'image'}
+                          onChange={e => handleSlideChange(index, 'mediaType', e.target.value)}
+                        >
+                          <option value="image">Image</option>
+                          <option value="video">Video</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Media Upload ({slide.mediaType || 'image'})</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {slide.mediaType === 'video' ? 'Formats: MP4, WEBM (Max 100MB)' : 'Formats: JPG, PNG, WEBP (Max 50MB)'}
+                        </span>
                       </label>
-                      {uploadingMedia && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                          <div style={{ flex: 1, height: '6px', backgroundColor: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: 'var(--gold)', borderRadius: '3px' }} />
+                      
+                      {(slide.mediaUrl || slide.mediaType === 'video') ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            {slide.mediaType === 'video' ? (
+                              <video src={slide.mediaUrl || localHeroVideo2} controls muted style={{ width: '100%', display: 'block' }} />
+                            ) : (
+                              <img src={slide.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
+                            )}
+                            {uploadingMedia === index ? (
+                              <div style={{
+                                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: '#fff'
+                              }}>
+                                <Loader className="spin" size={24} color="var(--gold)" />
+                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>Uploading {uploadProgress}%</span>
+                                <div style={{ width: '60%', height: '4px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: 'var(--gold)' }} />
+                                </div>
+                              </div>
+                            ) : (
+                              slide.mediaUrl ? (
+                                <button 
+                                  type="button"
+                                  className="btn btn-outline" 
+                                  style={{ 
+                                    position: 'absolute', top: '10px', right: '10px', backgroundColor: 'rgba(255,255,255,0.9)', 
+                                    color: 'var(--status-red)', borderColor: 'var(--status-red)', padding: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.25rem' 
+                                  }}
+                                  onClick={() => handleSlideChange(index, 'mediaUrl', '')}
+                                >
+                                  <Trash2 size={14} /> Delete Custom Media
+                                </button>
+                              ) : null
+                            )}
                           </div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{uploadProgress}%</span>
+                          {slide.mediaUrl ? (
+                            uploadingMedia !== index && (
+                              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                                Media URL: <a href={slide.mediaUrl} target="_blank" rel="noreferrer">{slide.mediaUrl}</a>
+                              </p>
+                            )
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <p style={{ fontSize: '0.85rem', color: 'var(--gold)', fontWeight: 'bold', margin: 0 }}>
+                                🎬 Using default landing page video background (localHeroVideo2)
+                              </p>
+                              <label className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', alignSelf: 'flex-start', margin: 0 }}>
+                                <UploadCloud size={14} /> Upload Custom Video/Image to Replace
+                                <input 
+                                  type="file" 
+                                  accept={slide.mediaType === 'video' ? 'video/*' : 'image/*'} 
+                                  style={{ display: 'none' }} 
+                                  onChange={(e) => handleMediaUpload(e, index)} 
+                                  disabled={uploadingMedia !== null}
+                                />
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <label className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <UploadCloud size={16} /> Choose File & Upload
+                            <input 
+                              type="file" 
+                              accept={slide.mediaType === 'video' ? 'video/*' : 'image/*'} 
+                              style={{ display: 'none' }} 
+                              onChange={(e) => handleMediaUpload(e, index)} 
+                              disabled={uploadingMedia !== null}
+                            />
+                          </label>
+                          {uploadingMedia === index && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                              <div style={{ flex: 1, height: '6px', backgroundColor: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${uploadProgress}%`, height: '100%', backgroundColor: 'var(--gold)', borderRadius: '3px' }} />
+                              </div>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{uploadProgress}%</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="grid-2" style={{ marginTop: '1rem' }}>
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input 
-                      type="checkbox" 
-                      id="hero-banner-active"
-                      checked={heroBanner.isActive} 
-                      onChange={e => setHeroBanner({ ...heroBanner, isActive: e.target.checked })} 
-                    />
-                    <label htmlFor="hero-banner-active" style={{ cursor: 'pointer', userSelect: 'none' }}>Active (Display on Homepage)</label>
+                    <div className="grid-2" style={{ marginTop: '1rem' }}>
+                      <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="checkbox" 
+                          id={`hero-slide-active-${index}`}
+                          checked={slide.isActive} 
+                          onChange={e => handleSlideChange(index, 'isActive', e.target.checked)} 
+                        />
+                        <label htmlFor={`hero-slide-active-${index}`} style={{ cursor: 'pointer', userSelect: 'none' }}>Active (Display on Homepage)</label>
+                      </div>
+                      <div className="form-group">
+                        <label>Sort Order</label>
+                        <input 
+                          type="number" 
+                          className="form-input" 
+                          value={slide.sortOrder || 1} 
+                          onChange={e => handleSlideChange(index, 'sortOrder', parseInt(e.target.value) || 1)} 
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Sort Order</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={heroBanner.sortOrder} 
-                      onChange={e => setHeroBanner({ ...heroBanner, sortOrder: parseInt(e.target.value) || 1 })} 
-                    />
-                  </div>
-                </div>
+                ))}
+                
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}
+                  onClick={addSlide}
+                >
+                  <Plus size={16} style={{ marginRight: 6 }} /> Add Slide
+                </button>
               </div>
             </div>
           )}
@@ -1226,17 +1343,67 @@ export default function LandingPageCMS() {
                         onChange={async (e) => {
                           const file = e.target.files[0];
                           if (!file) return;
-                          try {
-                            const storageRef = ref(storage, `cms/branding/logo_${Date.now()}`);
-                            const uploadTask = uploadBytesResumable(storageRef, file);
-                            uploadTask.on('state_changed', null, null, async () => {
-                              const url = await getDownloadURL(uploadTask.snapshot.ref);
-                              setData({...data, branding: {...data.branding, logoUrl: url}});
-                              showToast("Logo uploaded successfully!");
-                            });
-                          } catch (err) {
-                            showToast("Logo upload failed", "error");
+                          if (file.size > 50 * 1024 * 1024) {
+                            showToast("Logo size exceeds 50MB limit.", "error");
+                            return;
                           }
+                          if (!file.type.startsWith('image/')) {
+                            showToast("Please upload an image file.", "error");
+                            return;
+                          }
+                          const saveLogoData = async (url) => {
+                            const updatedData = {
+                              ...data,
+                              branding: {
+                                ...data.branding,
+                                logoUrl: url
+                              }
+                            };
+                            setData(updatedData);
+                            if (db) {
+                              await setDoc(doc(db, 'cms', 'landingPage'), {
+                                ...updatedData,
+                                updatedAt: serverTimestamp()
+                              }, { merge: true });
+                            }
+                            setOriginalData(updatedData);
+                            showToast("Changes made successfully!");
+                          };
+
+                          // Set immediate local preview
+                          const objectUrl = URL.createObjectURL(file);
+                          setData(prev => ({
+                            ...prev,
+                            branding: {
+                              ...prev.branding,
+                              logoUrl: objectUrl
+                            }
+                          }));
+
+                          uploadToImgBB(file)
+                            .then(async (url) => {
+                              try {
+                                await saveLogoData(url);
+                              } catch (saveErr) {
+                                console.error("Error saving updated logo:", saveErr);
+                                showToast("Failed to save logo changes", "error");
+                              }
+                            })
+                            .catch(async (error) => {
+                              console.error("ImgBB upload error:", error);
+                              showToast("Logo upload failed. Loading locally as fallback...", "warning");
+                              compressImage(file).then(async (compressedUrl) => {
+                                try {
+                                  await saveLogoData(compressedUrl);
+                                } catch (saveErr) {
+                                  console.error("Error saving updated logo:", saveErr);
+                                  showToast("Failed to save logo changes", "error");
+                                }
+                              }).catch(err => {
+                                console.error("Local compression error:", err);
+                                showToast("Failed to process logo", "error");
+                              });
+                            });
                         }}
                       />
                     </label>
@@ -1383,7 +1550,7 @@ export default function LandingPageCMS() {
                           <div style={{ flex: 1 }}>
                             <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                               <span style={{ fontSize: '0.85rem' }}>Image {i + 1} URL</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 2MB</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 50MB limit</span>
                             </label>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                               <input type="text" className="form-input" style={{ flex: 1 }} placeholder="https://..." value={img} onChange={e => handleProductShowcaseImageChange(i, e.target.value)} />
@@ -1483,7 +1650,7 @@ export default function LandingPageCMS() {
                                      {uploadingNewArrival === i ? (
                                        <div style={{ fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading...</div>
                                      ) : (
-                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 2MB limit</span>
+                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 50MB limit</span>
                                      )}
                                    </div>
                                  </div>
@@ -1573,7 +1740,7 @@ export default function LandingPageCMS() {
                                      {uploadingBestSeller === i ? (
                                        <div style={{ fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Loader size={12} className="spin" /> Uploading...</div>
                                      ) : (
-                                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 2MB limit</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max 50MB limit</span>
                                      )}
                                    </div>
                                  </div>

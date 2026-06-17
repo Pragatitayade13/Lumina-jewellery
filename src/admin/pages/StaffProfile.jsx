@@ -57,9 +57,12 @@ export default function StaffProfile() {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setProfilePic(url);
-      showToast("Profile photo updated successfully!");
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePic(reader.result);
+        showToast("Profile photo updated successfully!");
+      };
+      reader.readAsDataURL(file);
     }
   };
   

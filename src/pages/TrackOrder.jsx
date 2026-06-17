@@ -280,36 +280,8 @@ export default function TrackOrder() {
           </div>
         </div>
 
-        {/* Live map */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--admin-border)', borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-          <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--admin-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-              {isLive ? '🚚 Rider Location — Live' : '📍 Delivery Map'}
-            </div>
-            {isLive && partnerLocation && (
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                ±{Math.round(partnerLocation.accuracy || 0)}m accuracy
-              </div>
-            )}
-            {!isLive && (
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Live tracking available once out for delivery
-              </div>
-            )}
-          </div>
-          <div ref={mapRef} style={{ height: '350px', background: '#1a1a1a' }} />
-          {!isLive && (
-            <div style={{
-              position: 'absolute', // overlaid via relative parent
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: '0.5rem', height: '350px',
-              color: 'var(--text-muted)', fontSize: '0.85rem',
-            }}>
-              <MapPin size={32} style={{ opacity: 0.3 }} />
-              <span>Map will activate when your rider starts delivery</span>
-            </div>
-          )}
-        </div>
+
+
 
         {/* Footer */}
         <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>

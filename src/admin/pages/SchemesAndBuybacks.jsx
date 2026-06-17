@@ -228,33 +228,6 @@ export default function SchemesAndBuybacks() {
             </div>
           </div>
 
-          <div className="admin-card">
-            <div className="card-title" style={{ marginBottom: '1rem' }}>⚠️ Upcoming EMI Due — Next Collection</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              {localSchemes.filter(s => s.status === 'active').length > 0 ? (
-                localSchemes.filter(s => s.status === 'active').map(s => (
-                  <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', background: 'rgba(201,168,76,0.06)', borderRadius: '8px', border: '1px solid rgba(201,168,76,0.2)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{s.customer}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{s.id} · Month {s.monthsPaid + 1} of 11</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '1.05rem' }}>₹{s.installment.toLocaleString('en-IN')}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.plan}</div>
-                    </div>
-                    <button className="btn btn-sm btn-gold" style={{ backgroundColor: 'var(--gold)', color: '#FFFFFF', fontWeight: 700, border: 'none', marginLeft: '1rem' }} onClick={() => handlePayInstallment(s.id)}>
-                      Collect EMI
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--status-green)' }}>
-                  <CheckCircle size={28} style={{ marginBottom: '0.5rem' }} />
-                  <div>All EMIs are up to date!</div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 

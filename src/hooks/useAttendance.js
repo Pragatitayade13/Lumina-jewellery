@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../config/firebase';
-import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 /**
  * useAttendance — manages clock-in / clock-out for the currently logged-in staff user.
@@ -36,40 +36,44 @@ export function useAttendance(userId) {
     );
   };
 
-  // Fetch current attendance state on mount
+  // Fetch current attendance state in real-time
   useEffect(() => {
     if (!userId || !db) {
       setLoading(false);
       return;
     }
 
-    const fetchStatus = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          const checkIn = data.lastCheckIn || null;
-          const checkOut = data.lastCheckOut || null;
+    const userRef = doc(db, 'users', userId);
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const checkIn = data.lastCheckIn || null;
+        const checkOut = data.lastCheckOut || null;
 
-          // Only count check-in as active if it's from today
-          if (checkIn && isToday(checkIn)) {
-            setCheckInTime(formatTime(checkIn));
-            setIsClockedIn(data.status === 'online');
+        // Only count check-in as active if it's from today
+        if (checkIn && isToday(checkIn)) {
+          setCheckInTime(formatTime(checkIn));
+          setIsClockedIn(data.status === 'online');
 
-            // Only show today's check-out
-            if (checkOut && isToday(checkOut)) {
-              setCheckOutTime(formatTime(checkOut));
-            }
+          // Only show today's check-out
+          if (checkOut && isToday(checkOut)) {
+            setCheckOutTime(formatTime(checkOut));
+          } else {
+            setCheckOutTime(null);
           }
+        } else {
+          setCheckInTime(null);
+          setCheckOutTime(null);
+          setIsClockedIn(false);
         }
-      } catch (err) {
-        console.error('useAttendance: Error fetching status', err);
-      } finally {
-        setLoading(false);
       }
-    };
+      setLoading(false);
+    }, (err) => {
+      console.error('useAttendance: Error listening to status', err);
+      setLoading(false);
+    });
 
-    fetchStatus();
+    return () => unsubscribe();
   }, [userId]);
 
   const clockIn = async () => {

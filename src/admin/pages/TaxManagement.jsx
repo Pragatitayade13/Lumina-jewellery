@@ -96,47 +96,95 @@ export default function TaxManagement() {
   };
 
   const handleDownloadInvoice = (record) => {
-    showToast(`Generating Tax Invoice ${record.id}...`);
-    setTimeout(() => {
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Tax Invoice ${record.id}</title>
-            <style>
-              body { font-family: Arial; padding: 2rem; max-width: 800px; margin: 0 auto; color: #333; }
-              table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-              th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-              .header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #c9a84c; padding-bottom: 1rem; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1 style="color: #c9a84c; margin:0;">LUMINA JEWELS</h1>
-              <p>TAX INVOICE (GST Compliant)</p>
-            </div>
-            <p><strong>Invoice No:</strong> ${record.id}</p>
-            <p><strong>Date:</strong> ${record.date}</p>
-            <p><strong>Place of Supply:</strong> ${record.state}</p>
-            <table>
-              <tr><th>Description</th><th>Base Amount</th><th>GST Rate</th><th>Tax Type</th><th>Tax Amount</th><th>Total</th></tr>
-              <tr>
-                <td>Jewellery Goods</td>
-                <td>₹${record.amount.toLocaleString('en-IN')}</td>
-                <td>${record.gstPerc}%</td>
-                <td>${record.type}</td>
-                <td>₹${record.gstAmount.toLocaleString('en-IN')}</td>
-                <td><strong>₹${(record.amount + record.gstAmount).toLocaleString('en-IN')}</strong></td>
-              </tr>
-            </table>
-            <p style="text-align: center; margin-top: 3rem; font-size: 0.8rem; color: #888;">Computer Generated Tax Invoice</p>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }, 500);
+    const invoiceId = record.displayId || record.id;
+    showToast(`Downloading Invoice ${invoiceId}...`);
+
+    const invoiceContent = `
+      <div style="font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#222;">
+        <div style="text-align:center;margin-bottom:2rem;border-bottom:3px solid #c9a84c;padding-bottom:1.5rem;">
+          <h1 style="color:#c9a84c;font-size:2rem;letter-spacing:4px;margin:0;">LUMINA JEWELS</h1>
+          <p style="color:#555;font-size:0.9rem;margin-top:6px;">TAX INVOICE — GST Compliant</p>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin:1.5rem 0;font-size:0.9rem;">
+          <div style="line-height:2;">
+            <div><strong>Invoice No:</strong> ${invoiceId}</div>
+            <div><strong>Date:</strong> ${record.date}</div>
+            <div><strong>Place of Supply:</strong> ${record.state || '—'}</div>
+          </div>
+          <div style="text-align:right;line-height:2;">
+            <div><strong>GST Type:</strong> ${record.type || '—'}</div>
+            <div><strong>GST Rate:</strong> ${record.gstPerc}%</div>
+            <div><strong>Status:</strong> ${(record.status || 'pending').toUpperCase()}</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-top:1.5rem;">
+          <thead>
+            <tr>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">Description</th>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">Base Amount</th>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">GST Rate</th>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">Tax Type</th>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">Tax Amount</th>
+              <th style="background:#c9a84c;color:#fff;padding:10px 12px;text-align:left;font-size:0.85rem;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border:1px solid #ddd;padding:10px 12px;">Jewellery Goods</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;">Rs.${(record.amount || 0).toLocaleString('en-IN')}</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;">${record.gstPerc}%</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;">${record.type || '—'}</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;">Rs.${(record.gstAmount || 0).toLocaleString('en-IN')}</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;">Rs.${((record.amount || 0) + (record.gstAmount || 0)).toLocaleString('en-IN')}</td>
+            </tr>
+            <tr>
+              <td colspan="5" style="border:1px solid #ddd;padding:10px 12px;text-align:right;font-weight:bold;background:#fff8e7;border-top:2px solid #c9a84c;">Grand Total</td>
+              <td style="border:1px solid #ddd;padding:10px 12px;font-weight:bold;background:#fff8e7;border-top:2px solid #c9a84c;">Rs.${((record.amount || 0) + (record.gstAmount || 0)).toLocaleString('en-IN')}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="text-align:center;margin-top:3rem;font-size:0.75rem;color:#999;border-top:1px solid #eee;padding-top:1rem;">
+          Computer Generated Tax Invoice — Lumina Jewels, Mumbai, Maharashtra, India
+        </div>
+      </div>`;
+
+    // Render into a hidden off-screen div
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;';
+    container.innerHTML = invoiceContent;
+    document.body.appendChild(container);
+
+    const loadAndGenerate = () => {
+      window.html2pdf()
+        .set({
+          margin: 0,
+          filename: `Invoice-${invoiceId}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        })
+        .from(container)
+        .save()
+        .then(() => {
+          document.body.removeChild(container);
+          showToast(`Invoice ${invoiceId} downloaded!`, 'success');
+        });
+    };
+
+    if (window.html2pdf) {
+      loadAndGenerate();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = loadAndGenerate;
+      script.onerror = () => {
+        document.body.removeChild(container);
+        showToast('PDF library failed to load. Please check your internet connection.', 'error');
+      };
+      document.head.appendChild(script);
+    }
   };
+
 
   const handleGSTR3B = () => {
     const periodLabel = `${monthNames[filterMonth - 1]} ${filterYear}`;
@@ -289,7 +337,7 @@ export default function TaxManagement() {
               );
             })()}
           </div>
-          <button className="btn btn-gold" onClick={handleAddTransaction} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FFFFFF', fontWeight: 'bold' }}><Plus size={16} /> Log Transaction</button>
+
         </div>
       </div>
 

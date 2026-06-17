@@ -20,7 +20,10 @@ export default function StoreManagement() {
     code: '',
     address: '',
     contactPhone: '',
-    contactEmail: ''
+    contactEmail: '',
+    gstNumber: '',
+    managerName: '',
+    operatingHours: ''
   });
 
   const [assignData, setAssignData] = useState({
@@ -46,11 +49,23 @@ export default function StoreManagement() {
         code: store.code || '',
         address: store.address || '',
         contactPhone: store.contactPhone || '',
-        contactEmail: store.contactEmail || ''
+        contactEmail: store.contactEmail || '',
+        gstNumber: store.gstNumber || '',
+        managerName: store.managerName || '',
+        operatingHours: store.operatingHours || ''
       });
     } else {
       setEditingStore(null);
-      setFormData({ name: '', code: '', address: '', contactPhone: '', contactEmail: '' });
+      setFormData({
+        name: '',
+        code: '',
+        address: '',
+        contactPhone: '',
+        contactEmail: '',
+        gstNumber: '',
+        managerName: '',
+        operatingHours: ''
+      });
     }
     setIsModalOpen(true);
   };
@@ -160,14 +175,17 @@ export default function StoreManagement() {
                     <td>
                       <div style={{ fontWeight: 600 }}>{store.name}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Code: {store.code}</div>
+                      {store.gstNumber && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>GSTIN: <span style={{ color: 'var(--gold)', fontWeight: 500 }}>{store.gstNumber}</span></div>}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
                         <MapPin size={14} style={{ color: 'var(--text-muted)' }} />
                         {store.address || 'N/A'}
                       </div>
+                      {store.operatingHours && <div style={{ fontSize: '0.75rem', color: 'var(--gold)', marginTop: '4px' }}>Hours: {store.operatingHours}</div>}
                     </td>
                     <td>
+                      {store.managerName && <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px' }}>Mgr: {store.managerName}</div>}
                       <div style={{ fontSize: '0.85rem' }}>{store.contactPhone || 'N/A'}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{store.contactEmail || 'N/A'}</div>
                     </td>
@@ -238,6 +256,20 @@ export default function StoreManagement() {
                     <label className="form-label">Contact Email</label>
                     <input type="email" className="form-input" value={formData.contactEmail} onChange={e => setFormData({...formData, contactEmail: e.target.value})} placeholder="e.g. store@example.com" />
                   </div>
+                </div>
+                <div className="form-row mb-1">
+                  <div className="form-group">
+                    <label className="form-label">GST Number</label>
+                    <input type="text" className="form-input" value={formData.gstNumber} onChange={e => setFormData({...formData, gstNumber: e.target.value})} placeholder="e.g. 27AAAAA0000A1Z5" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Manager Name</label>
+                    <input type="text" className="form-input" value={formData.managerName} onChange={e => setFormData({...formData, managerName: e.target.value})} placeholder="e.g. John Doe" />
+                  </div>
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Operating Hours</label>
+                  <input type="text" className="form-input" value={formData.operatingHours} onChange={e => setFormData({...formData, operatingHours: e.target.value})} placeholder="e.g. 10:00 AM - 08:30 PM" />
                 </div>
               </div>
               <div className="modal-footer">

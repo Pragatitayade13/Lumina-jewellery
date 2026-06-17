@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import { products } from '../../data/products';
 import { useCMS } from '../../context/CMSContext';
+import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../ProductCard/ProductCard';
 import './BestSellers.css';
 
 export default function BestSellers() {
+  const { products: fbProducts } = useProducts();
   const { landingPageData } = useCMS();
   const bs = landingPageData?.bestSellers || {
     sectionLabel: 'Customer Favorites',
@@ -15,9 +17,10 @@ export default function BestSellers() {
     items: []
   };
 
-  const automaticItems = products.filter(p => p.isBestSeller);
+  const displayProducts = fbProducts.length > 0 ? fbProducts : products;
+  const automaticItems = displayProducts.filter(p => p.isBestSeller === true || p.isBestSeller === 'true' || (p.badge && p.badge.toLowerCase().includes('best')));
   const hasCustomItems = bs.items && bs.items.length > 0;
-  const bestsellers = hasCustomItems ? [...bs.items, ...automaticItems].slice(0, 8) : automaticItems;
+  const bestsellers = hasCustomItems ? [...bs.items, ...automaticItems].slice(0, 8) : automaticItems.slice(0, 8);
 
   return (
     <section className="bestsellers-section" id="best-sellers">

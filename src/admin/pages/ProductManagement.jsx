@@ -5,6 +5,7 @@ import { useProducts } from '../../hooks/useProducts';
 import { useApprovals } from '../../hooks/useApprovals';
 import { useApp } from '../../context/AppContext';
 import { db, storage } from '../../config/firebase';
+import { uploadToImgBB } from '../../config/imgbb';
 import { Gem, Edit2, Trash2, Search, FileCheck, PieChart, Database, Plus, AlertTriangle, CheckCircle, XCircle, Percent } from 'lucide-react';
 
 export default function ProductManagement() {
@@ -71,7 +72,7 @@ export default function ProductManagement() {
     };
 
     if (!storage) {
-      showToast("Storage not available. Saving compressed image...");
+      showToast("Dev mode: saving compressed image locally...");
       const compressed = await compressImage(file);
       callback(compressed);
       return;
@@ -79,18 +80,12 @@ export default function ProductManagement() {
 
     setUploadingImage(true);
     try {
-      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `products/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-      const storageRef = ref(storage, fileName);
-      
       showToast("Uploading image...");
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      const downloadURL = await uploadToImgBB(file);
       callback(downloadURL);
       showToast("Image uploaded successfully!");
     } catch (err) {
-      console.warn("Storage upload failed, falling back to compression:", err);
+      console.warn("ImgBB upload failed, falling back to compression:", err);
       const compressed = await compressImage(file);
       callback(compressed);
       showToast("Saved compressed image instead.");
@@ -134,7 +129,11 @@ export default function ProductManagement() {
       stock: Number(newProduct.stock)
     };
 
-    const needsApproval = user?.role !== 'superadmin' || activeStoreId === 'NONE';
+    const needsApproval = !['superadmin', 'admin', 'manager'].includes(user?.role?.toLowerCase()) || activeStoreId === 'NONE';
+
+    // Close modal & reset form immediately on click — don't wait for DB
+    setIsAddModalOpen(false);
+    setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
 
     try {
       if (needsApproval) {
@@ -161,11 +160,9 @@ export default function ProductManagement() {
         setPendingProducts(prev => [{...productData, id: fallbackId, status: 'pending_approval'}, ...prev]);
       }
       showToast("Product submitted for manager approval.");
-    } finally {
-      setIsAddModalOpen(false);
-      setNewProduct({ name: '', sku: '', price: '', mrp: '', category: 'Gold Jewellery', subcategory: 'Rings', stock: '', status: 'active', purity: '22KT', weight: '', image: '', modelUrl: '', arOffsetX: 0, arOffsetY: 0, arOffsetZ: 0, arRotX: 0, arRotY: 0, arRotZ: 0, arScale: 1 });
     }
   };
+
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
@@ -258,7 +255,8 @@ export default function ProductManagement() {
   const effectiveSearchTerm = globalSearch || searchTerm;
 
   const filteredProducts = displayProducts.filter(p => {
-    if (!p.image || p.image === '') return false;
+    // Hide products with no image
+    if (!p.image || typeof p.image !== 'string' || p.image.trim() === '') return false;
 
     let matchesSearch = true;
     const s = effectiveSearchTerm.trim();
@@ -278,6 +276,7 @@ export default function ProductManagement() {
     
     return matchesSearch && matchesCategory && matchesStock;
   });
+
 
   const discountedProducts = filteredProducts.filter(p => p.price < p.mrp);
 
@@ -445,7 +444,9 @@ export default function ProductManagement() {
                     </div>
                     <div style={{ display: 'flex', gap: '0.2rem' }}>
                       <button className="btn btn-icon btn-outline" style={{ width: 26, height: 26 }} title="Update Product Details" onClick={() => setEditingProduct(p)}><Edit2 size={12} /></button>
-                      <button className="btn btn-icon btn-danger" style={{ width: 26, height: 26 }} title="Delete Product" onClick={() => handleDelete(p.id)}><Trash2 size={12} /></button>
+                      {user?.role === 'superadmin' && (
+                        <button className="btn btn-icon btn-danger" style={{ width: 26, height: 26 }} title="Delete Product" onClick={() => handleDelete(p.id)}><Trash2 size={12} /></button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -628,7 +629,7 @@ export default function ProductManagement() {
                     const file = e.target.files[0];
                     if (file) {
                       handleProductImageUpload(file, (url) => {
-                        setEditingProduct({...editingProduct, image: url});
+                        setEditingProduct(prev => ({ ...prev, image: url }));
                       });
                     }
                   }} />
@@ -755,7 +756,7 @@ export default function ProductManagement() {
                     const file = e.target.files[0];
                     if (file) {
                       handleProductImageUpload(file, (url) => {
-                        setNewProduct({...newProduct, image: url});
+                        setNewProduct(prev => ({ ...prev, image: url }));
                       });
                     }
                   }} />

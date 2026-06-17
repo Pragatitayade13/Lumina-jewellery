@@ -72,14 +72,40 @@ export function useProducts(activeStoreId = null) {
         const data = document.data();
         const mockMatch = mockProducts.find(mp => mp.sku === data.sku || mp.name === data.name);
         let img = data.image;
-        if (img && img.includes('/src/assets') && mockMatch) img = mockMatch.image;
+        
+        // If image path contains /src/assets but doesn't exist locally, or is empty, map to correct premium placeholder
+        const isLocalBroken = img && typeof img === 'string' && img.includes('/src/assets') && !mockMatch;
+        const isEmpty = !img;
+        
+        if (isLocalBroken || isEmpty) {
+          const name = String(data.name || '').toLowerCase();
+          const sku = String(data.sku || '').toLowerCase();
+          
+          let matchedMock = null;
+          if (name.includes('diamond') || name.includes('solitaire') || name.includes('pendant') || sku.includes('pend') || sku.includes('dia')) {
+            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('solitaire') || p.name?.toLowerCase().includes('diamond'));
+          } else if (name.includes('temple') || name.includes('necklace')) {
+            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('temple') || p.name?.toLowerCase().includes('necklace'));
+          } else if (name.includes('choker') || name.includes('polki')) {
+            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('polki') || p.name?.toLowerCase().includes('choker'));
+          }
+          
+          if (!matchedMock) {
+            matchedMock = mockProducts[0];
+          }
+          
+          img = matchedMock ? matchedMock.image : null;
+        } else if (img && typeof img === 'string' && img.includes('/src/assets') && mockMatch) {
+          img = mockMatch.image;
+        }
+        
         return {
           id: document.id,
           ...data,
-          image: img || (mockMatch ? mockMatch.image : null),
+          image: img,
           _needsStoreAssignment: usingFallback && !data.storeId,
         };
-      });
+      }).filter(p => !p.storeId || p.storeId === 'GLOBAL' || p.storeId === activeStoreId);
 
       if (isLoadMore) {
         setProducts(prev => {

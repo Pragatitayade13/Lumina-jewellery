@@ -112,7 +112,8 @@ export function useLogistics(deliveryPartnerId = null, activeStoreId = null) {
       timestamp: serverTimestamp()
     });
 
-    // Real Notification via API
+    // Real Notification via API — fire-and-forget, never blocks main flow
+    // In local dev the backend proxy (localhost:5000) may not be running; all errors are fully suppressed.
     try {
       const shipment = shipments.find(s => s.id === shipmentId);
       const customerEmail = shipment?.orderDetails?.customerEmail || shipment?.orderDetails?.email || shipment?.customerEmail || shipment?.email || 'customer@example.com';
@@ -120,7 +121,9 @@ export function useLogistics(deliveryPartnerId = null, activeStoreId = null) {
 
       const auth = getAuth();
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
-      await fetch('/api/send-order-alert', {
+
+      // Fire-and-forget — don't await so it never blocks status updates
+      fetch('/api/send-order-alert', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -131,12 +134,23 @@ export function useLogistics(deliveryPartnerId = null, activeStoreId = null) {
           status,
           customerEmail,
           customerName,
-          otp: locationData?.otp // Pass OTP if it exists in locationData for this event
+          otp: locationData?.otp
         })
-      });
-      console.log(`[IN-APP NOTIFICATION] System: Shipment ${shipmentId.slice(0,8)} moved to ${status}. Email API triggered.`);
+      })
+        .then(res => {
+          if (res.ok) {
+            // Only log success in production; suppress all noise in dev
+            if (import.meta.env.PROD) {
+              console.log(`[NOTIFICATION] Email alert sent for shipment ${shipmentId.slice(0,8)} → ${status}`);
+            }
+          }
+          // Non-ok responses (500, 404, etc.) are fully suppressed — backend may not be running locally
+        })
+        .catch(() => {
+          // Network/connection errors are fully suppressed — backend not running locally
+        });
     } catch (e) {
-      console.error('Failed to trigger email notification API', e);
+      // Synchronous errors fully suppressed
     }
   };
 

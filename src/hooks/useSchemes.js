@@ -43,7 +43,12 @@ export function useSchemes(userId, activeStoreId = null) {
       return;
     }
     try {
-      const q = getStoreQuery(db, 'user_schemes', activeStoreId, [where('customerId', '==', userId)]);
+      let q;
+      if (userId) {
+        q = query(collection(db, 'user_schemes'), where('customerId', '==', userId));
+      } else {
+        q = getStoreQuery(db, 'user_schemes', activeStoreId, [where('customerId', '==', userId)]);
+      }
       const unsubUser = onSnapshot(q, (snapshot) => {
         const active = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setUserSchemes(active);

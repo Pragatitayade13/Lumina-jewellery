@@ -33,6 +33,14 @@ try {
       experimentalForceLongPolling: true,
     });
     storage = getStorage(app);
+    
+    // Fail fast on network/CORS issues to trigger local base64 fallback immediately (2 seconds)
+    try {
+      setMaxUploadRetryTime(storage, 2000);
+      setMaxOperationRetryTime(storage, 2000);
+    } catch (retryErr) {
+      console.warn("Could not set storage retry limits:", retryErr);
+    }
 
     // Connect to local Firebase Emulators only if explicitly configured
     if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
@@ -60,6 +68,15 @@ try {
     storage = getStorage(app);
   } catch (err) {
     console.error("Firebase critical initialization error. Did you forget to add your .env variables?", err);
+  }
+}
+
+if (storage) {
+  try {
+    storage.maxUploadRetryTime = 2000;
+    storage.maxOperationRetryTime = 2000;
+  } catch (retryErr) {
+    console.warn("Could not set storage retry limits:", retryErr);
   }
 }
 

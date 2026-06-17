@@ -80,13 +80,16 @@ export default function ContentManagement() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("File is too large. Max size is 5MB.", "error");
+      if (file.size > 50 * 1024 * 1024) {
+        showToast("File is too large. Max size is 50MB.", "error");
         return;
       }
-      const url = URL.createObjectURL(file);
-      setMediaFiles([url, ...mediaFiles]);
-      showToast("File successfully uploaded to Media Library!");
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaFiles([reader.result, ...mediaFiles]);
+        showToast("File successfully uploaded to Media Library!");
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -99,8 +102,6 @@ export default function ContentManagement() {
           <p className="page-subtitle">Manage blog posts, homepage banners, and legal pages.</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => setMediaLibraryOpen(true)}>Media Library</button>
-          <button className="btn btn-gold" style={{ color: '#FFFFFF', fontWeight: 'bold' }} onClick={() => setPostModal({ isOpen: true, post: { title: '', author: user?.name || 'Admin', status: 'draft' }, isEditing: false })}>+ Add Blog</button>
         </div>
       </div>
 
@@ -250,7 +251,7 @@ export default function ContentManagement() {
             </div>
             <div className="modal-body">
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Supported formats: <strong style={{ color: 'var(--text-primary)' }}>JPG, PNG, WEBP</strong>. Max size: <strong style={{ color: 'var(--text-primary)' }}>5MB</strong> per file.</span>
+                <span>Supported formats: <strong style={{ color: 'var(--text-primary)' }}>JPG, PNG, WEBP</strong>. Max size: <strong style={{ color: 'var(--text-primary)' }}>50MB</strong> per file.</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', maxHeight: '400px', overflowY: 'auto' }}>
                 {mediaFiles.map((src, i) => (
