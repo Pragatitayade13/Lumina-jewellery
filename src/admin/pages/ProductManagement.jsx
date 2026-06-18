@@ -403,7 +403,16 @@ export default function ProductManagement() {
                 <div style={{ position: 'relative' }}>
                   <div className="product-admin-img">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.style.display = 'none';
+                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;background:linear-gradient(45deg,#111,#222);display:flex;align-items:center;justify-content:center;"><svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='rgba(201,168,76,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='6 3 18 3 22 9 12 22 2 9'/></svg></div>`;
+                        }}
+                      />
                     ) : (
                       <div style={{ width: '100%', height: '100%', background: 'linear-gradient(45deg, #111, #222)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Gem size={32} color="var(--gold)" opacity={0.6} />

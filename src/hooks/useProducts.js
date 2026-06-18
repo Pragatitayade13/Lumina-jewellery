@@ -68,37 +68,99 @@ export function useProducts(activeStoreId = null) {
 
       setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
 
+      // Helper: score how well a mock product matches a Firestore product by name/SKU/category
+      const getBestMockImage = (data) => {
+        const name = String(data.name || '').toLowerCase();
+        const sku = String(data.sku || '').toLowerCase();
+        const category = String(data.category || '').toLowerCase();
+        const subcategory = String(data.subcategory || '').toLowerCase();
+
+        let bestScore = -1;
+        let bestMock = null;
+
+        for (const mp of mockProducts) {
+          let score = 0;
+          const mName = String(mp.name || '').toLowerCase();
+          const mSku = String(mp.sku || '').toLowerCase();
+          const mCat = String(mp.category || '').toLowerCase();
+          const mSub = String(mp.subcategory || '').toLowerCase();
+
+          // Exact SKU match — highest priority
+          if (sku && mSku && sku === mSku) score += 100;
+
+          // Exact name match
+          if (name && mName && name === mName) score += 80;
+
+          // Partial name word overlap
+          const nameWords = name.split(/\s+/).filter(w => w.length > 2);
+          for (const word of nameWords) {
+            if (mName.includes(word)) score += 10;
+          }
+
+          // SKU prefix match (e.g. "GE-" for Gold Earrings)
+          if (sku && mSku) {
+            const skuPrefix = sku.split('-')[0];
+            if (mSku.startsWith(skuPrefix)) score += 15;
+          }
+
+          // Category match
+          if (category && mCat && category === mCat) score += 5;
+
+          // Subcategory match
+          if (subcategory && mSub && subcategory === mSub) score += 8;
+
+          // Key product type keywords
+          const types = [
+            { words: ['ring', 'band', 'solitaire'], mockKw: ['ring', 'band', 'solitaire'] },
+            { words: ['necklace', 'chain', 'pendant', 'haar'], mockKw: ['necklace', 'chain', 'pendant'] },
+            { words: ['earring', 'jhumka', 'stud', 'bali', 'drop'], mockKw: ['earring', 'jhumka', 'stud'] },
+            { words: ['bangle', 'kada', 'bracelet', 'kangan'], mockKw: ['bangle', 'kada', 'bracelet'] },
+            { words: ['maang', 'tikka', 'mathapatti'], mockKw: ['maang', 'tikka'] },
+            { words: ['mangalsutra', 'tanmaniya'], mockKw: ['mangalsutra'] },
+            { words: ['choker', 'polki', 'kundan'], mockKw: ['choker', 'polki', 'kundan'] },
+            { words: ['temple', 'antique', 'oxidised'], mockKw: ['temple', 'antique', 'oxidised'] },
+            { words: ['diamond'], mockKw: ['diamond'] },
+            { words: ['platinum'], mockKw: ['platinum'] },
+            { words: ['silver'], mockKw: ['silver'] },
+            { words: ['cufflink', 'lapel'], mockKw: ['cufflink'] },
+            { words: ['pendant', 'om', 'religious'], mockKw: ['pendant', 'om'] },
+          ];
+
+          for (const type of types) {
+            const nameMatch = type.words.some(w => name.includes(w));
+            const mockMatch = type.mockKw.some(w => mName.includes(w));
+            if (nameMatch && mockMatch) score += 20;
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestMock = mp;
+          }
+        }
+
+        // Only return a match if there's at least some meaningful similarity (score > 0)
+        // Otherwise return null (show placeholder gem icon instead of wrong image)
+        return bestScore > 0 ? bestMock?.image : null;
+      };
+
       const productsData = snapshot.docs.map(document => {
         const data = document.data();
-        const mockMatch = mockProducts.find(mp => mp.sku === data.sku || mp.name === data.name);
         let img = data.image;
-        
-        // If image path contains /src/assets but doesn't exist locally, or is empty, map to correct premium placeholder
-        const isLocalBroken = img && typeof img === 'string' && img.includes('/src/assets') && !mockMatch;
-        const isEmpty = !img;
-        
-        if (isLocalBroken || isEmpty) {
-          const name = String(data.name || '').toLowerCase();
-          const sku = String(data.sku || '').toLowerCase();
-          
-          let matchedMock = null;
-          if (name.includes('diamond') || name.includes('solitaire') || name.includes('pendant') || sku.includes('pend') || sku.includes('dia')) {
-            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('solitaire') || p.name?.toLowerCase().includes('diamond'));
-          } else if (name.includes('temple') || name.includes('necklace')) {
-            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('temple') || p.name?.toLowerCase().includes('necklace'));
-          } else if (name.includes('choker') || name.includes('polki')) {
-            matchedMock = mockProducts.find(p => p.name?.toLowerCase().includes('polki') || p.name?.toLowerCase().includes('choker'));
-          }
-          
-          if (!matchedMock) {
-            matchedMock = mockProducts[0];
-          }
-          
-          img = matchedMock ? matchedMock.image : null;
-        } else if (img && typeof img === 'string' && img.includes('/src/assets') && mockMatch) {
-          img = mockMatch.image;
+
+        // 1. If it's a valid external URL (Cloudinary, ImgBB, Firebase Storage, etc.) — trust it as-is
+        const isValidUrl = img && typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:image'));
+        if (isValidUrl) {
+          // Valid real URL — use it directly, no override
+        } else if (img && typeof img === 'string' && img.includes('/src/assets')) {
+          // It's a stale local dev path — find real imported image via mock match
+          const exactMock = mockProducts.find(mp => mp.sku === data.sku || mp.name === data.name);
+          img = exactMock ? exactMock.image : getBestMockImage(data);
+        } else {
+          // No image at all — find best match by name/category/SKU
+          const exactMock = mockProducts.find(mp => mp.sku === data.sku || mp.name === data.name);
+          img = exactMock ? exactMock.image : getBestMockImage(data);
         }
-        
+
         return {
           id: document.id,
           ...data,
