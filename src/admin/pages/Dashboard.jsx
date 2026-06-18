@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, IndianRupee, Package, Users, Gem, Bot, TrendingUp, Lightbulb, AlertTriangle, Target, Smartphone, CreditCard, Landmark, Wallet, Home, Bell, CheckSquare, AlertCircle, ShieldAlert, ShieldCheck, Truck, RotateCcw, CheckCircle } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Link } from 'react-router-dom';
-import { revenueData, orderStatusData, activities as initialActivities, categoryRevenue, products as mockProducts, orders as mockOrders, adminUsers as mockCustomers } from '../data/mockData';
+import { products as mockProducts, orders as mockOrders, adminUsers as mockCustomers } from '../data/mockData';
 import { useApp } from '../../context/AppContext';
 import { useRates } from '../../hooks/useRates';
 import { useOrders } from '../../hooks/useOrders';
@@ -77,7 +77,7 @@ function LineChart({ data }) {
   );
 }
 
-function DonutChart({ data }) {
+function DonutChart({ data, centerValue, centerLabel }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const r = 68, circumference = 2 * Math.PI * r;
   let offset = 0;
@@ -101,8 +101,8 @@ function DonutChart({ data }) {
           })}
         </svg>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'Playfair Display,serif', fontSize: '1.5rem', fontWeight: 700, color: '#ffffff' }}>74</div>
-          <div style={{ fontSize: '0.6rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Today</div>
+          <div style={{ fontFamily: 'Playfair Display,serif', fontSize: '1.5rem', fontWeight: 700, color: '#ffffff' }}>{centerValue ?? total}</div>
+          <div style={{ fontSize: '0.6rem', color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{centerLabel ?? 'Total'}</div>
         </div>
       </div>
       <div className="donut-legend">
@@ -139,8 +139,7 @@ export default function Dashboard() {
   const { products: firebaseProducts } = useProducts(activeStoreId);
   const [insights, setInsights] = useState([]);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
-  const [liveActivities, setLiveActivities] = useState(initialActivities);
-  const [chartData, setChartData] = useState(revenueData);
+  const [liveActivities, setLiveActivities] = useState([]);
   const { rates } = useRates();
   
   const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super admin';
@@ -236,8 +235,8 @@ export default function Dashboard() {
   };
 
   const calculateRealRevenueCr = () => {
-     if (!displayOrders || displayOrders.length === 0) return 0;
-     const total = displayOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+     if (!firebaseOrders || firebaseOrders.length === 0) return 0;
+     const total = firebaseOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
      return (total / 10000000).toFixed(4); // In Cr
   };
   
@@ -246,6 +245,69 @@ export default function Dashboard() {
   const goldMultiplier = (rates?.gold24k || 7250) / 7250;
   const dynamicTotalRevenue = (Number(realRevenueCr) * 1.5).toFixed(2); // Simulated annual projection based on real
   const dynamicAvgMonthly = (Number(realRevenueCr) / 12).toFixed(4);
+
+  // --- Real computed chart data from Firestore orders ---
+  const revenueChartData = useMemo(() => {
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const map = {};
+    const src = firebaseOrders && firebaseOrders.length > 0 ? firebaseOrders : [];
+    src.forEach(o => {
+      const d = o.createdAt?.toDate ? o.createdAt.toDate() : (o.date ? new Date(o.date) : null);
+      if (!d || isNaN(d)) return;
+      const key = monthNames[d.getMonth()];
+      map[key] = (map[key] || 0) + (Number(o.amount) || 0);
+    });
+    // Return months present in real data (sorted by month index), fallback to current year skeleton
+    const months = monthNames.filter(m => map[m] !== undefined);
+    if (months.length === 0) return monthNames.map(m => ({ month: m, revenue: 0 }));
+    return months.map(m => ({ month: m, revenue: map[m] }));
+  }, [firebaseOrders]);
+
+  const orderStatusChartData = useMemo(() => {
+    const src = firebaseOrders && firebaseOrders.length > 0 ? firebaseOrders : [];
+    if (src.length === 0) return [];
+    const colorMap = { delivered: '#2ecc71', shipped: '#3498db', in_transit: '#3498db', out_for_delivery: '#3498db', confirmed: '#f39c12', pending: '#9b59b6', cancelled: '#e74c3c', returned: '#e67e22', packed: '#1abc9c', assigned: '#2C3E50' };
+    const counts = {};
+    src.forEach(o => { const s = o.status || 'pending'; counts[s] = (counts[s] || 0) + 1; });
+    const total = src.length;
+    return Object.entries(counts).map(([s, c]) => ({
+      label: s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' '),
+      value: Math.round((c / total) * 100),
+      color: colorMap[s] || '#95a5a6'
+    }));
+  }, [firebaseOrders]);
+
+  const categoryRevenueData = useMemo(() => {
+    const src = firebaseOrders && firebaseOrders.length > 0 ? firebaseOrders : [];
+    if (src.length === 0) return [];
+    const colorMap = { 'Diamond Jewellery': '#3498db', 'Gold Jewellery': '#C9A84C', 'Bridal Collections': '#9b59b6', "Men's Jewellery": '#2C3E50', 'Silver Jewellery': '#95a5a6', 'Rings': '#e67e22', 'Necklaces': '#1abc9c', 'Others': '#e74c3c' };
+    const catRevenue = {};
+    src.forEach(o => {
+      // Try to match category from items array or product category field
+      const items = o.items || [];
+      if (items.length > 0) {
+        items.forEach(item => {
+          const cat = item.category || 'Others';
+          catRevenue[cat] = (catRevenue[cat] || 0) + (Number(item.price || item.amount || 0) * (item.qty || 1));
+        });
+      } else {
+        // Fallback: match product name from products list
+        const prodName = o.product || '';
+        const matchedProd = displayProducts.find(p => p.name === prodName || p.name?.includes(prodName));
+        const cat = matchedProd?.category || 'Others';
+        catRevenue[cat] = (catRevenue[cat] || 0) + (Number(o.amount) || 0);
+      }
+    });
+    const totalRev = Object.values(catRevenue).reduce((a, b) => a + b, 0) || 1;
+    return Object.entries(catRevenue)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([cat, rev]) => ({
+        name: cat,
+        value: Math.round((rev / totalRev) * 100),
+        color: colorMap[cat] || '#e74c3c'
+      }));
+  }, [firebaseOrders, displayProducts]);
  
   // Generate insights dynamically on mount and update whenever live data changes
   useEffect(() => {
@@ -291,67 +353,67 @@ export default function Dashboard() {
     }, 1200);
   };
 
+  // Real-time activity feed from Firestore orders (onSnapshot)
   useEffect(() => {
-    // Simulated activity feed based on actual data sizes
-    const activityInterval = setInterval(() => {
-      if (Math.random() > 0.5) {
-        const productsList = displayProducts && displayProducts.length > 0 ? displayProducts : mockProducts;
-        const randomProduct = productsList[Math.floor(Math.random() * productsList.length)];
-        
-        const templates = [
-          `User viewed <strong>${randomProduct.name}</strong>`,
-          `User added <strong>${randomProduct.name}</strong> to cart`,
-          `User added <strong>${randomProduct.name}</strong> to wishlist`,
-          `Anonymous visitor started checkout with <strong>${randomProduct.name}</strong>`,
-          `New product inquiry submitted for <strong>${randomProduct.name}</strong>`,
-        ];
-        const randomText = templates[Math.floor(Math.random() * templates.length)];
-        
-        const icons = [<Bell size={16} />, <Package size={16} />, <TrendingUp size={16} />, <Users size={16} />];
-        const colors = [
-          'rgba(52,152,219,0.15)',
-          'rgba(46,204,113,0.15)',
-          'rgba(155,89,182,0.15)',
-          'rgba(243,156,18,0.15)'
-        ];
-        const randomIdx = Math.floor(Math.random() * icons.length);
-        
-        const newAct = {
-          icon: icons[randomIdx],
-          color: colors[randomIdx],
-          text: `<strong>Live Event:</strong> ${randomText}`,
-          time: 'Just now'
-        };
-        
-        setLiveActivities(prev => {
-          const aged = prev.map((act) => {
-            let nextTime = act.time;
-            if (act.time === 'Just now') {
-              nextTime = '1 minute ago';
-            } else if (act.time.includes('minute')) {
-              const mins = parseInt(act.time) || 1;
-              nextTime = `${mins + 1} minutes ago`;
-            }
-            return { ...act, time: nextTime };
-          });
-          return [newAct, ...aged.slice(0, 5)];
-        });
+    if (!db) return;
+    let q;
+    try {
+      const constraints = [orderBy('createdAt', 'desc'), limit(8)];
+      if (activeStoreId && activeStoreId !== 'GLOBAL' && activeStoreId !== 'NONE') {
+        constraints.unshift(where('storeId', '==', activeStoreId));
       }
-    }, 6000);
+      q = query(collection(db, 'orders'), ...constraints);
+    } catch (e) {
+      console.error('Activity feed query error', e);
+      return;
+    }
 
-    const liveDataInterval = setInterval(() => {
-      // Simulate live chart fluctuations
-      setChartData(prev => prev.map(d => ({
-        ...d,
-        revenue: d.revenue + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 50000)
-      })));
-    }, 5000);
-
-    return () => {
-      clearInterval(activityInterval);
-      clearInterval(liveDataInterval);
+    const statusIcons = {
+      delivered: <CheckCircle size={16} />,
+      shipped: <Truck size={16} />,
+      in_transit: <Truck size={16} />,
+      out_for_delivery: <Truck size={16} />,
+      confirmed: <Package size={16} />,
+      pending: <Bell size={16} />,
+      cancelled: <AlertCircle size={16} />,
+      returned: <RotateCcw size={16} />,
     };
-  }, [firebaseOrders, firebaseCustomers, firebaseProducts]);
+    const statusColors = {
+      delivered: 'rgba(46,204,113,0.15)',
+      shipped: 'rgba(52,152,219,0.15)',
+      in_transit: 'rgba(52,152,219,0.15)',
+      out_for_delivery: 'rgba(52,152,219,0.15)',
+      confirmed: 'rgba(243,156,18,0.15)',
+      pending: 'rgba(155,89,182,0.15)',
+      cancelled: 'rgba(231,76,60,0.15)',
+      returned: 'rgba(230,126,34,0.15)',
+    };
+
+    const unsub = onSnapshot(q, (snap) => {
+      const acts = snap.docs.map(d => {
+        const data = d.data();
+        const status = data.status || 'pending';
+        const timeVal = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+        const timeStr = timeVal ? timeVal.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'Recent';
+        const customer = data.customer || data.customerName || 'Customer';
+        const orderId = data.id || d.id;
+        const amount = data.amount ? `₹${Number(data.amount).toLocaleString('en-IN')}` : '';
+        const product = data.product || (data.items && data.items[0]?.name) || 'item';
+        const label = status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+        return {
+          icon: statusIcons[status] || <Bell size={16} />,
+          color: statusColors[status] || 'rgba(201,168,76,0.15)',
+          text: `<strong>Order ${orderId}</strong> — ${customer} | ${product} | ${amount} | <span style="color:var(--text-muted)">${label}</span>`,
+          time: timeStr
+        };
+      });
+      setLiveActivities(acts);
+    }, (err) => {
+      console.error('Activity feed onSnapshot error', err);
+    });
+
+    return () => unsub();
+  }, [activeStoreId]);
 
   const handleExport = () => {
     if (user?.role !== 'superadmin') {
@@ -505,7 +567,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <LineChart data={chartData.map(d => ({ ...d, revenue: d.revenue * goldMultiplier }))} />
+          <LineChart data={revenueChartData.map(d => ({ ...d, revenue: d.revenue * goldMultiplier }))} />
         </div>
 
         <div className="ai-panel" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -582,43 +644,70 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="activity-feed">
-            {liveActivities.map((a, i) => (
-              <div key={i} className="activity-item">
-                <div className="activity-icon" style={{ background: a.color }}>
-                  {typeof a.icon === 'string' ? <Bell size={16} color="var(--text-primary)" /> : a.icon}
+            {liveActivities.length > 0 ? (
+              liveActivities.map((a, i) => (
+                <div key={i} className="activity-item">
+                  <div className="activity-icon" style={{ background: a.color }}>
+                    {typeof a.icon === 'string' ? <Bell size={16} color="var(--text-primary)" /> : a.icon}
+                  </div>
+                  <div>
+                    <div className="activity-text" dangerouslySetInnerHTML={{ __html: a.text }} />
+                    <div className="activity-time">{a.time}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="activity-text" dangerouslySetInnerHTML={{ __html: a.text }} />
-                  <div className="activity-time">{a.time}</div>
-                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <Bell size={28} style={{ opacity: 0.2, margin: '0 auto 0.75rem', display: 'block' }} />
+                No order activity found for this store.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
 
-      {/* Order Status Donut + Category Revenue */}
+      {/* Order Status Donut + Category Revenue (computed from real Firestore data) */}
       <div className="grid-2 mb-15">
         <div className="admin-card">
-          <div className="card-header"><div className="card-title">Order Status Distribution</div></div>
-          <DonutChart data={orderStatusData} />
+          <div className="card-header">
+            <div className="card-title">Order Status Distribution</div>
+            {firebaseOrders && firebaseOrders.length > 0 && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--status-green)', fontWeight: 700 }}>● Live</span>
+            )}
+          </div>
+          {orderStatusChartData.length > 0 ? (
+            <DonutChart data={orderStatusChartData} centerValue={firebaseOrders.length} centerLabel="Orders" />
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No order data available for this store.</div>
+          )}
         </div>
 
         <div className="admin-card">
-          <div className="card-header"><div className="card-title">Revenue by Category</div><span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>May 2026</span></div>
-          <div className="progress-bar-wrap mb-1" style={{ marginBottom: '1.25rem' }}>
-            {categoryRevenue.map(cat => (
-              <div key={cat.name} className="progress-item">
-                <div className="progress-label-row">
-                  <span className="progress-name">{cat.name}</span>
-                  <span className="progress-val">{cat.value}%</span>
-                </div>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${cat.value}%`, background: cat.color }} />
-                </div>
-              </div>
-            ))}
+          <div className="card-header">
+            <div className="card-title">Revenue by Category</div>
+            {firebaseOrders && firebaseOrders.length > 0 ? (
+              <span style={{ fontSize: '0.72rem', color: 'var(--status-green)', fontWeight: 700 }}>● Live</span>
+            ) : (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No data</span>
+            )}
           </div>
+          {categoryRevenueData.length > 0 ? (
+            <div className="progress-bar-wrap mb-1" style={{ marginBottom: '1.25rem' }}>
+              {categoryRevenueData.map(cat => (
+                <div key={cat.name} className="progress-item">
+                  <div className="progress-label-row">
+                    <span className="progress-name">{cat.name}</span>
+                    <span className="progress-val">{cat.value}%</span>
+                  </div>
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${cat.value}%`, background: cat.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No revenue data available for this store.</div>
+          )}
           <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '1rem' }}>
             <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.625rem' }}>Payment Methods</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '0.5rem' }}>
