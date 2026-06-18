@@ -1,0 +1,166 @@
+.delivery-layout {
+  display: flex;
+  height: 100vh;
+  background: #f4f7fa;
+  color: #333;
+  font-family: 'Inter', sans-serif;
+}
+
+.delivery-sidebar {
+  width: 260px;
+  background: #1e293b;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.delivery-brand {
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.delivery-nav {
+  padding: 1.5rem 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.del-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.del-nav-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.del-nav-item.active {
+  background: var(--gold);
+  color: #000;
+}
+
+.delivery-user-section {
+  padding: 1.5rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.del-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.del-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.del-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.del-role {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.del-logout {
+  width: 100%;
+  padding: 0.8rem;
+  background: rgba(255,255,255,0.05);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.del-logout:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.delivery-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.delivery-topbar {
+  background: #fff;
+  padding: 1.2rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.delivery-topbar h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.del-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: #ef4444;
+  color: var(--text-primary);
+  font-size: 0.65rem;
+  font-weight: bold;
+  padding: 0.1rem 0.3rem;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+.delivery-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .delivery-sidebar {
+    position: absolute;
+    z-index: 100;
+    transform: translateX(-100%);
+  }
+  .delivery-sidebar.open {
+    transform: translateX(0);
+  }
+  .delivery-content {
+    padding: 1rem;
+  }
+}

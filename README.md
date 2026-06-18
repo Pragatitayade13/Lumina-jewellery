@@ -1,16 +1,35 @@
-# React + Vite
+# Lumina Jewels - Premium Jewellery Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repository contains the restructured Lumina Jewels project, separated into three distinct components for modular development and deployment.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **`/frontend`** (React + Vite)
+  - Front-end user interface and administrative dashboard.
+  - Deployed on **Vercel**.
+- **`/backend`** (Node.js + Express)
+  - Back-end REST APIs for products, orders, auth, notifications, and gold rates.
+  - Deployed on **Render**.
+- **`/database`** (Firebase Rules & Indexes)
+  - Security rules and indexes configuration for Firestore and Cloud Storage.
+  - Deployed via **Firebase CLI**.
 
-## React Compiler
+## Quick Start (Development)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+First, install dependencies in both packages:
+```bash
+npm run install:all
+```
 
-## Expanding the ESLint configuration
+Then start the local development servers for both front-end and back-end concurrently:
+```bash
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Available Scripts (Root)
+
+- `npm run install:all`: Installs dependencies for frontend and backend.
+- `npm run dev`: Runs frontend (port 5179) and backend (port 5000) concurrently.
+- `npm run dev:frontend`: Runs only the frontend Vite development server.
+- `npm run dev:backend`: Runs only the backend Express server.
+- `npm run build`: Builds the frontend production bundle.

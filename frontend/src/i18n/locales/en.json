@@ -1,0 +1,135 @@
+{
+  "nav": {
+    "home": "Home",
+    "shop": "Shop",
+    "collections": "Collections",
+    "newArrivals": "New Arrivals",
+    "bestSellers": "Best Sellers",
+    "aboutUs": "About Us",
+    "contactUs": "Contact Us",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "myAccount": "My Account",
+    "myOrders": "My Orders",
+    "wishlist": "Wishlist",
+    "cart": "Cart"
+  },
+  "hero": {
+    "slide1": {
+      "badge": "✦ New Collection 2026",
+      "title": "Where Gold",
+      "titleAccent": "Tells Stories",
+      "subtitle": "Discover our exquisite gold jewellery collection — crafted by master artisans with generations of expertise.",
+      "cta1": "Shop Gold",
+      "cta2": "Explore Collection"
+    },
+    "slide2": {
+      "badge": "✦ Bridal 2026",
+      "title": "Your Perfect",
+      "titleAccent": "Bridal Look",
+      "subtitle": "Complete bridal sets crafted for the most special day of your life. Diamond-studded elegance meets tradition.",
+      "cta1": "Explore Bridal",
+      "cta2": "View Offers"
+    },
+    "slide3": {
+      "badge": "✦ Festive Sale",
+      "title": "Flat 20% Off",
+      "titleAccent": "Festive Collection",
+      "subtitle": "Celebrate every occasion with our handcrafted festive jewellery. Limited time offers with exclusive coupon codes.",
+      "cta1": "Shop Sale",
+      "cta2": "New Arrivals"
+    },
+    "stats": {
+      "yearsOfCraft": "Years of Craft",
+      "happyCustomers": "Happy Customers",
+      "uniqueDesigns": "Unique Designs"
+    }
+  },
+  "categories": {
+    "title": "Shop By Category",
+    "subtitle": "Explore our curated collections of exquisite jewellery",
+    "gold": "Gold Jewellery",
+    "diamond": "Diamond Jewellery",
+    "silver": "Silver Jewellery",
+    "rings": "Rings",
+    "earrings": "Earrings",
+    "necklaces": "Necklaces",
+    "bangles": "Bangles",
+    "bridal": "Bridal Collections"
+  },
+  "bestSellers": {
+    "title": "Best Sellers",
+    "subtitle": "Our most loved pieces, chosen by thousands of happy customers",
+    "addToCart": "Add to Cart",
+    "addToWishlist": "Add to Wishlist",
+    "viewAll": "View All Products"
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Sign in to your Lumina Jewels account",
+    "registerTitle": "Create Account",
+    "registerSubtitle": "Join the Lumina Jewels family",
+    "email": "Email Address",
+    "password": "Password",
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "loginBtn": "Sign In",
+    "registerBtn": "Create Account",
+    "switchToRegister": "Don't have an account? Register",
+    "switchToLogin": "Already have an account? Sign In",
+    "forgotPassword": "Forgot Password?",
+    "orContinueWith": "Or continue with",
+    "googleLogin": "Continue with Google"
+  },
+  "footer": {
+    "tagline": "Crafted with passion, delivered with love.",
+    "quickLinks": "Quick Links",
+    "customerCare": "Customer Care",
+    "followUs": "Follow Us",
+    "copyright": "© 2026 Lumina Jewels. All rights reserved.",
+    "trackOrder": "Track Order",
+    "returns": "Returns & Exchange",
+    "sizeGuide": "Size Guide",
+    "careGuide": "Jewellery Care"
+  },
+  "common": {
+    "search": "Search",
+    "searchPlaceholder": "Search jewellery...",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "viewDetails": "View Details",
+    "shopNow": "Shop Now",
+    "learnMore": "Learn More",
+    "scrollDown": "Scroll",
+    "liveRates": "Today's Live Rates",
+    "gold24k": "Gold (24K)",
+    "silver": "Silver",
+    "diamond": "Diamond (Base)"
+  },
+  "customer": {
+    "dashboard": "My Dashboard",
+    "orders": "My Orders",
+    "profile": "My Profile",
+    "appointments": "Appointments",
+    "loyalty": "Loyalty Points",
+    "support": "Support",
+    "schemes": "Gold Schemes",
+    "buyback": "Buyback Calculator",
+    "bridal": "Bridal Planner",
+    "certificates": "Certificates"
+  },
+  "language": {
+    "select": "Language",
+    "en": "English",
+    "hi": "हिंदी",
+    "mr": "मराठी"
+  }
+}

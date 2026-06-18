@@ -1,0 +1,14 @@
+import React from 'react';
+const dummy = (props) => React.createElement('div', props);
+export const X = dummy;
+export const Trash2 = dummy;
+export const ShoppingBag = dummy;
+export const Plus = dummy;
+export const Minus = dummy;
+export const Tag = dummy;
+export const MapPin = dummy;
+export const CreditCard = dummy;
+export const CheckCircle = dummy;
+export const ArrowLeft = dummy;
+export const ArrowRight = dummy;
+export const Truck = dummy;

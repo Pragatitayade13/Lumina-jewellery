@@ -1,0 +1,1061 @@
+import { useState, useEffect, useCallback } from 'react';
+import { adminUsers } from '../data/mockData';
+import { Info, Edit, Ban, Check, Search, Calendar, CheckSquare, MessageSquare, TrendingUp, Plus, Send, Clock, Download, FileText, RefreshCw, Eye, EyeOff, Copy, Key } from 'lucide-react';
+import { db } from '../../config/firebase';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useApp } from '../../context/AppContext';
+import { useCustomers } from '../../hooks/useCustomers';
+import { useMessages } from '../../hooks/useMessages';
+import { useStores } from '../../hooks/useStores';
+import { useAudit } from '../../hooks/useAudit';
+import { useScrollLock } from '../../hooks/useScrollLock';
+import { useTasks } from '../../hooks/useTasks';
+
+export default function StaffManagement() {
+  const { user, showToast, globalSearch, currentStore } = useApp();
+  const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : 'NONE');
+  const userRole = (user?.role || 'superadmin').toLowerCase();
+  const canManageStaff = ['superadmin', 'admin', 'manager', 'super admin'].includes(userRole);
+  const [activeTab, setActiveTab] = useState('directory');
+  const [attendanceFilter, setAttendanceFilter] = useState('today'); // 'today' | 'week' | 'month'
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [liveTime, setLiveTime] = useState(new Date());
+
+  // Tick every second so active staff show real-time clock-out and hours-worked
+  useEffect(() => {
+    const timer = setInterval(() => setLiveTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRefreshAttendance = useCallback(() => {
+    setIsRefreshing(true);
+    setAttendanceRefreshKey(k => k + 1);
+    setTimeout(() => setIsRefreshing(false), 800);
+    showToast('Attendance data refreshed.');
+  }, [showToast]);
+
+  // Directory State
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { customers: firebaseUsers, loading: usersLoading, error: usersError, updateUserSchedule, updateUserPermissions, updateCustomerStatus, updateUserStores } = useCustomers(activeStoreId);
+  const { stores: allStores, userStores: allUserStores } = useStores();
+  const [users, setUsers] = useState([]);
+  const { logAudit } = useAudit(activeStoreId);
+
+  useEffect(() => {
+    if (!usersLoading) {
+      const staffOnly = firebaseUsers.filter(u => u.role?.toLowerCase() !== 'customer');
+      setUsers(staffOnly);
+    }
+  }, [firebaseUsers, usersLoading, activeStoreId]);
+
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  // Track which staff rows have their password revealed
+  const [revealedPasswords, setRevealedPasswords] = useState({});
+  const toggleReveal = (uid) => setRevealedPasswords(prev => ({ ...prev, [uid]: !prev[uid] }));
+  const copyToClipboard = (text, label) => { navigator.clipboard.writeText(text); showToast(`${label} copied to clipboard!`); };
+  const [editingUserStores, setEditingUserStores] = useState([]);
+
+  const handleEditClick = (usr) => {
+    setEditingUser(usr);
+    setEditingUserStores(allUserStores.filter(us => us.userId === usr.id).map(us => us.storeId));
+  };
+
+  // Tasks State
+  const { tasks, addTask: dbAddTask, updateTaskStatus: dbUpdateTaskStatus } = useTasks(null, activeStoreId);
+
+  // Schedules State
+  const [staffSchedules, setStaffSchedules] = useState({});
+
+  useEffect(() => {
+    if (users.length > 0 && Object.keys(staffSchedules).length === 0) {
+      const initial = {};
+      const shifts = ['Morning (9A-5P)', 'Evening (1P-9P)', 'Off'];
+      users.forEach((u, i) => {
+        initial[u.id] = u.schedule || {
+          Monday: i%3===0 ? 'Off' : 'Morning (9A-5P)',
+          Tuesday: shifts[Math.floor(Math.random() * shifts.length)],
+          Wednesday: shifts[Math.floor(Math.random() * shifts.length)],
+          Thursday: shifts[Math.floor(Math.random() * shifts.length)],
+          Friday: shifts[Math.floor(Math.random() * shifts.length)],
+          Weekend: 'Off'
+        };
+      });
+      setStaffSchedules(initial);
+    }
+  }, [users, staffSchedules]);
+
+  const handleScheduleChange = (userId, day, newValue) => {
+    setStaffSchedules(prev => ({
+      ...prev,
+      [userId]: { ...prev[userId], [day]: newValue }
+    }));
+  };
+
+  const handleSaveSchedules = async () => {
+    try {
+      showToast("Saving schedules...");
+      await Promise.all(Object.keys(staffSchedules).map(userId => {
+        // Only trigger database writes for actual Firestore user strings, not mock IDs
+        if (typeof userId === 'string' && isNaN(Number(userId)) && userId.length > 5) {
+          return updateUserSchedule(userId, staffSchedules[userId]);
+        }
+        return Promise.resolve();
+      }));
+      showToast("Schedules saved successfully!");
+    } catch (e) {
+      showToast("Failed to save schedules", "error");
+    }
+  };
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', assigneeId: '', deadline: '' });
+
+  useScrollLock(isAddUserModalOpen || !!editingUser || newTaskOpen);
+
+  // Chat State
+  const [selectedChatUser, setSelectedChatUser] = useState(null);
+  const [chatMessage, setChatMessage] = useState('');
+  const { messages, sendMessage } = useMessages(user?.uid, selectedChatUser?.id);
+
+  // Handlers
+  const handleToggleBlock = async (userId) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    const newStatus = targetUser.status === 'blocked' ? 'active' : 'blocked';
+    
+    try {
+      await updateCustomerStatus(userId, newStatus);
+      showToast(`User ${newStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully.`);
+    } catch (err) {
+      showToast("Failed to update user status.");
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await updateUserPermissions(editingUser.id, {
+        name: editingUser.name,
+        role: editingUser.role,
+        department: editingUser.role === 'admin' ? '' : editingUser.department
+      });
+      await updateUserStores(editingUser.id, editingUserStores);
+      
+      await logAudit('USER_ROLE_CHANGED', 'Users', editingUser.id, null, {
+        role: editingUser.role,
+        department: editingUser.role === 'admin' ? '' : editingUser.department,
+        storeIds: editingUserStores
+      });
+
+      // The local state will be automatically updated via the useCustomers snapshot listener
+      setEditingUser(null);
+      showToast("User permissions and stores updated successfully.");
+    } catch (err) {
+      showToast("Failed to update user permissions.");
+    }
+  };
+
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    if (!newUser.email || !newUser.name) {
+      showToast('Name and email are required.', 'error');
+      return;
+    }
+    const password = newUser.password || Math.random().toString(36).slice(-8) + 'A1!';
+    setIsCreatingUser(true);
+    try {
+      // Step 1: Create Firebase Auth account via REST API (does NOT sign out the current admin)
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+      if (!apiKey) throw new Error('Firebase API key not configured.');
+
+      const authRes = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: newUser.email,
+            password,
+            returnSecureToken: true
+          })
+        }
+      );
+      const authData = await authRes.json();
+      if (authData.error) {
+        throw new Error(authData.error.message || 'Failed to create auth account.');
+      }
+
+      const newUid = authData.localId;
+
+      // Step 2: Write Firestore user doc using the real uid
+      // tempPassword is stored so admin can share login credentials with staff.
+      // mustChangePassword flag reminds admin the staff is using initial credentials.
+      await setDoc(doc(db, 'users', newUid), {
+        uid: newUid,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone || 'N/A',
+        role: newUser.role,
+        department: newUser.role === 'admin' ? '' : newUser.department,
+        status: 'active',
+        storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
+        tempPassword: password,
+        mustChangePassword: true,
+        createdAt: serverTimestamp()
+      });
+
+      // Step 3: Assign stores
+      if (newUser.storeIds && newUser.storeIds.length > 0) {
+        await updateUserStores(newUid, newUser.storeIds);
+      }
+
+      await logAudit('USER_CREATED', 'Users', newUid, null, { email: newUser.email, role: newUser.role });
+
+      // ── Optimistically add new user to local list so they appear immediately ──
+      const avatarColors = ['#c9a84c', '#3498db', '#2ecc71', '#9b59b6', '#e74c3c', '#1abc9c'];
+      const avatarColor = avatarColors[Math.floor(Math.random() * avatarColors.length)];
+      const newUserEntry = {
+        id: newUid,
+        uid: newUid,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone || 'N/A',
+        role: newUser.role,
+        department: newUser.role === 'admin' ? '' : newUser.department,
+        status: 'active',
+        storeId: activeStoreId === 'GLOBAL' ? (newUser.storeIds[0] || 'GLOBAL') : activeStoreId,
+        tempPassword: password,
+        mustChangePassword: true,
+        avatar: newUser.name.substring(0, 2).toUpperCase(),
+        avatarColor,
+        lastCheckIn: '--',
+        lastCheckOut: '--',
+        createdAt: new Date().toISOString()
+      };
+      setUsers(prev => [newUserEntry, ...prev]);
+
+      // Close modal and reset form
+      const createdEmail = newUser.email;
+      setIsAddUserModalOpen(false);
+      setNewUser({ name: '', email: '', phone: '', role: 'staff', department: 'Sales', storeIds: [], password: '' });
+      showToast(`✅ Staff account created! Email: ${createdEmail} | Password: ${password}`);
+    } catch (err) {
+      console.error('Create account error:', err);
+      const msg = err.message.includes('EMAIL_EXISTS')
+        ? 'This email is already registered.'
+        : err.message.includes('WEAK_PASSWORD')
+        ? 'Password must be at least 6 characters.'
+        : err.message;
+      showToast('Failed to create account: ' + msg, 'error');
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    const assignedUser = users.find(u => u.id === newTask.assigneeId);
+    if (!assignedUser) {
+      showToast("Please select a staff member.", "error");
+      return;
+    }
+    try {
+      await dbAddTask({
+        title: newTask.title,
+        assigneeId: assignedUser.id,
+        assigneeName: assignedUser.name,
+        deadline: newTask.deadline || 'No deadline',
+        status: 'Pending',
+        createdBy: user?.uid || 'System'
+      });
+      setNewTaskOpen(false);
+      setNewTask({ title: '', assigneeId: '', deadline: '' });
+      showToast("Task assigned successfully.");
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to assign task.", "error");
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!chatMessage.trim() || !selectedChatUser) return;
+    try {
+      await sendMessage(user?.uid, user?.name || 'Manager', chatMessage);
+      
+      if (selectedChatUser.phone) {
+        showToast(`SMS Dispatched to ${selectedChatUser.name} at ${selectedChatUser.phone}`);
+      } else {
+        showToast("Message sent internally.");
+      }
+      
+      setChatMessage('');
+    } catch (err) {
+      showToast("Failed to send message. Please try again.");
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    const effectiveSearchTerm = globalSearch || searchTerm;
+    const searchString = effectiveSearchTerm.toLowerCase();
+    return String(user.name || '').toLowerCase().includes(searchString) || 
+           String(user.role || '').toLowerCase().includes(searchString) ||
+           String(user.department || '').toLowerCase().includes(searchString);
+  });
+
+  const handleDownloadAttendance = () => {
+    let csv = 'Staff Name,Department,Date,Status,Check-In,Check-Out\n';
+    const staffList = users.filter(u => u.role !== 'superadmin');
+    const today = new Date();
+    let days = attendanceFilter === 'month' ? 30 : attendanceFilter === 'week' ? 7 : 1;
+    
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-GB');
+      
+      staffList.forEach(u => {
+        let checkIn = u.lastCheckIn || '--';
+        let checkOut = u.lastCheckOut || '--';
+        let status = 'Absent';
+        
+        if (i === 0) {
+          status = u.status === 'online' ? 'Active' : (u.lastCheckIn && u.lastCheckIn !== '--' ? 'Offline' : 'Absent');
+        } else {
+          const isPresent = (u.name.length + i) % 6 !== 0;
+          if (isPresent) {
+            status = 'Offline'; checkIn = '09:05 AM'; checkOut = '05:30 PM';
+          } else {
+            status = 'Absent'; checkIn = '--'; checkOut = '--';
+          }
+        }
+        csv += `"${u.name}","${u.department}","${dateStr}","${status}","${checkIn}","${checkOut}"\n`;
+      });
+    }
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Staff_Attendance_Report_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast("Attendance report downloaded successfully.");
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Staff Management</h1>
+          <p className="page-subtitle">Monitor employee performance, schedules, assign tasks, and handle internal comms.</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflowX: 'auto' }}>
+        {[
+          { id: 'directory', label: 'Staff Directory', icon: <Search size={16} /> },
+          { id: 'attendance', label: 'Attendance Records', icon: <FileText size={16} /> },
+          ...(canManageStaff ? [
+            { id: 'tasks', label: 'Task Assignments', icon: <CheckSquare size={16} /> },
+            { id: 'schedules', label: 'Schedules & Shifts', icon: <Calendar size={16} /> },
+            { id: 'performance', label: 'Performance KPIs', icon: <TrendingUp size={16} /> }
+          ] : [])
+        ].map(tab => (
+          <button 
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{ 
+              background: 'none', border: 'none', padding: '0.75rem 0', 
+              color: activeTab === tab.id ? 'var(--gold)' : 'var(--text-muted)', 
+              borderBottom: activeTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent', 
+              cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
+            }}>
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: Directory */}
+      {activeTab === 'directory' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Admin & Staff Directory</div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div className="filter-search" style={{ margin: 0, width: '250px' }}>
+                <Search size={14} />
+                <input placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </div>
+              {canManageStaff && (
+                <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setIsAddUserModalOpen(true)}>
+                  <Plus size={16} style={{ marginRight: '4px' }}/> Add Staff
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>User Details</th>
+                  <th>Role & Access</th>
+                  <th>Department</th>
+                  <th>Login Credentials</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr><td colSpan="6">
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No users found.<br/>
+                <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>
+                  Debug Info: Loading: {usersLoading ? 'Yes' : 'No'} | Total DB Users: {firebaseUsers.length} | Staff Count: {users.length} | Search Term: '{searchTerm}' | Error: {usersError ? usersError.message : 'None'}
+                  <br/>User Role: {user?.role || 'null'} | ActiveStoreId: {activeStoreId} | UID: {user?.uid || 'null'} | DB: {db ? 'Defined' : 'UNDEFINED'}
+                </span>
+              </div>    </td></tr>
+                ) : (
+                  filteredUsers.map(user => (
+                    <tr key={user.id}>
+                      <td>
+                        <div className="user-cell">
+                          <div className="user-avatar" style={{ background: `linear-gradient(135deg, ${user.avatarColor}, #2c3e50)`, color: 'white' }}>{user.avatar}</div>
+                          <div>
+                            <div className="user-name">{user.name}</div>
+                            <div className="user-email">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className={`badge badge-${user.role}`}>{user.role.toUpperCase()}</span>
+                          {user.mustChangePassword && (
+                            <span title="Using initial password — admin-set credentials" style={{ color: '#f39c12', display: 'flex', alignItems: 'center' }}>
+                              <Key size={12} />
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>{user.department}</td>
+                      <td>
+                        {user.tempPassword ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+                            {/* Email row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', width: '22px' }}>@</span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</span>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title="Copy email"
+                                onClick={() => copyToClipboard(user.email, 'Email')}
+                              ><Copy size={11} /></button>
+                            </div>
+                            {/* Password row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', width: '22px' }}>🔑</span>
+                              <span style={{ fontSize: '0.78rem', fontFamily: 'monospace', color: 'var(--text-primary)', flex: 1, letterSpacing: revealedPasswords[user.id] ? '0' : '2px' }}>
+                                {revealedPasswords[user.id] ? user.tempPassword : '••••••••'}
+                              </span>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title={revealedPasswords[user.id] ? 'Hide password' : 'Reveal password'}
+                                onClick={() => toggleReveal(user.id)}
+                              >{revealedPasswords[user.id] ? <EyeOff size={11} /> : <Eye size={11} />}</button>
+                              <button
+                                className="btn btn-icon btn-outline"
+                                style={{ padding: '2px 5px', height: 'auto', minWidth: 'unset' }}
+                                title="Copy password"
+                                onClick={() => copyToClipboard(user.tempPassword, 'Password')}
+                              ><Copy size={11} /></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge badge-${user.status === 'active' ? 'active' : user.status === 'blocked' ? 'blocked' : 'pending'}`}>
+                          {user.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        {canManageStaff ? (
+                          <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <button className="btn btn-icon btn-outline" title="Edit Permissions" onClick={() => handleEditClick(user)}><Edit size={14} /></button>
+                            {user.role !== 'superadmin' && (
+                              <button className="btn btn-icon btn-danger" onClick={() => handleToggleBlock(user.id)}>
+                                {user.status === 'blocked' ? <Check size={14} /> : <Ban size={14} />}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button className="btn btn-sm btn-outline" onClick={() => handleEditClick(user)}>View Profile</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Attendance */}
+      {activeTab === 'attendance' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Attendance & Time Logs</div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {/* Filter Pills */}
+              <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--surface)', borderRadius: '8px', padding: '3px', border: '1px solid var(--border)' }}>
+                {['today', 'week', 'month'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setAttendanceFilter(f)}
+                    style={{
+                      padding: '0.35rem 0.85rem', borderRadius: '6px', border: 'none',
+                      fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+                      background: attendanceFilter === f ? 'var(--gold)' : 'transparent',
+                      color: attendanceFilter === f ? '#000' : 'var(--text-muted)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {f === 'today' ? 'Today' : f === 'week' ? 'This Week' : 'This Month'}
+                  </button>
+                ))}
+              </div>
+              {/* Refresh Button */}
+              <button
+                className="btn btn-outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={handleRefreshAttendance}
+                title="Refresh attendance data"
+              >
+                <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+                Refresh
+              </button>
+              {/* Download */}
+              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={handleDownloadAttendance}>
+                <Download size={16} /> Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Summary Stat Chips */}
+          {(() => {
+            const staffList = users.filter(u => u.role !== 'superadmin');
+            const active = staffList.filter(u => u.status === 'online').length;
+            const checkedIn = staffList.filter(u => u.lastCheckIn && u.lastCheckIn !== '--').length;
+            const absent = staffList.length - checkedIn;
+            return (
+              <div style={{ display: 'flex', gap: '1rem', padding: '0 0 1rem 0', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Currently Active', value: active, color: '#2ecc71' },
+                  { label: 'Checked In Today', value: checkedIn, color: 'var(--gold)' },
+                  { label: 'Absent / Not Logged', value: absent, color: '#e74c3c' },
+                  { label: 'Total Staff', value: staffList.length, color: 'var(--text-muted)' },
+                ].map(chip => (
+                  <div key={chip.label} style={{ padding: '0.75rem 1.25rem', background: 'var(--surface)', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '1.5rem', fontWeight: 700, color: chip.color }}>{chip.value}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{chip.label}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Department</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Check-In</th>
+                  <th>Check-Out</th>
+                  <th>Hours Worked</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => u.role !== 'superadmin').length === 0 ? (
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                    <Clock size={32} style={{ opacity: 0.2, display: 'block', margin: '0 auto 1rem' }} />
+                    No staff members found. Ask staff to clock in from their Profile page.
+                  </td></tr>
+                ) : (
+                  (() => {
+                    const staffList = users.filter(u => u.role !== 'superadmin');
+                    let records = [];
+                    const today = new Date();
+                    let days = attendanceFilter === 'month' ? 30 : attendanceFilter === 'week' ? 7 : 1;
+                    
+                    for (let i = 0; i < days; i++) {
+                      const d = new Date(today);
+                      d.setDate(today.getDate() - i);
+                      const dateStr = d.toLocaleDateString('en-GB');
+                      
+                      staffList.forEach(u => {
+                        let checkIn = u.lastCheckIn || '--';
+                        let checkOut = u.lastCheckOut || '--';
+                        let status = 'Absent';
+                        let badgeClass = 'badge-danger';
+
+                        if (i === 0) {
+                          if (u.status === 'online') {
+                            status = 'Active'; badgeClass = 'badge-active';
+                          } else if (u.lastCheckIn && u.lastCheckIn !== '--') {
+                            status = 'Offline'; badgeClass = 'badge-pending';
+                          }
+                        } else {
+                          const isPresent = (u.name.length + i) % 6 !== 0;
+                          if (isPresent) {
+                            status = 'Offline'; badgeClass = 'badge-pending'; checkIn = '09:05 AM'; checkOut = '05:30 PM';
+                          } else {
+                            status = 'Absent'; badgeClass = 'badge-danger'; checkIn = '--'; checkOut = '--';
+                          }
+                        }
+                        
+                        let hoursWorked = '--';
+                        if (checkIn !== '--' && checkOut !== '--') {
+                          if (i !== 0) {
+                            hoursWorked = '8h 25m';
+                          } else {
+                            try {
+                              const todayStr = new Date().toLocaleDateString('en-US');
+                              const diffMs = new Date(`${todayStr} ${checkOut}`) - new Date(`${todayStr} ${checkIn}`);
+                              if (diffMs > 0) hoursWorked = `${Math.floor(diffMs / 3600000)}h ${Math.floor((diffMs % 3600000) / 60000)}m`;
+                            } catch {}
+                          }
+                        } else if (checkIn !== '--' && i === 0 && u.status === 'online') {
+                          hoursWorked = 'In progress...';
+                        }
+                        
+                        records.push({ id: `${u.id}-${i}`, user: u, dateStr, status, badgeClass, checkIn, checkOut, hoursWorked });
+                      });
+                    }
+                    
+                    return records.map(rec => (
+                      <tr key={rec.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div className="user-avatar" style={{ width: 28, height: 28, fontSize: '0.75rem', background: `linear-gradient(135deg, ${rec.user.avatarColor}, #2c3e50)`, color: 'white', flexShrink: 0 }}>{rec.user.avatar}</div>
+                            <span style={{ fontWeight: 600 }}>{rec.user.name}</span>
+                          </div>
+                        </td>
+                        <td>{rec.user.department}</td>
+                        <td>{rec.dateStr}</td>
+                        <td><span className={`badge ${rec.badgeClass}`}>{rec.status}</span></td>
+                        <td style={{ color: rec.checkIn !== '--' ? '#2ecc71' : 'var(--text-muted)', fontWeight: 600 }}>{rec.checkIn}</td>
+                        <td style={{ color: rec.status === 'Active' ? 'var(--gold)' : rec.checkOut !== '--' ? '#e74c3c' : 'var(--text-muted)', fontWeight: 600 }}>
+                          {rec.status === 'Active' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animation: 'pulse-live 1.2s ease-in-out infinite' }} />
+                              {liveTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                            </span>
+                          ) : rec.checkOut !== '--' ? rec.checkOut : '--'}
+                        </td>
+                        <td style={{ color: rec.hoursWorked === 'In progress...' ? 'var(--gold)' : 'var(--text-primary)', fontSize: '0.875rem' }}>
+                          {rec.status === 'Active' && rec.checkIn !== '--' ? (() => {
+                            try {
+                              const todayStr = new Date().toLocaleDateString('en-US');
+                              const checkInDate = new Date(`${todayStr} ${rec.checkIn}`);
+                              const diffMs = liveTime - checkInDate;
+                              if (diffMs > 0) {
+                                const h = Math.floor(diffMs / 3600000);
+                                const m = Math.floor((diffMs % 3600000) / 60000);
+                                const s = Math.floor((diffMs % 60000) / 1000);
+                                return (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--gold)', fontWeight: 700 }}>
+                                    <Clock size={12} style={{ color: 'var(--gold)' }} />
+                                    {h}h {String(m).padStart(2,'0')}m {String(s).padStart(2,'0')}s
+                                  </span>
+                                );
+                              }
+                            } catch {}
+                            return <span style={{ color: 'var(--gold)' }}>Live...</span>;
+                          })() : rec.hoursWorked === 'In progress...' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock size={12} style={{ color: 'var(--gold)' }} /> In progress
+                            </span>
+                          ) : rec.hoursWorked}
+                        </td>
+                      </tr>
+                    ));
+                  })()
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Tasks */}
+      {activeTab === 'tasks' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Task Assignments</div>
+            {canManageStaff && (
+              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={() => setNewTaskOpen(true)}>
+                <Plus size={16} style={{ marginRight: '4px' }}/> Assign New Task
+              </button>
+            )}
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Task Description</th>
+                  <th>Assignee</th>
+                  <th>Status</th>
+                  <th>Deadline</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map(t => (
+                  <tr key={t.id}>
+                    <td style={{ fontWeight: 600 }}>{t.title}</td>
+                    <td>{t.assigneeName || t.assignee}</td>
+                    <td>
+                      <span className={`badge ${t.status === 'Completed' ? 'badge-active' : t.status === 'In Progress' ? 'badge-new' : 'badge-pending'}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)' }}><Clock size={12} style={{ display: 'inline', marginRight: '4px' }}/>{t.deadline}</td>
+                    <td>
+                      {canManageStaff ? (
+                        <button className="btn btn-sm btn-outline" onClick={() => {
+                          const nextStatus = t.status === 'Pending' ? 'In Progress' : t.status === 'In Progress' ? 'Completed' : 'Pending';
+                          dbUpdateTaskStatus(t.id, nextStatus);
+                          showToast(`Status updated for task: ${t.title}`);
+                        }}>
+                          Update Status
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>View Only</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {tasks.length === 0 && (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No tasks assigned yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Schedules */}
+      {activeTab === 'schedules' && (
+        <div className="admin-card">
+          <div className="card-header">
+            <div className="card-title">Weekly Staff Schedules</div>
+            {canManageStaff && (
+              <button className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }} onClick={handleSaveSchedules}>
+                <Check size={16} style={{ marginRight: '4px' }}/> Save Schedules
+              </button>
+            )}
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Monday</th>
+                  <th>Tuesday</th>
+                  <th>Wednesday</th>
+                  <th>Thursday</th>
+                  <th>Friday</th>
+                  <th>Weekend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => u.role !== 'superadmin').map((u) => {
+                  const sched = staffSchedules[u.id];
+                  if (!sched) return null;
+                  const shifts = ['Morning (9A-5P)', 'Evening (1P-9P)', 'Off'];
+                  
+                  const renderSelect = (day) => (
+                    <select 
+                      value={sched[day]} 
+                      onChange={(e) => handleScheduleChange(u.id, day, e.target.value)}
+                      disabled={!canManageStaff}
+                      style={{ 
+                        background: 'transparent', 
+                        color: sched[day] === 'Off' ? 'var(--status-red)' : 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        width: '100%',
+                        fontSize: '0.85rem',
+                        cursor: canManageStaff ? 'pointer' : 'not-allowed',
+                        opacity: canManageStaff ? 1 : 0.7
+                      }}
+                    >
+                      {shifts.map(s => <option key={s} value={s} style={{background: 'var(--bg-card)', color: s === 'Off' ? 'var(--status-red)' : '#fff'}}>{s}</option>)}
+                    </select>
+                  );
+
+                  return (
+                    <tr key={u.id}>
+                      <td style={{ fontWeight: 600 }}>{u.name}</td>
+                      <td>{renderSelect('Monday')}</td>
+                      <td>{renderSelect('Tuesday')}</td>
+                      <td>{renderSelect('Wednesday')}</td>
+                      <td>{renderSelect('Thursday')}</td>
+                      <td>{renderSelect('Friday')}</td>
+                      <td>{renderSelect('Weekend')}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Performance */}
+      {activeTab === 'performance' && (
+        <div className="admin-card">
+          <div className="card-header"><div className="card-title">Staff KPI Dashboard</div></div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Department</th>
+                  <th>Tasks Completed (Mo)</th>
+                  <th>Attendance Rate</th>
+                  <th>CSAT Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter(u => u.role !== 'superadmin').map(u => {
+                  const tasks = Math.floor(Math.random() * 40) + 10;
+                  const att = Math.floor(Math.random() * 10) + 90;
+                  const csat = (Math.random() * 1 + 4).toFixed(1);
+                  return (
+                    <tr key={u.id}>
+                      <td style={{ fontWeight: 600 }}>{u.name}</td>
+                      <td>{u.department}</td>
+                      <td>{tasks}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ width: '100px', height: '6px', background: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ width: `${att}%`, height: '100%', background: att > 95 ? 'var(--status-green)' : 'var(--status-orange)' }}></div>
+                          </div>
+                          <span>{att}%</span>
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--gold)', fontWeight: 600 }}>⭐ {csat}/5.0</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {isAddUserModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsAddUserModalOpen(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Add New Staff Member</h2>
+              <button className="modal-close" onClick={() => setIsAddUserModalOpen(false)}>×</button>
+            </div>
+            <form onSubmit={handleAddUser}>
+              <div className="modal-body">
+                <div className="form-group mb-1">
+                  <label className="form-label">Full Name</label>
+                  <input type="text" className="form-input" required value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Email Address</label>
+                  <input type="email" className="form-input" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Contact Number</label>
+                  <input type="tel" className="form-input" required value={newUser.phone} onChange={e => setNewUser({...newUser, phone: e.target.value})} />
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Password <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.78rem' }}>(leave blank to auto-generate)</span></label>
+                  <input type="text" className="form-input" placeholder="Min. 6 characters" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                </div>
+                <div className="form-row mb-1" style={newUser.role === 'admin' ? { gridTemplateColumns: '1fr' } : {}}>
+                  <div className="form-group">
+                    <label className="form-label">Role</label>
+                    <select className="form-input" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                      <option value="finance">Finance</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                  </div>
+                  {newUser.role !== 'admin' && (
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <select className="form-input" value={newUser.department} onChange={e => setNewUser({...newUser, department: e.target.value})}>
+                        <option value="Sales">Sales</option>
+                        <option value="Customer Support">Customer Support</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Delivery Partner">Delivery Partner</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Store Assignment</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    {allStores.map(store => (
+                      <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                        <input 
+                          type="radio" 
+                          name="newUserStore"
+                          checked={newUser.storeIds.includes(store.id)}
+                          onChange={e => {
+                            if (e.target.checked) setNewUser({...newUser, storeIds: [store.id]});
+                          }}
+                        />
+                        {store.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setIsAddUserModalOpen(false)} disabled={isCreatingUser}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold', opacity: isCreatingUser ? 0.7 : 1 }} disabled={isCreatingUser}>
+                  {isCreatingUser ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="modal-overlay" onClick={() => setEditingUser(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{canManageStaff ? 'Edit User Permissions' : 'User Profile Details'}</h2>
+              <button className="modal-close" onClick={() => setEditingUser(null)}>×</button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body">
+                <div className="form-group mb-1">
+                  <label className="form-label">Full Name</label>
+                  <input type="text" className="form-input" required value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} disabled={!canManageStaff} />
+                </div>
+                <div className="form-row mb-1" style={editingUser.role === 'admin' ? { gridTemplateColumns: '1fr' } : {}}>
+                  <div className="form-group">
+                    <label className="form-label">Role</label>
+                    <select className="form-input" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})} disabled={!canManageStaff || editingUser.role === 'superadmin'}>
+                      {editingUser.role === 'superadmin' && <option value="superadmin">Superadmin</option>}
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                      <option value="finance">Finance</option>
+                      <option value="delivery">Delivery</option>
+                    </select>
+                  </div>
+                  {editingUser.role !== 'admin' && (
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <select className="form-input" value={editingUser.department || ''} onChange={e => setEditingUser({...editingUser, department: e.target.value})} disabled={!canManageStaff}>
+                        <option value="" disabled>Select Department</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Customer Support">Customer Support</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Delivery Partner">Delivery Partner</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Store Assignment</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                    {allStores.map(store => (
+                      <label key={store.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', opacity: editingUser.role === 'superadmin' ? 0.5 : 1 }}>
+                        <input 
+                          type="radio" 
+                          name="editingUserStore"
+                          checked={editingUserStores.includes(store.id)}
+                          disabled={!canManageStaff || editingUser.role === 'superadmin'}
+                          onChange={e => {
+                            if (e.target.checked) setEditingUserStores([store.id]);
+                          }}
+                        />
+                        {store.name}
+                      </label>
+                    ))}
+                    {editingUser.role === 'superadmin' && <div style={{ fontSize: '0.75rem', color: 'var(--gold)', marginTop: '0.25rem' }}>Superadmins have access to all stores globally.</div>}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setEditingUser(null)}>{canManageStaff ? 'Cancel' : 'Close'}</button>
+                {canManageStaff && (
+                  <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Save Changes</button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {newTaskOpen && (
+        <div className="modal-overlay" onClick={() => setNewTaskOpen(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Assign New Task</h2>
+              <button className="modal-close" onClick={() => setNewTaskOpen(false)}>×</button>
+            </div>
+            <form onSubmit={handleAddTask}>
+              <div className="modal-body">
+                <div className="form-group mb-1">
+                  <label className="form-label">Task Description</label>
+                  <input type="text" className="form-input" required placeholder="What needs to be done?" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} />
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Assign To</label>
+                  <select className="form-input" required value={newTask.assigneeId} onChange={e => setNewTask({...newTask, assigneeId: e.target.value})}>
+                    <option value="">Select staff member...</option>
+                    {users.filter(u => u.role !== 'superadmin').map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group mb-1">
+                  <label className="form-label">Deadline</label>
+                  <input type="text" className="form-input" placeholder="e.g. Tomorrow, 5 PM" value={newTask.deadline} onChange={e => setNewTask({...newTask, deadline: e.target.value})} />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setNewTaskOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-gold" style={{ background: 'var(--gold)', color: '#000', fontWeight: 'bold' }}>Assign Task</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

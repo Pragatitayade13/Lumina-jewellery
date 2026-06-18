@@ -1,0 +1,26 @@
+.promo-banner-section {
+  padding: 2rem 0 6rem 0;
+  background: var(--bg-primary);
+}
+
+.promo-banner-wrapper {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-bright);
+}
+
+.promo-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.promo-banner-wrapper:hover .promo-banner-image {
+  transform: scale(1.02);
+}

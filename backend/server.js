@@ -1,9 +1,4 @@
-const path = require('path');
-const fs = require('fs');
-const envPath = fs.existsSync(path.resolve(__dirname, '../.env.local')) 
-  ? path.resolve(__dirname, '../.env.local') 
-  : path.resolve(__dirname, '../.env');
-require('dotenv').config({ path: envPath });
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
@@ -17,7 +12,10 @@ const productRoutes = require('./routes/productRoutes');
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5179',
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes
@@ -246,63 +244,6 @@ app.post('/api/notifications/send', async (req, res) => {
   } catch (err) {
     console.error("Notification Email Error:", err);
     res.status(500).json({ error: 'Failed to send notification email' });
-  }
-});
-
-// Route consolidated delivery API calls to delivery.js
-app.all('/api/delivery/:action', async (req, res) => {
-  const { action } = req.params;
-  req.query.action = action;
-  const path = require('path');
-  const apiFilePath = path.resolve(__dirname, '..', 'api', 'delivery.js');
-  try {
-    const apiModule = await import(`file://${apiFilePath}`);
-    await apiModule.default(req, res);
-  } catch (err) {
-    console.error(`Error running consolidated delivery handler for ${action}:`, err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Dynamic serverless handler loader for nested API files (e.g. /api/payment/create-order)
-app.all('/api/:folder/:file', async (req, res) => {
-  const { folder, file } = req.params;
-  const path = require('path');
-  const fs = require('fs');
-
-  const apiFilePath = path.resolve(__dirname, '..', 'api', folder, `${file}.js`);
-
-  if (fs.existsSync(apiFilePath)) {
-    try {
-      const apiModule = await import(`file://${apiFilePath}`);
-      await apiModule.default(req, res);
-    } catch (err) {
-      console.error(`Error running serverless handler ${folder}/${file}:`, err);
-      res.status(500).json({ error: err.message });
-    }
-  } else {
-    res.status(404).json({ error: `Serverless API not found at ${folder}/${file}` });
-  }
-});
-
-// Dynamic serverless handler loader for root-level API files (e.g. /api/gold-rates)
-app.all('/api/:file', async (req, res) => {
-  const { file } = req.params;
-  const path = require('path');
-  const fs = require('fs');
-
-  const apiFilePath = path.resolve(__dirname, '..', 'api', `${file}.js`);
-
-  if (fs.existsSync(apiFilePath)) {
-    try {
-      const apiModule = await import(`file://${apiFilePath}`);
-      await apiModule.default(req, res);
-    } catch (err) {
-      console.error(`Error running serverless handler ${file}:`, err);
-      res.status(500).json({ error: err.message });
-    }
-  } else {
-    res.status(404).json({ error: `Serverless API not found at ${file}` });
   }
 });
 

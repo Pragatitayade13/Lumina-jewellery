@@ -1,0 +1,602 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+
+
+/* =====================================================
+   CSS VARIABLES — LUXURY JEWELLERY DESIGN SYSTEM
+   ===================================================== */
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8C96A;
+  --gold-dark: #9B7A2C;
+  --gold-pale: #F5E6C8;
+  --gold-glow: rgba(201, 168, 76, 0.3);
+  --bg-primary: #0D0800;
+  --bg-secondary: #130C01;
+  --bg-card: #1A1000;
+  --bg-glass: rgba(26, 16, 0, 0.7);
+  --surface: #221500;
+  --surface-hover: #2E1C00;
+  --text-primary: #F2E8D9;
+  --text-secondary: #C8B89A;
+  --text-muted: #8A7A62;
+  --text-dark: #0D0800;
+  --accent-ruby: #8B1A2E;
+  --accent-emerald: #1A4A2E;
+  --accent-sapphire: #1A2E5E;
+  --border: rgba(224, 169, 165, 0.2);
+  --border-bright: rgba(224, 169, 165, 0.5);
+  --shadow-gold: 0 0 30px rgba(224, 169, 165, 0.15);
+  --shadow-deep: 0 20px 60px rgba(0, 0, 0, 0.8);
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+  --transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.2s ease;
+  --transition-slow: all 1.2s cubic-bezier(0.7, 0, 0.3, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-accent: 'Cormorant Garamond', serif;
+}
+
+[data-theme="light"] .admin-root {
+  --gold: #E0A9A5;
+  --gold-light: #F2C5C2;
+  --gold-dark: #B87B77;
+  --gold-pale: #FCEBE9;
+  --gold-glow: rgba(224, 169, 165, 0.3);
+  --bg-primary: #FFF5F7;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --surface: #FCEEF0;
+  --surface-hover: #F8E5E7;
+  --text-primary: #2C1A1C;
+  --text-secondary: #5C4345;
+  --text-muted: #8F7678;
+  --text-dark: #1A0D0E;
+  --border: #000000;
+  --border-bright: #000000;
+  --shadow-gold: 0 4px 20px rgba(224, 169, 165, 0.2);
+  --shadow-deep: 0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* =====================================================
+   RESET & BASE
+   ===================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  /* Support safe areas for notched/dynamic island devices */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape on iOS */
+  text-size-adjust: 100%;
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  /* Bottom padding for iOS home indicator */
+  padding-bottom: env(safe-area-inset-bottom);
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition);
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+}
+
+input, textarea {
+  font-family: var(--font-body);
+  outline: none;
+}
+
+ul { list-style: none; }
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb {
+  background: var(--gold-dark);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* =====================================================
+   TYPOGRAPHY
+   ===================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.section-label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.7;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 3.5rem;
+}
+
+.section-header .section-subtitle {
+  margin: 0 auto;
+}
+
+/* =====================================================
+   LAYOUT
+   ===================================================== */
+.container {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+section {
+  padding: 6rem 0;
+  position: relative;
+}
+
+/* =====================================================
+   PRODUCT GRID UTILITIES
+   ===================================================== */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--text-dark);
+  box-shadow: 0 4px 20px var(--gold-glow);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(201, 168, 76, 0.5);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--gold);
+  border: 1.5px solid var(--gold);
+}
+
+.btn-outline:hover {
+  background: var(--gold);
+  color: var(--text-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--gold-glow);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+}
+
+.btn-ghost:hover {
+  color: var(--gold);
+}
+
+/* =====================================================
+   GOLD DIVIDER
+   ===================================================== */
+.gold-divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 1.25rem auto;
+}
+
+.gold-divider-left {
+  margin-left: 0;
+}
+
+/* =====================================================
+   CARDS
+   ===================================================== */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: var(--transition);
+}
+
+.glass-card:hover {
+  border-color: var(--border-bright);
+  box-shadow: var(--shadow-gold);
+}
+
+/* =====================================================
+   BADGES
+   ===================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  transition: var(--transition);
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gold Shimmer Sweep Effect */
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.7s ease;
+  z-index: 1;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn > * {
+  position: relative;
+  z-index: 2;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badge-gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--text-dark);
+}
+
+.badge-hot {
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  color: var(--text-primary);
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  color: var(--text-primary);
+}
+
+/* =====================================================
+   STAR RATINGS
+   ===================================================== */
+.stars {
+  display: flex;
+  gap: 2px;
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
+/* =====================================================
+   SCROLL REVEAL ANIMATION
+   ===================================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* =====================================================
+   GOLDEN SHIMMER EFFECT
+   ===================================================== */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold-dark));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* =====================================================
+   PULSE GLOW ANIMATION
+   ===================================================== */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+  50% { box-shadow: 0 0 20px 10px rgba(201, 168, 76, 0.15); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* =====================================================
+   NOTIFICATION TOAST
+   ===================================================== */
+.toast {
+  position: fixed;
+  bottom: calc(2rem + env(safe-area-inset-bottom));
+  right: 2rem;
+  left: 1rem;
+  max-width: calc(100% - 3rem);
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--text-dark);
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-deep);
+  z-index: 9999;
+  animation: fadeInUp 0.4s ease, fadeOut 0.4s ease 2.5s forwards;
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(10px); }
+}
+
+/* =====================================================
+   MODAL
+   ===================================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+  padding: 2rem;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: scaleIn 0.3s ease;
+}
+
+/* =====================================================
+   RESPONSIVE — Mobile-App Compatible
+   ===================================================== */
+
+/* Tablet */
+@media (max-width: 1023px) {
+  .container { padding: 0 1.5rem; }
+  section { padding: 5rem 0; }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  html { font-size: 15px; }
+  section { padding: 4rem 0; }
+  .container { padding: 0 1.25rem; }
+  .section-title { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+  .section-subtitle { font-size: 0.95rem; }
+
+  /* Modals should be full width on mobile */
+  .modal-overlay { 
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    align-items: flex-end;
+  }
+  .modal-content {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  /* Buttons stretch on mobile */
+  .btn { padding: 0.75rem 1.5rem; }
+
+  /* Fix inline flex containers from overflowing */
+  .modal-body [style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+  
+  /* Ensure image grids and items wrap */
+  [style*="display: flex"] {
+    max-width: 100%;
+  }
+}
+
+/* Small Mobile (iPhone SE, 320px) */
+@media (max-width: 480px) {
+  html { font-size: 14px; }
+  section { padding: 3rem 0; }
+  .container { padding: 0 1rem; }
+
+  /* Toast fits full width on small screens */
+  .toast { right: 1rem; left: 1rem; }
+}
+
+/* =====================================================
+   CUSTOM LUXURY ANIMATION CLASSES
+   ===================================================== */
+.magnetic {
+  transition: transform 0.3s var(--ease-out-expo);
+}
+
+.clip-reveal {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.word-reveal {
+  overflow: hidden;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.word-reveal span {
+  display: inline-block;
+  transform: translateY(100%);
+}

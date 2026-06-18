@@ -1,0 +1,32 @@
+/* src/components/BestSellers/BestSellers.css */
+
+.bestsellers-section {
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.bestsellers-section::before {
+  content: 'BEST SELLERS';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-heading);
+  font-size: 12vw;
+  font-weight: 900;
+  color: rgba(201, 168, 76, 0.03);
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.1em;
+}
+
+.bestsellers-featured {
+  margin-top: 1rem;
+}
+
+.section-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 3rem;
+}

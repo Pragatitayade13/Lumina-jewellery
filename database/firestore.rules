@@ -1,0 +1,367 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Core Auth Helper ────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Read role from custom claims token first (fast, no DB hit).
+    // Falls back to a single DB read only if no token claim is present.
+    function getUserRole() {
+      return request.auth != null && 'role' in request.auth.token
+        ? request.auth.token.role
+        : null;
+    }
+
+    // Single DB read used as fallback in role helpers below.
+    function dbRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    // ─── Role Helpers ────────────────────────────────────────────────────────
+    function isStaffOrHigher() {
+      return isAuthenticated() && (
+        getUserRole() in ['admin','superadmin','super admin','staff','manager',
+                          'storeadmin','store admin','store_admin',
+                          'companyadmin','company admin','company_admin'] ||
+        dbRole() in ['admin','superadmin','super admin','staff','manager',
+                     'storeadmin','store admin','store_admin',
+                     'companyadmin','company admin','company_admin']
+      );
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        getUserRole() in ['superadmin','super admin'] ||
+        dbRole() in ['superadmin','super admin']
+      );
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        getUserRole() in ['admin','superadmin','super admin'] ||
+        dbRole() in ['admin','superadmin','super admin']
+      );
+    }
+
+    function isFinance() {
+      return isAuthenticated() && (
+        getUserRole() == 'finance' || dbRole() == 'finance'
+      );
+    }
+
+    function isLogistics() {
+      return isAuthenticated() && (
+        getUserRole() == 'logistics' || dbRole() == 'logistics'
+      );
+    }
+
+    function isDeliveryPartner() {
+      return isAuthenticated() && (
+        getUserRole() in ['delivery','delivery partner','delivery_partner'] ||
+        dbRole() in ['delivery','delivery partner','delivery_partner']
+      );
+    }
+
+    function isAssignedToStore(storeId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        isAdmin() ||
+        exists(/databases/$(database)/documents/userStores/$(request.auth.uid + '_' + storeId))
+      );
+    }
+
+    // ─── Products & Catalogue ────────────────────────────────────────────────
+    match /jewellery/{productId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isStaffOrHigher();
+    }
+
+    match /cms/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /landingCMS/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Newsletter ───────────────────────────────────────────────────────────
+    match /newsletter_subscribers/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create: if true;
+      allow delete: if isStaffOrHigher();
+    }
+
+    // ─── Users / Customers ────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || isStaffOrHigher() || isFinance()
+      );
+      allow create: if isAuthenticated() && (
+        request.auth.uid == userId || isStaffOrHigher()
+      );
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || isAdmin()
+      );
+      allow delete: if isStaffOrHigher();
+    }
+
+    // ─── Orders ───────────────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid ||
+        isStaffOrHigher() ||
+        isFinance()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+    }
+
+    // ─── Shipments / Logistics ────────────────────────────────────────────────
+    match /shipments/{shipmentId} {
+      allow read: if isAuthenticated() && (
+        isStaffOrHigher() ||
+        isLogistics() ||
+        (isDeliveryPartner() && resource.data.assignedTo == request.auth.uid) ||
+        resource.data.customerId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid ||
+        isStaffOrHigher() ||
+        isLogistics()
+      );
+      allow update: if isAuthenticated() && (
+        isStaffOrHigher() ||
+        isLogistics() ||
+        (isDeliveryPartner() && resource.data.assignedTo == request.auth.uid)
+      );
+      allow delete: if isStaffOrHigher();
+    }
+
+    // ─── Login Activity ───────────────────────────────────────────────────────
+    // Create: allow true (anyone can attempt log-in/log failed attempt).
+    // Read: own records OR staff.
+    match /loginActivity/{docId} {
+      allow create: if true;
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffOrHigher()
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffOrHigher()
+      );
+      allow delete: if isStaffOrHigher();
+    }
+
+    // ─── Inventory ────────────────────────────────────────────────────────────
+    match /inventory/{itemId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (
+        isStaffOrHigher() ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['stock', 'status', 'minStock', 'warehouse', 'updatedAt'])
+      );
+    }
+
+    match /inventory_transactions/{docId} {
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
+    }
+    match /stock_adjustments/{docId} {
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
+    }
+    match /stock_audit_logs/{docId} {
+      allow read: if isStaffOrHigher();
+      allow write: if isAdmin();
+    }
+
+    // ─── Purchase Orders & Stock Transfers ────────────────────────────────────
+    match /purchase_orders/{docId} {
+      allow read, write: if isAuthenticated() && (isStaffOrHigher() || isFinance());
+    }
+    match /stock_transfers/{docId} {
+      allow read, write: if isAuthenticated() && isStaffOrHigher();
+    }
+
+    // ─── Tasks ────────────────────────────────────────────────────────────────
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (
+        resource.data.assigneeId == request.auth.uid || isStaffOrHigher()
+      );
+      allow create: if isAuthenticated() && isStaffOrHigher();
+      allow update: if isAuthenticated() && (
+        resource.data.assigneeId == request.auth.uid || isStaffOrHigher()
+      );
+      allow delete: if isStaffOrHigher();
+    }
+
+    // ─── Financial Data ────────────────────────────────────────────────────────
+    match /tax_transactions/{docId} {
+      allow read, write: if isAdmin() || isFinance();
+    }
+    match /tax_audit_logs/{docId} {
+      allow read, write: if isAdmin() || isFinance();
+    }
+    match /transactions/{docId} {
+      allow read: if isStaffOrHigher() || isFinance();
+      allow create: if isStaffOrHigher() || isFinance() ||
+                    (isAuthenticated() && request.resource.data.type == 'revenue');
+      allow update, delete: if isStaffOrHigher() || isFinance();
+    }
+    match /expenses/{docId} {
+      allow read, create, update, delete: if isStaffOrHigher() || isFinance();
+    }
+    match /vendor_payments/{docId} {
+      allow read, create, update, delete: if isStaffOrHigher() || isFinance();
+    }
+    match /vendors/{docId} {
+      allow read: if isStaffOrHigher() || isFinance();
+      allow write: if isAdmin() || isFinance();
+    }
+
+    // ─── Stores & Store Assignments ───────────────────────────────────────────
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    match /userStores/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffOrHigher()
+      );
+      allow write: if isStaffOrHigher();
+    }
+
+    // ─── Approvals ────────────────────────────────────────────────────────────
+    match /approvals/{docId} {
+      allow read, create, update, delete: if isStaffOrHigher();
+    }
+
+    // ─── Appointments ─────────────────────────────────────────────────────────
+    match /appointments/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isStaffOrHigher()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || isStaffOrHigher()
+      );
+      allow update, delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isStaffOrHigher()
+      );
+    }
+
+    // ─── Bridal Planner ───────────────────────────────────────────────────────
+    match /bridal_planners/{userId} {
+      allow read, write: if isAuthenticated() && (
+        request.auth.uid == userId || isStaffOrHigher()
+      );
+    }
+
+    // ─── Support Tickets ──────────────────────────────────────────────────────
+    match /support_tickets/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+      allow update, delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.customerId || isStaffOrHigher()
+      );
+    }
+
+    // ─── Reviews ──────────────────────────────────────────────────────────────
+    match /product_reviews/{docId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaffOrHigher();
+    }
+
+    // ─── Schemes ──────────────────────────────────────────────────────────────
+    match /user_schemes/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.customerId == request.auth.uid || isStaffOrHigher()
+      );
+      allow update: if isStaffOrHigher();
+    }
+    match /admin_schemes/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // ─── Delivery Tracking ────────────────────────────────────────────────────
+    match /locations/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        request.auth.uid == userId || isStaffOrHigher()
+      );
+    }
+
+    match /tracking_history/{docId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isStaffOrHigher();
+    }
+
+    // ─── System Logs & Metrics ────────────────────────────────────────────────
+    match /audit_logs/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+    match /error_logs/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    match /system_metrics/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ─── Invoices ─────────────────────────────────────────────────────────────
+    match /invoices/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.customerId == request.auth.uid || isStaffOrHigher() || isFinance()
+      );
+      allow write: if isStaffOrHigher() || isFinance();
+    }
+
+    // ─── Rates ────────────────────────────────────────────────────────────────
+    match /rates/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /metal_rates/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Default Deny ─────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

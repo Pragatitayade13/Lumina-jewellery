@@ -1,0 +1,215 @@
+/* src/components/BrandStory/BrandStory.css */
+
+.brand-section {
+  background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  overflow: hidden;
+}
+
+.brand-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+/* ─── Image Column ─── */
+.brand-image-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.brand-img-frame {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.brand-img {
+  width: 100%;
+  height: 520px;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.brand-img-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(13,8,0,0.8) 100%);
+}
+
+.brand-exp-badge {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.brand-exp-num {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1;
+}
+
+.brand-exp-text {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(13,8,0,0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+/* ─── Badges ─── */
+.brand-badges {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.875rem;
+}
+
+.brand-badge-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  transition: var(--transition);
+}
+
+.brand-badge-item:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  border-color: transparent;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+}
+
+.brand-badge-item:hover .brand-badge-label {
+  color: var(--text-dark);
+}
+
+.brand-badge-item:hover .brand-badge-sub {
+  color: rgba(13,8,0,0.75);
+}
+
+.brand-badge-item:hover .brand-badge-icon {
+  color: var(--text-dark);
+  background: rgba(13,8,0,0.1);
+  border-color: rgba(13,8,0,0.2);
+}
+
+.brand-badge-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.brand-badge-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.brand-badge-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+/* ─── Content Column ─── */
+.brand-content-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-desc {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ─── Timeline ─── */
+.brand-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 2rem 0 1.5rem;
+  position: relative;
+}
+
+.brand-timeline::before {
+  content: '';
+  position: absolute;
+  left: calc(56px + 1rem + 8px); /* Col 1 width + gap + half of Col 2 width */
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-bright);
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 56px 16px 1fr;
+  gap: 0 1rem;
+  align-items: flex-start;
+  padding-bottom: 1.5rem;
+}
+
+.timeline-year {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-align: right;
+  padding-top: 0.1rem;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+  margin-top: 0.25rem;
+  box-shadow: 0 0 8px var(--gold-glow);
+  flex-shrink: 0;
+  justify-self: center;
+}
+
+.timeline-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+
+.timeline-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 968px) {
+  .brand-grid { grid-template-columns: 1fr; gap: 3rem; }
+  .brand-img { height: 400px; }
+}
+
+@media (max-width: 480px) {
+  .brand-badges { grid-template-columns: 1fr; }
+}
