@@ -7,7 +7,8 @@ import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
+const localHeroVideo1 = '/whatsapp_video.mp4';
+const localHeroVideo2 = '/hero_video_2.mp4';
 import './Hero.css';
 
 const defaultStats = [
@@ -102,6 +103,7 @@ export default function Hero() {
   ];
 
   const activeSlides = slides.filter(s => s.isActive);
+  console.log("Hero Component Active Slides:", activeSlides);
 
   // Auto-play slideshow transition
   useEffect(() => {
@@ -118,18 +120,18 @@ export default function Hero() {
   };
 
   return (
-    <section className="hero" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
+    <section className="hero">
       {activeSlides.map((slide, idx) => {
         let mediaSource = slide.mediaUrl;
         let isVideo = slide.mediaType === 'video';
 
-        if (!mediaSource) {
+        if (!mediaSource || mediaSource.startsWith('blob:')) {
           if (isVideo) {
-            mediaSource = localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo2 : localHeroVideo1;
           } else if (slide.bg) {
             mediaSource = slide.bg;
           } else {
-            mediaSource = localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo2 : localHeroVideo1;
             isVideo = true;
           }
         }
@@ -137,14 +139,16 @@ export default function Hero() {
         return (
           <div key={slide.id || idx} className={`hero-slide ${idx === active ? 'active' : ''}`}>
             {isVideo ? (
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
-                src={mediaSource}
-              />
+              idx === active && (
+                <video
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className={`hero-slide-bg ${idx === active ? 'slow-rotate' : ''}`}
+                  src={mediaSource}
+                />
+              )
             ) : (
               <img
                 className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
@@ -155,48 +159,46 @@ export default function Hero() {
             <div className="hero-overlay" />
             
             {/* Content Overlay */}
-            {!isVideo && (
-              <div className="hero-content-wrap">
-                <div className="hero-container">
-                  <div className="hero-slide-content">
-                    <div className="hero-badge">
-                      <Sparkles size={14} />
-                      <span>{t(slide.badgeKey || 'hero.slide1.badge')}</span>
-                    </div>
-                    {slide.titleKey ? (
-                      <h1 className="hero-title">
-                        {t(slide.titleKey)} <span>{t(slide.titleAccentKey)}</span>
-                      </h1>
-                    ) : (
-                      <h1 className="hero-title">
-                        {slide.title}
-                      </h1>
-                    )}
-                    {slide.subtitleKey ? (
-                      <p className="hero-subtitle">
-                        {t(slide.subtitleKey)}
-                      </p>
-                    ) : (
-                      <p className="hero-subtitle">
-                        {slide.subtitle}
-                      </p>
-                    )}
-                    <div className="hero-actions">
-                      {slide.ctas && slide.ctas.map((cta, ctaIdx) => (
-                        <button 
-                          key={ctaIdx}
-                          className={`btn ${cta.primary ? 'btn-gold' : 'btn-outline'}`} 
-                          onClick={() => handleCTA(cta.href || '#new-arrivals')}
-                          style={cta.primary ? { color: '#fff', fontWeight: 'bold' } : {}}
-                        >
-                          {cta.labelKey ? t(cta.labelKey) : cta.label}
-                        </button>
-                      ))}
-                    </div>
+            <div className="hero-content-wrap">
+              <div className="hero-container">
+                <div className="hero-slide-content">
+                  <div className="hero-badge">
+                    <Sparkles size={14} />
+                    <span>{t(slide.badgeKey || 'hero.slide1.badge')}</span>
+                  </div>
+                  {slide.titleKey ? (
+                    <h1 className="hero-title">
+                      {t(slide.titleKey)} <span>{t(slide.titleAccentKey)}</span>
+                    </h1>
+                  ) : (
+                    <h1 className="hero-title">
+                      {slide.title}
+                    </h1>
+                  )}
+                  {slide.subtitleKey ? (
+                    <p className="hero-subtitle">
+                      {t(slide.subtitleKey)}
+                    </p>
+                  ) : (
+                    <p className="hero-subtitle">
+                      {slide.subtitle}
+                    </p>
+                  )}
+                  <div className="hero-actions">
+                    {slide.ctas && slide.ctas.map((cta, ctaIdx) => (
+                      <button 
+                        key={ctaIdx}
+                        className={`btn ${cta.primary ? 'btn-gold' : 'btn-outline'}`} 
+                        onClick={() => handleCTA(cta.href || '#new-arrivals')}
+                        style={cta.primary ? { color: '#fff', fontWeight: 'bold' } : {}}
+                      >
+                        {cta.labelKey ? t(cta.labelKey) : cta.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             <FloatingParticles count={40} />
           </div>

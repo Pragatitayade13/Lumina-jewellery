@@ -304,7 +304,7 @@ export default function CartModal({ isOpen, onClose }) {
                   <div key={item.id} className="cart-item-card">
                     <div className="cart-item-image-wrapper">
                       <img 
-                        src={item.image && !item.image.includes('/src/assets') ? item.image : 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200'} 
+                        src={item.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200'} 
                         alt={item.name} 
                         className="cart-item-image" 
                         onError={(e) => {

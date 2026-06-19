@@ -40,6 +40,13 @@ export default function NotificationDropdown({ userRole }) {
   const [isOpen, setIsOpen] = useState(false);
   const [staticNotifs, setStaticNotifs] = useState(() => getInitialNotifications(userRole));
   const [dynamicNotifs, setDynamicNotifs] = useState([]);
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('jw_read_notifications') || '[]');
+    } catch {
+      return [];
+    }
+  });
   const dropdownRef = useRef(null);
   const { user, currentStore } = useApp();
   const activeStoreId = currentStore || (user?.role === 'superadmin' ? 'GLOBAL' : null);
@@ -166,20 +173,35 @@ export default function NotificationDropdown({ userRole }) {
     };
   }, [isOpen]);
 
-  const notifications = [...dynamicNotifs, ...staticNotifs];
+  useEffect(() => {
+    try {
+      localStorage.setItem('jw_read_notifications', JSON.stringify(readIds));
+    } catch (e) {}
+  }, [readIds]);
+
+  const rawNotifications = [...dynamicNotifs, ...staticNotifs];
+  const notifications = rawNotifications.map(n => ({
+    ...n,
+    unread: readIds.includes(n.id) ? false : n.unread
+  }));
   const unreadCount = notifications.filter(n => n.unread).length;
 
   const markAllAsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadIds(prev => Array.from(new Set([...prev, ...allIds])));
     setStaticNotifs(staticNotifs.map(n => ({ ...n, unread: false })));
     setDynamicNotifs(dynamicNotifs.map(n => ({ ...n, unread: false })));
   };
 
   const markAsRead = (id) => {
+    setReadIds(prev => prev.includes(id) ? prev : [...prev, id]);
     setStaticNotifs(staticNotifs.map(n => n.id === id ? { ...n, unread: false } : n));
     setDynamicNotifs(dynamicNotifs.map(n => n.id === id ? { ...n, unread: false } : n));
   };
 
   const clearAll = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadIds(prev => Array.from(new Set([...prev, ...allIds])));
     setStaticNotifs([]);
     setDynamicNotifs([]);
   };

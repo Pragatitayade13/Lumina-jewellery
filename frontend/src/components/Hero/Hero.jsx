@@ -103,6 +103,7 @@ export default function Hero() {
   ];
 
   const activeSlides = slides.filter(s => s.isActive);
+  console.log("Frontend Hero Component Active Slides:", activeSlides);
 
   // Auto-play slideshow transition
   const currentSlide = activeSlides[active];
@@ -130,7 +131,7 @@ export default function Hero() {
         let mediaSource = slide.mediaUrl;
         let isVideo = slide.mediaType === 'video';
 
-        if (!mediaSource) {
+        if (!mediaSource || mediaSource.startsWith('blob:')) {
           if (isVideo) {
             mediaSource = idx === 0 ? localHeroVideo2 : localHeroVideo1;
           } else if (slide.bg) {
@@ -144,18 +145,20 @@ export default function Hero() {
         return (
           <div key={slide.id || idx} className={`hero-slide ${idx === active ? 'active' : ''}`}>
             {isVideo ? (
-              <video
-                autoPlay
-                muted
-                playsInline
-                onEnded={() => {
-                  if (activeSlides.length > 1) {
-                    setActive(prev => (prev + 1) % activeSlides.length);
-                  }
-                }}
-                className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
-                src={mediaSource}
-              />
+              idx === active && (
+                <video
+                  autoPlay
+                  muted
+                  playsInline
+                  onEnded={() => {
+                    if (activeSlides.length > 1) {
+                      setActive(prev => (prev + 1) % activeSlides.length);
+                    }
+                  }}
+                  className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
+                  src={mediaSource}
+                />
+              )
             ) : (
               <img
                 className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}

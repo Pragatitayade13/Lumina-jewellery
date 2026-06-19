@@ -5,7 +5,8 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where,
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { uploadToImgBB } from '../../config/imgbb';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
+const localHeroVideo1 = '/whatsapp_video.mp4';
+const localHeroVideo2 = '/hero_video_2.mp4';
 import '../admin.css';
 
 const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
@@ -52,6 +53,7 @@ const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => 
 
 export default function LandingPageCMS() {
   const { showToast, assignedStores, user } = useApp();
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super admin';
   const [activeTab, setActiveTab] = useState('hero');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -294,8 +296,38 @@ export default function LandingPageCMS() {
     }
 
     if (isVideo) {
-      showToast("Video hosting requires a premium plan. Loaded locally only.", "warning");
-      setUploadingMedia(null);
+      if (!storage) {
+        showToast("Firebase Storage not available. Video loaded locally only.", "warning");
+        setUploadingMedia(null);
+        return;
+      }
+      showToast("Uploading video to secure cloud storage...");
+      
+      const storageRef = ref(storage, `cms/${selectedStore}/heroBanners/video_${index}_${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.round(progress));
+        }, 
+        (error) => {
+          console.error("Firebase Storage video upload error:", error);
+          showToast("Video upload failed. Loaded locally only.", "error");
+          setUploadingMedia(null);
+        }, 
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setHeroBanner(prev => {
+              const newBanners = [...prev];
+              newBanners[index] = { ...newBanners[index], mediaUrl: downloadURL, mediaType: 'video' };
+              return newBanners;
+            });
+            setUploadingMedia(null);
+            showToast("Video uploaded and saved permanently!");
+          });
+        }
+      );
       return;
     }
 
@@ -357,8 +389,13 @@ export default function LandingPageCMS() {
   };
 
   const handleSaveDraft = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can save drafts.", "error");
+      return;
+    }
+    const hasBlobUrls = heroBanner.some(slide => slide.mediaUrl && slide.mediaUrl.startsWith('blob:'));
+    if (hasBlobUrls) {
+      showToast("Please wait for all media files to finish uploading before saving.", "error");
       return;
     }
     setSaving(true);
@@ -381,8 +418,13 @@ export default function LandingPageCMS() {
   };
 
   const handlePublish = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can publish banners.", "error");
+      return;
+    }
+    const hasBlobUrls = heroBanner.some(slide => slide.mediaUrl && slide.mediaUrl.startsWith('blob:'));
+    if (hasBlobUrls) {
+      showToast("Please wait for all media files to finish uploading before publishing.", "error");
       return;
     }
     setPublishing(true);
@@ -522,7 +564,7 @@ export default function LandingPageCMS() {
   };
 
   const handleSave = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can publish landing page changes.", "error");
       return;
     }
@@ -1012,7 +1054,6 @@ export default function LandingPageCMS() {
   }
 
   const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData) || JSON.stringify(heroBanner) !== JSON.stringify(originalHeroBanner);
-  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <div>
@@ -1104,7 +1145,7 @@ export default function LandingPageCMS() {
                   <button 
                     className="btn btn-outline" 
                     onClick={handleSaveDraft} 
-                    disabled={saving || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
+                    disabled={saving || uploadingMedia !== null || !isSuperAdmin}
                   >
                     {saving ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Save Draft
@@ -1113,7 +1154,7 @@ export default function LandingPageCMS() {
                     className="btn btn-gold" 
                     style={{ color: '#fff', fontWeight: 'bold', opacity: (!isSuperAdmin ? 0.6 : 1) }} 
                     onClick={handlePublish} 
-                    disabled={publishing || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
+                    disabled={publishing || uploadingMedia !== null || !isSuperAdmin}
                   >
                     {publishing ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Publish to Live
@@ -1190,7 +1231,7 @@ export default function LandingPageCMS() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                             {slide.mediaType === 'video' ? (
-                              <video src={slide.mediaUrl || localHeroVideo2} controls muted style={{ width: '100%', display: 'block' }} />
+                              <video src={slide.mediaUrl || (index === 0 ? localHeroVideo2 : localHeroVideo1)} controls muted style={{ width: '100%', display: 'block' }} />
                             ) : (
                               <img src={slide.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
                             )}

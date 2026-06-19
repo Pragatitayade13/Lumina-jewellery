@@ -31,7 +31,7 @@ export default function PromoVideo() {
         <video 
           ref={videoRef}
           className="promo-video"
-          src={localHeroVideo2}
+          src="/hero_video_2.mp4"
           muted 
           loop 
           playsInline

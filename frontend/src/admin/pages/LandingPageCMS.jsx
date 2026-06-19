@@ -53,6 +53,7 @@ const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => 
 
 export default function LandingPageCMS() {
   const { showToast, assignedStores, user } = useApp();
+  const isSuperAdmin = user?.role === 'superadmin' || user?.role === 'super admin';
   const [activeTab, setActiveTab] = useState('hero');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -388,7 +389,7 @@ export default function LandingPageCMS() {
   };
 
   const handleSaveDraft = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can save drafts.", "error");
       return;
     }
@@ -417,7 +418,7 @@ export default function LandingPageCMS() {
   };
 
   const handlePublish = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can publish banners.", "error");
       return;
     }
@@ -563,7 +564,7 @@ export default function LandingPageCMS() {
   };
 
   const handleSave = async () => {
-    if (user?.role !== 'superadmin') {
+    if (!isSuperAdmin) {
       showToast("Access Denied: Only Super Admin can publish landing page changes.", "error");
       return;
     }
@@ -1053,7 +1054,6 @@ export default function LandingPageCMS() {
   }
 
   const hasChanges = JSON.stringify(data) !== JSON.stringify(originalData) || JSON.stringify(heroBanner) !== JSON.stringify(originalHeroBanner);
-  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <div>
@@ -1145,7 +1145,7 @@ export default function LandingPageCMS() {
                   <button 
                     className="btn btn-outline" 
                     onClick={handleSaveDraft} 
-                    disabled={saving || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
+                    disabled={saving || uploadingMedia !== null || !isSuperAdmin}
                   >
                     {saving ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Save Draft
@@ -1154,7 +1154,7 @@ export default function LandingPageCMS() {
                     className="btn btn-gold" 
                     style={{ color: '#fff', fontWeight: 'bold', opacity: (!isSuperAdmin ? 0.6 : 1) }} 
                     onClick={handlePublish} 
-                    disabled={publishing || uploadingMedia !== null || JSON.stringify(heroBanner) === JSON.stringify(originalHeroBanner) || !isSuperAdmin}
+                    disabled={publishing || uploadingMedia !== null || !isSuperAdmin}
                   >
                     {publishing ? <Loader className="spin" size={16} style={{ marginRight: 6 }} /> : null}
                     Publish to Live
