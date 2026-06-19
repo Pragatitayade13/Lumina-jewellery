@@ -84,7 +84,7 @@ function StoreLayout() {
 }
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     // Check if there's a pending hash scroll target (set by Footer when navigating cross-page)
@@ -111,7 +111,7 @@ function ScrollToTop() {
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [pathname]);
+  }, [pathname, search]);
 
   return null;
 }
