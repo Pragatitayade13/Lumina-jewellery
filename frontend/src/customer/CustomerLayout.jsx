@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Package, Heart, LifeBuoy, 
-  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck, Store, Menu
+  Calendar, RefreshCcw, Calculator, Sparkles, LogOut, Diamond, Sun, Moon, ShieldCheck, Store, Menu, Home
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationDropdown from '../components/NotificationDropdown/NotificationDropdown';
@@ -11,6 +11,7 @@ import { useAudit } from '../hooks/useAudit';
 import { useCMS } from '../context/CMSContext';
 
 const navItems = [
+  { path: '/', label: 'Back to Storefront', icon: <Home size={18} />, exact: true },
   { path: '/account', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true },
   { path: '/account/orders', label: 'My Orders', icon: <Package size={18} /> },
   { path: '/account/profile', label: 'Profile Settings', icon: <User size={18} /> },
@@ -242,6 +243,9 @@ export default function CustomerLayout({ children }) {
               </div>
             )}
             <NotificationDropdown userRole="customer" />
+            <button className="btn btn-outline" onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Home size={14} /> Home
+            </button>
             <button className="btn btn-primary" onClick={() => navigate('/collections')}>Continue Shopping</button>
           </div>
         </header>
