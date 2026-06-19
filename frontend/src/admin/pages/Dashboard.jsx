@@ -30,14 +30,16 @@ function StatCard({ icon, iconClass, label, value, trend, trendUp, trendNote, ac
 function LineChart({ data }) {
   const max = Math.max(...data.map(d => d.revenue));
   const min = Math.min(...data.map(d => d.revenue)) * 0.8;
-  const range = max - min;
+  const range = max - min || 1;
   
   const width = 800;
   const height = 200;
-  const xStep = width / (data.length - 1 || 1);
+  const paddingX = 40; // Pad horizontally to prevent text clipping
+  const chartWidth = width - 2 * paddingX;
+  const xStep = chartWidth / (data.length - 1 || 1);
   
   const points = data.map((d, i) => {
-    const x = i * xStep;
+    const x = paddingX + i * xStep;
     const y = height - ((d.revenue - min) / range) * height;
     return `${x},${y}`;
   }).join(' ');
@@ -53,7 +55,7 @@ function LineChart({ data }) {
         </defs>
         <polygon 
           fill="url(#dashLineGrad)" 
-          points={`${points} ${width},${height} 0,${height}`} 
+          points={`${points} ${width - paddingX},${height} ${paddingX},${height}`} 
         />
         <polyline
           fill="none"
@@ -62,7 +64,7 @@ function LineChart({ data }) {
           points={points}
         />
         {data.map((d, i) => {
-          const x = i * xStep;
+          const x = paddingX + i * xStep;
           const y = height - ((d.revenue - min) / range) * height;
           return (
             <g key={d.month}>
