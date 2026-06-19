@@ -296,7 +296,7 @@
   background: var(--bg-primary);
   backdrop-filter: blur(20px);
   z-index: 800;
-  padding: max(5rem, calc(4rem + env(safe-area-inset-top))) 2rem max(2rem, env(safe-area-inset-bottom)) max(2rem, env(safe-area-inset-left));
+  padding: max(8rem, calc(7.5rem + env(safe-area-inset-top))) 2rem max(2rem, env(safe-area-inset-bottom)) max(2rem, env(safe-area-inset-left));
   transform: translateX(100%);
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
