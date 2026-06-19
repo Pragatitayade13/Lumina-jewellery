@@ -392,6 +392,11 @@ export default function LandingPageCMS() {
       showToast("Access Denied: Only Super Admin can save drafts.", "error");
       return;
     }
+    const hasBlobUrls = heroBanner.some(slide => slide.mediaUrl && slide.mediaUrl.startsWith('blob:'));
+    if (hasBlobUrls) {
+      showToast("Please wait for all media files to finish uploading before saving.", "error");
+      return;
+    }
     setSaving(true);
     try {
       if (!db) throw new Error("Database not initialized");
@@ -414,6 +419,11 @@ export default function LandingPageCMS() {
   const handlePublish = async () => {
     if (user?.role !== 'superadmin') {
       showToast("Access Denied: Only Super Admin can publish banners.", "error");
+      return;
+    }
+    const hasBlobUrls = heroBanner.some(slide => slide.mediaUrl && slide.mediaUrl.startsWith('blob:'));
+    if (hasBlobUrls) {
+      showToast("Please wait for all media files to finish uploading before publishing.", "error");
       return;
     }
     setPublishing(true);

@@ -105,13 +105,19 @@ export default function Hero() {
   const activeSlides = slides.filter(s => s.isActive);
 
   // Auto-play slideshow transition
+  const currentSlide = activeSlides[active];
+  const isCurrentSlideVideo = currentSlide && (
+    currentSlide.mediaType === 'video' ||
+    (!currentSlide.mediaUrl && !currentSlide.bg)
+  );
+
   useEffect(() => {
-    if (activeSlides.length <= 1 || isPaused) return;
+    if (activeSlides.length <= 1 || isPaused || isCurrentSlideVideo) return;
     const interval = setInterval(() => {
       setActive(prev => (prev + 1) % activeSlides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [activeSlides.length, isPaused]);
+  }, [activeSlides.length, isPaused, isCurrentSlideVideo]);
 
   const handleCTA = (href) => {
     const el = document.querySelector(href);
@@ -141,8 +147,12 @@ export default function Hero() {
               <video
                 autoPlay
                 muted
-                loop
                 playsInline
+                onEnded={() => {
+                  if (activeSlides.length > 1) {
+                    setActive(prev => (prev + 1) % activeSlides.length);
+                  }
+                }}
                 className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
                 src={mediaSource}
               />
