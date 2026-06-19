@@ -1231,7 +1231,7 @@ export default function LandingPageCMS() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                             {slide.mediaType === 'video' ? (
-                              <video src={slide.mediaUrl || (index === 0 ? localHeroVideo1 : localHeroVideo2)} controls muted style={{ width: '100%', display: 'block' }} />
+                              <video src={slide.mediaUrl || (index === 0 ? localHeroVideo2 : localHeroVideo1)} controls muted style={{ width: '100%', display: 'block' }} />
                             ) : (
                               <img src={slide.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
                             )}
@@ -1271,7 +1271,7 @@ export default function LandingPageCMS() {
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                               <p style={{ fontSize: '0.85rem', color: 'var(--gold)', fontWeight: 'bold', margin: 0 }}>
-                                🎬 Using default landing page video background ({index === 0 ? 'video 1' : 'video 2'})
+                                🎬 Using default landing page video background ({index === 0 ? 'video 2' : 'video 1'})
                               </p>
                               <label className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', alignSelf: 'flex-start', margin: 0 }}>
                                 <UploadCloud size={14} /> Upload Custom Video/Image to Replace

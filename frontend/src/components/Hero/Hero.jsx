@@ -132,11 +132,11 @@ export default function Hero() {
 
         if (!mediaSource) {
           if (isVideo) {
-            mediaSource = idx === 0 ? localHeroVideo1 : localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo2 : localHeroVideo1;
           } else if (slide.bg) {
             mediaSource = slide.bg;
           } else {
-            mediaSource = idx === 0 ? localHeroVideo1 : localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo2 : localHeroVideo1;
             isVideo = true;
           }
         }
