@@ -7,7 +7,8 @@ import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
+const localHeroVideo1 = '/hero_video_1.mp4';
+const localHeroVideo2 = '/hero_video_2.mp4';
 import './Hero.css';
 
 const defaultStats = [
@@ -125,11 +126,11 @@ export default function Hero() {
 
         if (!mediaSource) {
           if (isVideo) {
-            mediaSource = localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo1 : localHeroVideo2;
           } else if (slide.bg) {
             mediaSource = slide.bg;
           } else {
-            mediaSource = localHeroVideo2;
+            mediaSource = idx === 0 ? localHeroVideo1 : localHeroVideo2;
             isVideo = true;
           }
         }

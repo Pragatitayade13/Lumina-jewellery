@@ -5,7 +5,8 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where,
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { uploadToImgBB } from '../../config/imgbb';
-import localHeroVideo2 from '../../assets/hero_video_2.mp4';
+const localHeroVideo1 = '/hero_video_1.mp4';
+const localHeroVideo2 = '/hero_video_2.mp4';
 import '../admin.css';
 
 const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
@@ -294,8 +295,38 @@ export default function LandingPageCMS() {
     }
 
     if (isVideo) {
-      showToast("Video hosting requires a premium plan. Loaded locally only.", "warning");
-      setUploadingMedia(null);
+      if (!storage) {
+        showToast("Firebase Storage not available. Video loaded locally only.", "warning");
+        setUploadingMedia(null);
+        return;
+      }
+      showToast("Uploading video to secure cloud storage...");
+      
+      const storageRef = ref(storage, `cms/${selectedStore}/heroBanners/video_${index}_${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.round(progress));
+        }, 
+        (error) => {
+          console.error("Firebase Storage video upload error:", error);
+          showToast("Video upload failed. Loaded locally only.", "error");
+          setUploadingMedia(null);
+        }, 
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setHeroBanner(prev => {
+              const newBanners = [...prev];
+              newBanners[index] = { ...newBanners[index], mediaUrl: downloadURL, mediaType: 'video' };
+              return newBanners;
+            });
+            setUploadingMedia(null);
+            showToast("Video uploaded and saved permanently!");
+          });
+        }
+      );
       return;
     }
 
@@ -1190,7 +1221,7 @@ export default function LandingPageCMS() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           <div style={{ position: 'relative', maxWidth: '480px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                             {slide.mediaType === 'video' ? (
-                              <video src={slide.mediaUrl || localHeroVideo2} controls muted style={{ width: '100%', display: 'block' }} />
+                              <video src={slide.mediaUrl || (index === 0 ? localHeroVideo1 : localHeroVideo2)} controls muted style={{ width: '100%', display: 'block' }} />
                             ) : (
                               <img src={slide.mediaUrl} alt="Hero Banner Preview" style={{ width: '100%', display: 'block' }} />
                             )}
@@ -1230,7 +1261,7 @@ export default function LandingPageCMS() {
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                               <p style={{ fontSize: '0.85rem', color: 'var(--gold)', fontWeight: 'bold', margin: 0 }}>
-                                🎬 Using default landing page video background (localHeroVideo2)
+                                🎬 Using default landing page video background ({index === 0 ? 'video 1' : 'video 2'})
                               </p>
                               <label className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', alignSelf: 'flex-start', margin: 0 }}>
                                 <UploadCloud size={14} /> Upload Custom Video/Image to Replace

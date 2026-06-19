@@ -66,8 +66,22 @@ export default function Header({ onCartClick, onWishlistClick }) {
       return;
     }
     
-    if (href.startsWith('/#')) {
-      const hash = href.replace('/#', '');
+    if (href.startsWith('#') || href.startsWith('/#')) {
+      const hash = href.startsWith('/#') ? href.replace('/#', '') : href.replace('#', '');
+      
+      if (hash === 'home' || hash === '') {
+        if (location.pathname !== '/') {
+          navigate('/');
+        } else {
+          if (window.lenis) {
+            window.lenis.scrollTo(0, { duration: 1.2 });
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }
+        return;
+      }
+
       if (location.pathname !== '/') {
         // Queue the hash scroll for after navigation to home
         sessionStorage.setItem('jw_scroll_to', hash);
@@ -76,13 +90,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
         const el = document.getElementById(hash);
         if (el) {
           if (window.lenis) {
-            window.lenis.scrollTo(el, { duration: 1.2, offset: -80 });
+            window.lenis.scrollTo(el, { duration: 1.2, offset: -120 });
           } else {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }
       }
-    } else if (href !== '#support') {
+    } else {
       navigate(href);
     }
   };

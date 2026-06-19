@@ -96,7 +96,7 @@ function ScrollToTop() {
         const el = document.getElementById(pendingHash);
         if (el) {
           if (window.lenis) {
-            window.lenis.scrollTo(el, { duration: 1.4, offset: -80 });
+            window.lenis.scrollTo(el, { duration: 1.4, offset: -120 });
           } else {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
