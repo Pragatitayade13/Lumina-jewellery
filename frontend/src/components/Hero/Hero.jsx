@@ -7,7 +7,7 @@ import FloatingParticles from './FloatingParticles';
 import heroBg1 from '../../assets/hero_gold_promo_1779901152036.png';
 import heroBg2 from '../../assets/hero_bridal_1779901185653.png';
 import heroBg3 from '../../assets/hero_festive_1779901227607.png';
-const localHeroVideo1 = '/hero_video_1.mp4';
+const localHeroVideo1 = '/whatsapp_video.mp4';
 const localHeroVideo2 = '/hero_video_2.mp4';
 import './Hero.css';
 

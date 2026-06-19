@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where,
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { uploadToImgBB } from '../../config/imgbb';
-const localHeroVideo1 = '/hero_video_1.mp4';
+const localHeroVideo1 = '/whatsapp_video.mp4';
 const localHeroVideo2 = '/hero_video_2.mp4';
 import '../admin.css';
 
