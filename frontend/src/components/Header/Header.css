@@ -35,10 +35,15 @@
 }
 
 /* ─── Main Header ─── */
-.header {
+.header-sticky-wrapper {
   position: sticky;
   top: 0;
   z-index: 1000;
+  width: 100%;
+}
+
+.header {
+  position: relative;
   transition: all 0.3s ease;
 }
 

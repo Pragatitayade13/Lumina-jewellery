@@ -94,8 +94,9 @@ export default function Header({ onCartClick, onWishlistClick }) {
 
   return (
     <>
-      {/* Contact Strip */}
-      <div className="contact-strip">
+      <div className="header-sticky-wrapper">
+        {/* Contact Strip */}
+        <div className="contact-strip">
         <div className="header-container" style={{ height: 'auto', display: 'flex', justifyContent: 'space-between', width: '100%', borderBottom: 'none', background: 'transparent' }}>
           <div className="strip-left">
             <span className="strip-item"><Phone size={12} /><a href={`tel:${socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91-9876543210'}`}>{socialMediaData?.contact?.phone || socialMediaData?.platforms?.whatsapp?.phoneNumber || '+91 98765 43210'}</a></span>
@@ -326,6 +327,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
           </div>
         </div>
       </motion.header>
+    </div>
 
       {/* Mobile Menu */}
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="navigation" aria-label="Mobile Navigation">
