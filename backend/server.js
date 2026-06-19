@@ -27,7 +27,7 @@ app.use('/api/jewellery', productRoutes);
 
 // Root Endpoint for checking API health
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to LuxeOrbit API (Firebase)' });
+  res.json({ message: 'Welcome to Lumina Jewels API (Firebase)' });
 });
 
 // Newsletter Subscription & Email Endpoint
