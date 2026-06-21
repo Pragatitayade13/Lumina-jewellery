@@ -35,27 +35,11 @@
 }
 
 /* ─── Main Header ─── */
-.header-sticky-wrapper {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  width: 100%;
-}
-
-main {
-  padding-top: 104px;
-}
-
-@media (max-width: 640px) {
-  main {
-    padding-top: 100px;
-  }
-}
 
 .header {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   transition: all 0.3s ease;
 }
 
@@ -76,8 +60,8 @@ main {
 }
 
 .header-inner {
-  background: rgba(13, 8, 0, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(13, 8, 0, 0.5);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   transition: background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }

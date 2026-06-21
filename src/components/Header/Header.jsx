@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Heart, ShoppingBag, User, Phone, Mail, ChevronRight, Gem, X, Moon, Sun, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
@@ -23,6 +23,9 @@ const navLinks = [
 export default function Header({ onCartClick, onWishlistClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const isProgrammaticScroll = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { cartCount, wishlistCount, setIsAuthOpen, setIsSupportOpen, theme, toggleTheme, user, customerSelectedStore, allPublicStores, setIsCustomerStorePromptOpen } = useApp();
   
@@ -54,9 +57,44 @@ export default function Header({ onCartClick, onWishlistClick }) {
     .filter(link => link.label?.toLowerCase() !== 'rings');
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 30);
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (location.pathname === '/' || isProgrammaticScroll.current) {
+        setVisible(true);
+        lastScrollY.current = currentScrollY;
+        setScrolled(currentScrollY > 30);
+        return;
+      }
+      
+      if (currentScrollY <= 10) {
+        setVisible(true);
+      } else if (currentScrollY > lastScrollY.current) {
+        // Scrolling down
+        if (currentScrollY > 100) {
+          setVisible(false);
+        }
+      } else if (currentScrollY < lastScrollY.current) {
+        // Scrolling up
+        setVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+      setScrolled(currentScrollY > 30);
+    };
+
+    const handleMouseMove = (e) => {
+      if (e.clientY < 80) {
+        setVisible(true);
+      }
+    };
+
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
   const handleNavClick = (href) => {
@@ -66,6 +104,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
       return;
     }
     
+    isProgrammaticScroll.current = true;
+    setTimeout(() => {
+      isProgrammaticScroll.current = false;
+    }, 1500);
+
     if (href.startsWith('/#')) {
       const hash = href.replace('/#', '');
       if (location.pathname !== '/') {
@@ -119,13 +162,13 @@ export default function Header({ onCartClick, onWishlistClick }) {
         className={`header${scrolled ? ' scrolled' : ''}`} 
         id="home"
         initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        animate={{ y: visible ? 0 : -100 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         <div className="header-inner">
           <div className="header-container">
             {/* Logo */}
-            <a className="logo" href="#home" onClick={() => handleNavClick('#home')}>
+            <a className="logo" href="/" onClick={(e) => { e.preventDefault(); handleNavClick('/'); }}>
               <div className="logo-icon">
                 {landingPageData?.branding?.logoUrl ? (
                   <img src={landingPageData.branding.logoUrl} alt="Store Logo" style={{ height: 32, width: 32, objectFit: 'contain' }} />

@@ -59,8 +59,8 @@
 }
 
 .header-inner {
-  background: rgba(13, 8, 0, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(13, 8, 0, 0.5);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   transition: background 0.4s ease, backdrop-filter 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }

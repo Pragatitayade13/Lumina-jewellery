@@ -239,7 +239,7 @@ export default function CartModal({ isOpen, onClose }) {
 
   return (
     <div className="auth-modal-overlay" style={{ zIndex: 9999 }} data-lenis-prevent="true">
-      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', maxHeight: '90vh', overflowY: 'auto' }} data-lenis-prevent="true">
+      <div className="auth-modal cart-modal-box" style={{ width: '650px', maxWidth: '100%', display: 'flex', flexDirection: 'column', height: '650px', maxHeight: '90vh' }} data-lenis-prevent="true">
         
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -304,7 +304,7 @@ export default function CartModal({ isOpen, onClose }) {
                   <div key={item.id} className="cart-item-card">
                     <div className="cart-item-image-wrapper">
                       <img 
-                        src={item.image && !item.image.includes('/src/assets') ? item.image : 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200'} 
+                        src={item.image || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=200'} 
                         alt={item.name} 
                         className="cart-item-image" 
                         onError={(e) => {
@@ -314,8 +314,8 @@ export default function CartModal({ isOpen, onClose }) {
                       />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', color: '#fff' }}>{item.name}</div>
-                      <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '1.1rem' }}>₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
+                      <div style={{ fontWeight: 600, fontSize: '1.15rem', marginBottom: '0.4rem', color: '#fff' }}>{item.name}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--gold)', fontSize: '1.3rem' }}>₹{(item.price * item.qty).toLocaleString('en-IN')}</div>
                       
                       <div className="cart-qty-selector">
                         <button className="cart-qty-btn" onClick={() => updateQuantity(item.id, -1)}><Minus size={14} /></button>
@@ -337,53 +337,53 @@ export default function CartModal({ isOpen, onClose }) {
 
             {cart.length > 0 && (
               <div className="cart-summary">
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
                   <div style={{ position: 'relative', flex: 1 }}>
-                    <Tag size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <Tag size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input 
                       type="text" 
                       placeholder="Promo Code (Try LUMINA10)" 
                       value={promoCode}
                       onChange={e => setPromoCode(e.target.value)}
-                      style={{ width: '100%', padding: '0.8rem 0.8rem 0.8rem 2.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
+                      style={{ width: '100%', padding: '0.55rem 0.8rem 0.55rem 2.2rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.88rem' }}
                     />
                   </div>
-                  <button className="btn btn-outline" style={{ padding: '0 1.5rem' }} onClick={handleApplyPromo}>Apply</button>
+                  <button className="btn btn-outline" style={{ padding: '0 1.25rem', fontSize: '0.88rem' }} onClick={handleApplyPromo}>Apply</button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                   <span>Subtotal</span>
                   <span style={{ color: '#fff' }}>₹{subtotal.toLocaleString('en-IN')}</span>
                 </div>
                 {igst > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                     <span>IGST</span>
                     <span style={{ color: '#fff' }}>₹{igst.toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {cgst > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                     <span>CGST</span>
                     <span style={{ color: '#fff' }}>₹{cgst.toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {sgst > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                     <span>SGST</span>
                     <span style={{ color: '#fff' }}>₹{sgst.toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 {discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem', color: 'var(--status-green)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.82rem', color: 'var(--status-green)' }}>
                     <span>Discount</span>
                     <span>-₹{discount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                   <span>Delivery Charges</span>
                   <span>{deliveryFee === 0 ? <span style={{color: 'var(--status-green)'}}>FREE</span> : `₹${deliveryFee}`}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontWeight: 600, fontSize: '1.3rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontWeight: 600, fontSize: '1.2rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                   <span>Total</span>
                   <span style={{ color: 'var(--gold)' }}>₹{total.toLocaleString('en-IN')}</span>
                 </div>

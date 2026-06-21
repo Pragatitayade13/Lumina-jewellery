@@ -1,15 +1,16 @@
 // src/components/BestSellers/BestSellers.jsx
-import { useState } from 'react';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import { products } from '../../data/products';
 import { useCMS } from '../../context/CMSContext';
 import { useProducts } from '../../hooks/useProducts';
+import { useNavigate } from 'react-router-dom';
 import ProductCard from '../ProductCard/ProductCard';
 import './BestSellers.css';
 
 export default function BestSellers() {
   const { products: fbProducts } = useProducts();
   const { landingPageData } = useCMS();
+  const navigate = useNavigate();
   const bs = landingPageData?.bestSellers || {
     sectionLabel: 'Customer Favorites',
     title: 'Best Sellers',
@@ -48,7 +49,11 @@ export default function BestSellers() {
         </div>
 
         <div className="section-actions reveal">
-          <button className="btn btn-outline" id="view-all-bestsellers-btn">
+          <button 
+            className="btn btn-outline" 
+            id="view-all-bestsellers-btn"
+            onClick={() => navigate('/collections')}
+          >
             See All Best Sellers <ArrowRight size={16} />
           </button>
         </div>

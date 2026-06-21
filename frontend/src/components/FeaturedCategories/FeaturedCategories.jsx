@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowRight, X } from 'lucide-react';
 import { categories, products } from '../../data/products';
 import { useScrollLock } from '../../hooks/useScrollLock';
@@ -170,8 +171,8 @@ export default function FeaturedCategories() {
       </div>
 
       {/* Modal logic remains unchanged but styles matched up */}
-      {selectedCategory && (
-        <div className="auth-modal-overlay" onClick={() => setSelectedCategory(null)} data-lenis-prevent="true" style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      {selectedCategory && createPortal(
+        <div className="auth-modal-overlay" onClick={() => setSelectedCategory(null)} data-lenis-prevent="true" style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '80px' }}>
           <div className="auth-modal" onClick={e => e.stopPropagation()} data-lenis-prevent="true" style={{ width: '80%', maxWidth: '1000px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem', position: 'relative' }}>
             <button 
               onClick={() => setSelectedCategory(null)}
@@ -207,7 +208,8 @@ export default function FeaturedCategories() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
