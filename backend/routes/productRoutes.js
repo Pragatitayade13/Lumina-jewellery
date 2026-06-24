@@ -3,11 +3,13 @@ const router = express.Router();
 const productController = require('../controllers/productController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
-// Optionally protect routes with verifyToken
+// Public read routes
 router.get('/', productController.getProducts);
 router.get('/:id', productController.getProductById);
-router.post('/', productController.createProduct);
-router.put('/:id', productController.updateProduct);
-router.delete('/:id', productController.deleteProduct);
+
+// Protected write routes — require authentication
+router.post('/', verifyToken, productController.createProduct);
+router.put('/:id', verifyToken, productController.updateProduct);
+router.delete('/:id', verifyToken, productController.deleteProduct);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { CMSProvider, useCMS } from './context/CMSContext';
@@ -133,7 +133,6 @@ function HomePage() {
   );
 }
 
-import React from 'react';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

@@ -8,6 +8,16 @@ require('./config/firebase'); // Initializes Firebase Admin SDK
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const productRoutes = require('./routes/productRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+
+const escapeHtml = (unsafe) => {
+  return (unsafe || '').toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
 
 const app = express();
 
@@ -24,6 +34,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/products', productRoutes); // Changed from /api/jewellery as per PRD
 // Keep old route for backward compatibility during transition if needed
 app.use('/api/jewellery', productRoutes); 
+app.use('/api/payment', paymentRoutes);
 
 // Root Endpoint for checking API health
 app.get('/', (req, res) => {
@@ -50,9 +61,6 @@ app.post('/api/subscribe', async (req, res) => {
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
-        },
-        tls: {
-          rejectUnauthorized: false
         }
       });
     } else {
@@ -118,8 +126,7 @@ app.post('/api/support/reply', async (req, res) => {
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
-        },
-        tls: { rejectUnauthorized: false }
+        }
       });
     } else {
       const testAccount = await nodemailer.createTestAccount();
@@ -141,12 +148,12 @@ app.post('/api/support/reply', async (req, res) => {
       text: message,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Hello ${customer || 'Customer'},</h2>
-          <p style="white-space: pre-wrap;">${message}</p>
+          <h2>Hello ${escapeHtml(customer || 'Customer')},</h2>
+          <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
           <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;" />
           <p style="color: #666; font-size: 12px;">Original Message:</p>
           <blockquote style="margin: 0; padding-left: 10px; border-left: 3px solid #ccc; color: #666;">
-            ${originalMessage || ''}
+            ${escapeHtml(originalMessage || '')}
           </blockquote>
         </div>
       `
@@ -165,9 +172,6 @@ app.post('/api/support/reply', async (req, res) => {
         auth: { user: testAccount.user, pass: testAccount.pass }
       });
       info = await transporter.sendMail(mailOptions);
-      
-      // Force it to act like Ethereal so frontend gets preview URL
-      process.env.SMTP_USER = ''; 
     }
 
     let previewUrl = null;
@@ -194,8 +198,7 @@ app.post('/api/notifications/send', async (req, res) => {
       require('dns').setDefaultResultOrder('ipv4first');
       transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com', port: 587, secure: false, requireTLS: true,
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-        tls: { rejectUnauthorized: false }
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       });
     } else {
       const testAccount = await nodemailer.createTestAccount();
@@ -212,8 +215,8 @@ app.post('/api/notifications/send', async (req, res) => {
       text: message,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Hello ${customer || 'Customer'},</h2>
-          <p style="white-space: pre-wrap;">${message}</p>
+          <h2>Hello ${escapeHtml(customer || 'Customer')},</h2>
+          <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
           <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;" />
           <p style="color: #666; font-size: 12px; text-align: center;">You are receiving this because you are subscribed to Lumina Jewels notifications.</p>
         </div>
@@ -231,7 +234,6 @@ app.post('/api/notifications/send', async (req, res) => {
         auth: { user: testAccount.user, pass: testAccount.pass }
       });
       info = await transporter.sendMail(mailOptions);
-      process.env.SMTP_USER = ''; 
     }
 
     let previewUrl = null;

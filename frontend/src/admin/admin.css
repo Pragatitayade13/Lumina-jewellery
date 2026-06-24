@@ -39,14 +39,7 @@
   background: var(--admin-bg);
 }
 
-[data-theme="light"] .admin-root {
-  --admin-border: rgba(0, 0, 0, 0.08);
-  --admin-border-bright: rgba(0, 0, 0, 0.15);
-  --admin-overlay-3: rgba(0, 0, 0, 0.03);
-  --admin-overlay-6: rgba(0, 0, 0, 0.06);
-  --admin-overlay-8: rgba(0, 0, 0, 0.08);
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
-}
+
 
 .admin-root *, .admin-root *::before, .admin-root *::after { box-sizing: border-box; margin: 0; padding: 0; }
 .admin-root a { text-decoration: none; color: inherit; }

@@ -33,6 +33,7 @@ const MensJewellery = lazy(() => import('./pages/MensJewellery'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 const TrackOrder = lazy(() => import('./pages/TrackOrder'));
 const LMSLanding = lazy(() => import('./pages/LMSLanding'));
+const OffersPage = lazy(() => import('./pages/OffersPage'));
 
 const AdminApp = lazy(() => import('./admin/AdminApp'));
 const CustomerApp = lazy(() => import('./customer/CustomerApp'));
@@ -233,6 +234,7 @@ export default function App() {
                 <Route path="/track/:orderId" element={<TrackOrder />} />
                 <Route path="/lms" element={<LMSLanding />} />
                 <Route path="/*" element={<StoreLayout />}>
+                  <Route path="offers" element={<OffersPage />} />
                   <Route index element={<HomePage />} />
                   <Route path="collections" element={<Catalog />} />
                   <Route path="mens" element={<MensJewellery />} />

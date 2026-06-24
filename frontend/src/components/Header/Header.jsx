@@ -17,6 +17,7 @@ const navLinks = [
   { label: 'New Arrivals', href: '/#new-arrivals' },
   { label: 'Best Sellers', href: '/#best-sellers' },
   { label: 'About Us', href: '/#brand-story' },
+  { label: 'Offers', href: '/offers' },
   { label: 'Contact Us', href: '#support' },
 ];
 
@@ -50,6 +51,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
     { label: t('nav.newArrivals'), href: '/#new-arrivals' },
     { label: t('nav.bestSellers'), href: '/#best-sellers' },
     { label: t('nav.aboutUs'), href: '/#brand-story' },
+    { label: t('nav.offers', { defaultValue: 'Offers' }), href: '/offers' },
     { label: t('nav.contactUs'), href: '#support' },
   ];
 

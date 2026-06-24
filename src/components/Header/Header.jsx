@@ -9,16 +9,6 @@ import { useTranslation } from 'react-i18next';
 import './Header.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const navLinks = [
-  { label: 'Home', href: '/' },
-  { label: 'Shop', href: '/collections' },
-  { label: 'Men\'s', href: '/mens' },
-  { label: 'Collections', href: '/collections' },
-  { label: 'New Arrivals', href: '/#new-arrivals' },
-  { label: 'Best Sellers', href: '/#best-sellers' },
-  { label: 'About Us', href: '/#brand-story' },
-  { label: 'Contact Us', href: '#support' },
-];
 
 export default function Header({ onCartClick, onWishlistClick }) {
   const [scrolled, setScrolled] = useState(false);
@@ -95,7 +85,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, []);
+  }, [location.pathname]);
 
   const handleNavClick = (href) => {
     setMenuOpen(false);
@@ -219,31 +209,11 @@ export default function Header({ onCartClick, onWishlistClick }) {
                         maxHeight: '300px', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                       }}
                     >
-                      {products.filter(p => {
+                      {(() => {
                         const sq = searchQuery.trim();
-                        if (!sq) return false;
+                        if (!sq) return null;
                         
-                        try {
-                          const regex = new RegExp(`\\b${sq}`, 'i');
-                          return regex.test(p.name) || 
-                                 regex.test(p.category) ||
-                                 regex.test(p.subcategory) ||
-                                 regex.test(p.purity) ||
-                                 regex.test(p.price.toString());
-                        } catch (e) {
-                          // Fallback if regex fails (e.g. invalid chars)
-                          const sqLower = sq.toLowerCase();
-                          return (p.name && p.name.toLowerCase().includes(sqLower)) || 
-                                 (p.category && p.category.toLowerCase().includes(sqLower)) ||
-                                 (p.subcategory && p.subcategory.toLowerCase().includes(sqLower)) ||
-                                 (p.purity && p.purity.toLowerCase().includes(sqLower)) ||
-                                 (p.price && p.price.toString().includes(sqLower));
-                        }
-                      }).length > 0 ? (
-                        products.filter(p => {
-                          const sq = searchQuery.trim();
-                          if (!sq) return false;
-                          
+                        const filteredProducts = products.filter(p => {
                           try {
                             const regex = new RegExp(`\\b${sq}`, 'i');
                             return regex.test(p.name) || 
@@ -252,6 +222,7 @@ export default function Header({ onCartClick, onWishlistClick }) {
                                    regex.test(p.purity) ||
                                    regex.test(p.price.toString());
                           } catch (e) {
+                            // Fallback if regex fails (e.g. invalid chars)
                             const sqLower = sq.toLowerCase();
                             return (p.name && p.name.toLowerCase().includes(sqLower)) || 
                                    (p.category && p.category.toLowerCase().includes(sqLower)) ||
@@ -259,18 +230,22 @@ export default function Header({ onCartClick, onWishlistClick }) {
                                    (p.purity && p.purity.toLowerCase().includes(sqLower)) ||
                                    (p.price && p.price.toString().includes(sqLower));
                           }
-                        }).map(product => (
-                          <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={() => { setSearchQuery(''); handleNavClick(`/product/${product.id}`); }}>
-                            <img src={product.image} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
-                            <div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: '500' }}>{product.name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>₹{product.price.toLocaleString('en-IN')}</div>
+                        });
+
+                        return filteredProducts.length > 0 ? (
+                          filteredProducts.map(product => (
+                            <div key={product.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={() => { setSearchQuery(''); handleNavClick(`/product/${product.id}`); }}>
+                              <img src={product.image} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                              <div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: '500' }}>{product.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--gold)' }}>₹{product.price.toLocaleString('en-IN')}</div>
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No products found</div>
-                      )}
+                          ))
+                        ) : (
+                          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No products found</div>
+                        );
+                      })()}
                     </motion.div>
                   )}
                 </AnimatePresence>

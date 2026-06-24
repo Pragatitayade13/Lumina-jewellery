@@ -41,27 +41,7 @@
   --font-accent: 'Cormorant Garamond', serif;
 }
 
-[data-theme="light"] .admin-root {
-  --gold: #E0A9A5;
-  --gold-light: #F2C5C2;
-  --gold-dark: #B87B77;
-  --gold-pale: #FCEBE9;
-  --gold-glow: rgba(224, 169, 165, 0.3);
-  --bg-primary: #FFF5F7;
-  --bg-secondary: #FFFFFF;
-  --bg-card: #FFFFFF;
-  --bg-glass: rgba(255, 255, 255, 0.85);
-  --surface: #FCEEF0;
-  --surface-hover: #F8E5E7;
-  --text-primary: #2C1A1C;
-  --text-secondary: #5C4345;
-  --text-muted: #8F7678;
-  --text-dark: #1A0D0E;
-  --border: #000000;
-  --border-bright: #000000;
-  --shadow-gold: 0 4px 20px rgba(224, 169, 165, 0.2);
-  --shadow-deep: 0 10px 40px rgba(0, 0, 0, 0.05);
-}
+
 
 /* =====================================================
    RESET & BASE

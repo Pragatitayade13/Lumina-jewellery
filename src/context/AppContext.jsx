@@ -136,24 +136,23 @@ export function AppProvider({ children }) {
             if (userDoc.exists()) {
               userData = { ...userData, ...userDoc.data() };
               
-              // --- AUTO-FIX MISSING ROLE BUG ---
+              // --- FIX: Default missing role to 'customer' (never auto-escalate) ---
               if (!userDoc.data().role) {
-                console.log("Auto-fixing missing role...");
-                userData.role = 'superadmin';
+                console.warn("User missing role field, defaulting to 'customer'.");
+                userData.role = 'customer';
                 try {
-                  await updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'superadmin' });
+                  await updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'customer' });
                 } catch (e) {
-                  console.warn("Could not auto-fix role in DB:", e);
+                  console.warn("Could not set default role in DB:", e);
                 }
               }
             }
 
-            // --- DEV BOOTSTRAP: Auto-grant superadmin to owner ---
-            if (firebaseUser.email === 'luminajewels.app@gmail.com') {
+            // --- DEV BOOTSTRAP: Only in dev mode via env flag ---
+            if (import.meta.env.VITE_DEV_BOOTSTRAP === 'true' && firebaseUser.email === import.meta.env.VITE_SUPERADMIN_EMAIL) {
               userData.role = 'superadmin';
               userData.permissions = ['all'];
               
-              // Automatically write this to Firestore so it persists
               try {
                 await setDoc(doc(db, 'users', firebaseUser.uid), {
                   role: 'superadmin',
@@ -161,7 +160,7 @@ export function AppProvider({ children }) {
                   updatedAt: new Date().toISOString()
                 }, { merge: true });
               } catch (e) {
-                console.warn("Bootstrap write failed (might be expected depending on security rules):", e);
+                console.warn("Bootstrap write failed:", e);
               }
             }
             // -----------------------------------------------------
@@ -244,6 +243,15 @@ export function AppProvider({ children }) {
             try {
               const data = userDoc.exists() ? userDoc.data() : { role: 'customer', name: firebaseUser.displayName || 'Customer' };
               
+              let currentIp = 'unknown';
+              try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                currentIp = ipData.ip;
+              } catch (e) {
+                console.warn('Could not fetch IP address');
+              }
+
               const docRef = await addDoc(collection(db, 'loginActivity'), {
                 userId: firebaseUser.uid,
                 userName: data.name || 'Unknown',
@@ -251,7 +259,7 @@ export function AppProvider({ children }) {
                 role: data.role || 'customer',
                 status: 'success',
                 loginTime: Date.now(),
-                ipAddress: '127.0.0.1', // Captured server-side in production
+                ipAddress: currentIp,
                 deviceInfo: navigator.userAgent.substring(0, 100)
               });
               sessionStorage.setItem('jw_login_activity_id', docRef.id);
@@ -363,6 +371,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       cart, wishlist, toast, user, setUser,
+      authLoading,
       isAuthOpen, setIsAuthOpen,
       isSupportOpen, setIsSupportOpen,
       isCartOpen, setIsCartOpen,

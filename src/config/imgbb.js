@@ -3,7 +3,11 @@
  * Bypasses Firebase Storage to host images for free.
  */
 
-const IMGBB_API_KEY = 'd70c049465730a09ab9a644f431d79ff';
+const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY || '';
+
+if (!IMGBB_API_KEY) {
+  console.warn('VITE_IMGBB_API_KEY is not set. Image uploads to ImgBB will fail.');
+}
 
 export const uploadToImgBB = async (file, onProgress) => {
   if (!file) throw new Error('No file provided');

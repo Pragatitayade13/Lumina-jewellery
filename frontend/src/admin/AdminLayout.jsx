@@ -41,6 +41,7 @@ const allNavItems = [
   
   { section: 'Finance & Reports', roles: ['superadmin', 'admin', 'finance', 'manager'] },
   { path: '/admin/payments', label: 'Payments & Transactions', icon: <CreditCard size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager'] },
+  { path: '/admin/coupons', label: 'Coupon Management', icon: <FileText size={18} />, roles: ['superadmin'] },
   { path: '/admin/tax', label: 'Tax Management', icon: <Receipt size={18} />, roles: ['superadmin', 'finance'] },
   { path: '/admin/gold-rates', label: 'Gold Rate & Pricing', icon: <Coins size={18} />, roles: ['superadmin', 'finance', 'manager'] },
   { path: '/admin/analytics', label: 'Analytics & Reports', icon: <BarChart3 size={18} />, roles: ['superadmin', 'admin', 'finance', 'manager', 'staff'] },
@@ -72,6 +73,7 @@ const pageTitles = {
   '/admin/appointments': 'Store Appointments',
   '/admin/schemes': 'Schemes & Buybacks',
   '/admin/payments': 'Payments & Transactions',
+  '/admin/coupons': 'Coupon Management',
   '/admin/tax': 'Tax & Compliance Management',
   '/admin/gold-rates': 'Gold Rate & Pricing Dashboard',
   '/admin/analytics': 'Analytics & AI Reports',
@@ -451,6 +453,7 @@ export default function AdminLayout({ children }) {
         <div className="topbar-actions">
           <StoreSwitcherDropdown />
           <NotificationDropdown userRole={userRole} />
+          
           <a href="/" className="topbar-btn" title="View Live Site" target="_blank" rel="noreferrer"><Globe size={18} /></a>
 
           <ProfileDropdown userRole={userRole} userName={user?.name || `${portalName} User`} onLogout={handleLogout} isSuperAdmin={isSuperAdmin} />

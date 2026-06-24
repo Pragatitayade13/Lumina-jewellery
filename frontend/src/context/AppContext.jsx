@@ -44,10 +44,7 @@ export function AppProvider({ children }) {
       console.error("Failed to save user to localStorage", err);
     }
   };
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('jw_theme') || 'dark'; }
-    catch { return 'dark'; }
-  });
+  const [theme, setTheme] = useState('dark');
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [vtoProduct, setVtoProduct] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -300,12 +297,12 @@ export function AppProvider({ children }) {
   }, [wishlist]);
 
   useEffect(() => {
-    localStorage.setItem('jw_theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('jw_theme', 'dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    // No-op: White mode removed by user request
   };
 
   const showToast = (message) => {

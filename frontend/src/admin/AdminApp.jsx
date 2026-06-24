@@ -33,6 +33,7 @@ const VendorManagement = lazy(() => import('./pages/VendorManagement'));
 const InvoiceBilling = lazy(() => import('./pages/InvoiceBilling'));
 const FinanceDashboard = lazy(() => import('./pages/FinanceDashboard'));
 const ApprovalDashboard = lazy(() => import('./pages/ApprovalDashboard'));
+const CouponManagement = lazy(() => import('./pages/CouponManagement'));
 
 // A simple protective wrapper for roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -93,6 +94,7 @@ export default function AdminApp() {
             <Route path="landing-cms" element={<ProtectedRoute allowedRoles={['superadmin']}><LandingPageCMS /></ProtectedRoute>} />
             <Route path="social-media" element={<ProtectedRoute allowedRoles={['superadmin']}><SocialMediaSettings /></ProtectedRoute>} />
             <Route path="login-activity" element={<ProtectedRoute allowedRoles={['superadmin']}><LoginActivity /></ProtectedRoute>} />
+            <Route path="coupons" element={<ProtectedRoute allowedRoles={['superadmin']}><CouponManagement /></ProtectedRoute>} />
             
             {/* Shared routes (including staff and manager where applicable) */}
             <Route path="products" element={<ProtectedRoute allowedRoles={['superadmin', 'admin', 'staff', 'manager']}><ProductManagement /></ProtectedRoute>} />

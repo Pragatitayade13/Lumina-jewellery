@@ -9,7 +9,7 @@ exports.register = async (req, res) => {
     }
 
     // Check if business exists
-    const businessRef = db.collection('BUSINESS').doc(uid);
+    const businessRef = db.collection('business').doc(uid);
     const businessDoc = await businessRef.get();
     
     if (businessDoc.exists) {
@@ -36,9 +36,8 @@ exports.register = async (req, res) => {
       role,
       businessId: uid, // Use owner's uid as businessId for simplicity
       phone: phone || '',
-      createdAt: new Date().toISOString()
     };
-    await db.collection('USERS').doc(uid).set(userData);
+    await db.collection('users').doc(uid).set(userData);
 
     res.status(201).json({ message: 'Registration successful', user: userData, business: businessData });
   } catch (error) {
@@ -54,7 +53,7 @@ exports.login = async (req, res) => {
     // This endpoint can be used to return user data after a successful Firebase login.
     const { uid } = req.user; // populated by authMiddleware
 
-    const userDoc = await db.collection('USERS').doc(uid).get();
+    const userDoc = await db.collection('users').doc(uid).get();
     if (!userDoc.exists) {
       return res.status(404).json({ message: 'User not found in database' });
     }
@@ -63,7 +62,7 @@ exports.login = async (req, res) => {
     
     let businessData = null;
     if (userData.businessId) {
-      const businessDoc = await db.collection('BUSINESS').doc(userData.businessId).get();
+      const businessDoc = await db.collection('business').doc(userData.businessId).get();
       if (businessDoc.exists) {
         businessData = businessDoc.data();
       }

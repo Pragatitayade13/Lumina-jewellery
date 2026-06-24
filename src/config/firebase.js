@@ -1,7 +1,7 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { initializeFirestore, getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getStorage, connectStorageEmulator, setMaxUploadRetryTime, setMaxOperationRetryTime } from 'firebase/storage';
 
 const cleanEnvVar = (val) => {
   if (typeof val !== 'string') return val;

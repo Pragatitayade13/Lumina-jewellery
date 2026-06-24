@@ -69,9 +69,10 @@ export default function CartModal({ isOpen, onClose }) {
   });
 
   const deliveryFee = subtotal > 50000 ? 0 : (subtotal > 0 ? 500 : 0);
-  const total = subtotal + totalGstAmt + deliveryFee - discount;
+  const total = Math.max(0, subtotal + totalGstAmt + deliveryFee - discount);
 
   const handleApplyPromo = () => {
+    // TODO: Validate promo code server-side (BUG-015)
     if (promoCode.toUpperCase() === 'LUMINA10') {
       setDiscount(subtotal * 0.10);
     } else {
@@ -111,7 +112,7 @@ export default function CartModal({ isOpen, onClose }) {
 
     setIsCheckingOut(true);
     try {
-      let finalStoreId = customerSelectedStore || 'eoNjBBBlw1edDfPWufPD';
+      let finalStoreId = customerSelectedStore || 'GLOBAL';
 
       const orderData = {
         customerId: user.uid,
@@ -159,7 +160,15 @@ export default function CartModal({ isOpen, onClose }) {
         return;
       }
 
-      const token = await user.getIdToken();
+      const { getAuth } = await import('firebase/auth');
+      const firebaseAuth = getAuth();
+      const currentUser = firebaseAuth.currentUser;
+      if (!currentUser) {
+        alert("Session expired. Please log in again.");
+        setIsCheckingOut(false);
+        return;
+      }
+      const token = await currentUser.getIdToken();
       const orderResponse = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 

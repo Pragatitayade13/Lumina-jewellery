@@ -23,7 +23,6 @@ export default function AuthModal() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [customJoinDate, setCustomJoinDate] = useState('');
-  const [error, setError] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [availableStores, setAvailableStores] = useState([]);
