@@ -58,7 +58,15 @@ export default function ProductShowcase() {
         <div className="showcase-slider-track">
           {showcaseImages.map((img, i) => (
             <div key={i} className="showcase-slide-item">
-              <img src={img} alt={`Showcase Gallery ${i}`} />
+              <img 
+                src={img} 
+                alt={`Showcase Gallery ${i}`} 
+                loading="lazy"
+                onError={(e) => {
+                  // Hide broken images (like local localhost URLs deployed to Vercel)
+                  e.target.closest('.showcase-slide-item').style.display = 'none';
+                }}
+              />
             </div>
           ))}
         </div>

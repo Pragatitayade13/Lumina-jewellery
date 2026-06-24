@@ -1,8 +1,7 @@
 @echo off
-echo Pushing code to GitHub...
-git remote set-url origin https://github.com/Pragatitayade13/Lumina-jewellery.git
+echo Pushing Vercel Image Fixes to GitHub...
 git add .
-git commit -m "feat: complete coupon management system, offers page, and cart updates"
+git commit -m "fix: resolve broken CMS images and optimize load speeds for Vercel deployment"
 git push origin HEAD
 echo.
 echo Done! Press any key to exit.

@@ -164,6 +164,10 @@ export default function Hero() {
                 className={`hero-slide-bg ${idx === active ? 'zoom-in' : ''}`}
                 src={mediaSource}
                 alt="Hero Banner"
+                onError={(e) => {
+                  e.target.onerror = null; 
+                  e.target.src = slide.bg || heroBg1;
+                }}
               />
             )}
             <div className="hero-overlay" />
